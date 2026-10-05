@@ -16,24 +16,27 @@ import {
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
+import { useMessages } from "@/i18n/messages";
 
 type LessonTab = "Tổng quan" | "Từ vựng" | "Ngữ pháp" | "Đọc" | "Bổ sung";
-const tabs: LessonTab[] = ["Tổng quan", "Từ vựng", "Ngữ pháp", "Đọc", "Bổ sung"];
+
 
 export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const [tab, setTab] = useState<LessonTab>("Tổng quan");
   const { state } = useLearning();
+  const messages = useMessages();
   const { getLesson, course } = useContent();
   const lesson = getLesson(lessonId);
   const progress = state.lessonProgress[String(lessonId)] ?? 0;
+  const tabs: LessonTab[] = [messages.lesson.tabs.overview, messages.lesson.tabs.vocabulary, messages.lesson.tabs.grammar, messages.lesson.tabs.reading, messages.lesson.tabs.supplement] as LessonTab[];
 
   if (!lesson) {
     return (
       <div className="empty-lesson">
-        <span className="eyebrow">KHÔNG TÌM THẤY BÀI HỌC</span>
+        <span className="eyebrow">{messages.lesson.notFound}</span>
         <h1>Bài {lessonId}</h1>
-        <p>Bài học này chưa tồn tại trong dữ liệu giáo trình hiện tại.</p>
-        <Link className="primary-button" href="/learn">Quay lại giáo trình</Link>
+        <p>{messages.lesson.notFoundBody}</p>
+        <Link className="primary-button" href="/learn">{messages.lesson.backCourse}</Link>
       </div>
     );
   }
@@ -71,15 +74,15 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             {lesson.quality ? (
               <span className="grounding-badge">
                 <ShieldCheck size={13} />
-                Grounding {lesson.quality.groundingScore}%
+                {messages.lesson.grounding} {lesson.quality.groundingScore}%
               </span>
             ) : null}
           </div>
         </div>
         <div className="lesson-header-actions">
-          <span className="lesson-progress-pill">{progress}% hoàn thành</span>
+          <span className="lesson-progress-pill">{progress}% {messages.lesson.completed}</span>
           <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId}>
-            <Play size={17} /> Luyện bài này
+            <Play size={17} /> {messages.lesson.practiceLesson}
           </Link>
         </div>
       </header>
@@ -92,65 +95,65 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             onClick={() => setTab(item)}
           >
             {item}
-            {item === "Bổ sung" && supplementalCount ? (
+            {item === messages.lesson.tabs.supplement && supplementalCount ? (
               <span className="tab-count">{supplementalCount}</span>
             ) : null}
           </button>
         ))}
       </nav>
 
-      {tab === "Tổng quan" ? (
+      {tab === messages.lesson.tabs.overview ? (
         <section className="lesson-overview-grid">
           <article className="lesson-main-card">
-            <span className="eyebrow">MỤC TIÊU BÀI HỌC</span>
+            <span className="eyebrow">{messages.lesson.objective}</span>
             <h2>{lesson.objective}</h2>
             <p>
               Tiến độ chính tính từ 6 kỹ năng. Hội thoại, phát âm, văn hóa và các mục
               đặc biệt của sách vẫn được giữ riêng trong tab Bổ sung.
             </p>
             <div className="lesson-step-list">
-              <button onClick={() => setTab("Từ vựng")}>
-                <span>01</span><div><strong>어휘 · Từ vựng</strong><small>{lesson.vocabulary.length} mục</small></div>
+              <button onClick={() => setTab(messages.lesson.tabs.vocabulary)}>
+                <span>01</span><div><strong>어휘 · {messages.lesson.vocabulary}</strong><small>{lesson.vocabulary.length} {messages.lesson.items}</small></div>
               </button>
-              <button onClick={() => setTab("Ngữ pháp")}>
-                <span>02</span><div><strong>문법 · Ngữ pháp</strong><small>{lesson.grammar.length} điểm</small></div>
+              <button onClick={() => setTab(messages.lesson.tabs.grammar)}>
+                <span>02</span><div><strong>문법 · {messages.lesson.grammar}</strong><small>{lesson.grammar.length} {messages.lesson.points}</small></div>
               </button>
               <Link href={"/listening?lesson=" + lessonId}>
-                <span>03</span><div><strong>듣기 · Nghe</strong><small>{lesson.listening.length} bài</small></div>
+                <span>03</span><div><strong>듣기 · {messages.lesson.listening}</strong><small>{lesson.listening.length} {messages.lesson.exercises}</small></div>
               </Link>
               <Link href={"/speaking?lesson=" + lessonId}>
-                <span>04</span><div><strong>말하기 · Nói</strong><small>{lesson.speaking.length} câu luyện</small></div>
+                <span>04</span><div><strong>말하기 · {messages.lesson.speaking}</strong><small>{lesson.speaking.length} {messages.lesson.sentences}</small></div>
               </Link>
-              <button onClick={() => setTab("Đọc")}>
-                <span>05</span><div><strong>읽기 · Đọc</strong><small>{lesson.reading ? "1 bài đọc" : "Chưa có"}</small></div>
+              <button onClick={() => setTab(messages.lesson.tabs.reading)}>
+                <span>05</span><div><strong>읽기 · {messages.lesson.reading}</strong><small>{lesson.reading ? messages.lesson.oneReading : messages.lesson.none}</small></div>
               </button>
               <Link href={"/writing?lesson=" + lessonId}>
-                <span>06</span><div><strong>쓰기 · Viết</strong><small>{lesson.writing ? "1 bài viết" : "Chưa có"}</small></div>
+                <span>06</span><div><strong>쓰기 · {messages.lesson.writing}</strong><small>{lesson.writing ? messages.lesson.oneWriting : messages.lesson.none}</small></div>
               </Link>
               {supplementalCount ? (
-                <button onClick={() => setTab("Bổ sung")}>
-                  <span>+</span><div><strong>교재 · Nội dung bổ sung</strong><small>{supplementalCount} mục giữ từ sách</small></div>
+                <button onClick={() => setTab(messages.lesson.tabs.supplement)}>
+                  <span>+</span><div><strong>교재 · {messages.lesson.extra}</strong><small>{supplementalCount} {messages.lesson.supplementItems}</small></div>
                 </button>
               ) : null}
             </div>
           </article>
 
           <aside className="lesson-side-card">
-            <span className="eyebrow">NHỊP HỌC GỢI Ý</span>
-            <h3>25–35 phút</h3>
-            <div className="time-plan"><span>5’</span><p>Từ vựng</p></div>
-            <div className="time-plan"><span>7’</span><p>Ngữ pháp</p></div>
-            <div className="time-plan"><span>8’</span><p>Nghe + Nói</p></div>
-            <div className="time-plan"><span>10’</span><p>Đọc + Viết</p></div>
+            <span className="eyebrow">{messages.lesson.suggestedPace}</span>
+            <h3>{messages.lesson.duration}</h3>
+            <div className="time-plan"><span>5’</span><p>{messages.lesson.vocabulary}</p></div>
+            <div className="time-plan"><span>7’</span><p>{messages.lesson.grammar}</p></div>
+            <div className="time-plan"><span>8’</span><p>{messages.lesson.listening} + {messages.lesson.speaking}</p></div>
+            <div className="time-plan"><span>10’</span><p>{messages.lesson.reading} + {messages.lesson.writing}</p></div>
           </aside>
         </section>
       ) : null}
 
-      {tab === "Từ vựng" ? (
+      {tab === messages.lesson.tabs.vocabulary ? (
         <section className="lesson-content-card">
           <div className="content-heading">
-            <div><span className="eyebrow">어휘</span><h2>Từ vựng của bài</h2></div>
-            <Link className="secondary-button" href={"/vocabulary?lesson=" + lessonId}>Mở Flashcard</Link>
+            <div><span className="eyebrow">어휘</span><h2>{messages.lesson.vocabTitle}</h2></div>
+            <Link className="secondary-button" href={"/vocabulary?lesson=" + lessonId}>{messages.lesson.openFlashcards}</Link>
           </div>
           {lesson.vocabulary.length ? (
             <div className="lesson-vocab-grid">
@@ -168,7 +171,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </section>
       ) : null}
 
-      {tab === "Ngữ pháp" ? (
+      {tab === messages.lesson.tabs.grammar ? (
         <section className="grammar-stack">
           {lesson.grammar.length ? lesson.grammar.map((grammar, index) => (
             <article className="grammar-card" key={grammar.id}>
@@ -192,34 +195,34 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </section>
       ) : null}
 
-      {tab === "Đọc" ? (
+      {tab === messages.lesson.tabs.reading ? (
         lesson.reading ? (
           <section className="reading-card">
             <div className="reading-label"><BookOpen size={19} /><span>읽기</span></div>
             <h2>{lesson.reading.title}</h2>
             <p className="reading-korean korean-text">{lesson.reading.text}</p>
             {lesson.reading.sourceRef ? <small className="source-ref">{lesson.reading.sourceRef}</small> : null}
-            <details><summary>Xem nghĩa tiếng Việt</summary><p>{lesson.reading.translation}</p></details>
+            <details><summary>{messages.lesson.showTranslation}</summary><p>{lesson.reading.translation}</p></details>
             <div className="reading-actions">
-              <Link className="secondary-button" href={"/reading?lesson=" + lessonId}><BookOpen size={16} /> Làm đọc hiểu</Link>
-              <Link className="secondary-button" href={"/listening?lesson=" + lessonId}><Headphones size={16} /> Luyện nghe</Link>
-              <Link className="secondary-button" href={"/speaking?lesson=" + lessonId}><Mic2 size={16} /> Luyện nói</Link>
-              <Link className="secondary-button" href={"/writing?lesson=" + lessonId}><PenLine size={16} /> Luyện viết</Link>
+              <Link className="secondary-button" href={"/reading?lesson=" + lessonId}><BookOpen size={16} /> {messages.lesson.readingPractice}</Link>
+              <Link className="secondary-button" href={"/listening?lesson=" + lessonId}><Headphones size={16} /> {messages.lesson.listeningPractice}</Link>
+              <Link className="secondary-button" href={"/speaking?lesson=" + lessonId}><Mic2 size={16} /> {messages.lesson.speakingPractice}</Link>
+              <Link className="secondary-button" href={"/writing?lesson=" + lessonId}><PenLine size={16} /> {messages.lesson.writingPractice}</Link>
             </div>
           </section>
         ) : <div className="inline-empty-state">Bài này không có bài đọc riêng trong nguồn PDF.</div>
       ) : null}
 
-      {tab === "Bổ sung" ? (
+      {tab === messages.lesson.tabs.supplement ? (
         <section className="supplement-stack">
           <LessonMediaGallery media={media} />
           {!supplementalCount ? (
-            <div className="inline-empty-state">Không có mục bổ sung riêng trong nguồn của bài này.</div>
+            <div className="inline-empty-state">{messages.lesson.noSupplement}</div>
           ) : null}
 
           {dialogues.map((dialogue) => (
             <article className="supplement-card" key={dialogue.id}>
-              <div className="supplement-heading"><MessageCircle size={20} /><div><span className="eyebrow">HỘI THOẠI · 대화</span><h2>{dialogue.title || "Hội thoại"}</h2></div></div>
+              <div className="supplement-heading"><MessageCircle size={20} /><div><span className="eyebrow">{messages.lesson.dialogue}</span><h2>{dialogue.title || messages.lesson.dialogueTitle}</h2></div></div>
               <div className="dialogue-lines">
                 {dialogue.lines.map((line, index) => (
                   <button key={dialogue.id + "-" + index} onClick={() => speak(line.ko)}>
@@ -235,7 +238,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
           {pronunciation.map((item) => (
             <article className="supplement-card" key={item.id}>
-              <div className="supplement-heading"><Volume2 size={20} /><div><span className="eyebrow">PHÁT ÂM · 발음</span><h2>{item.title}</h2></div></div>
+              <div className="supplement-heading"><Volume2 size={20} /><div><span className="eyebrow">{messages.lesson.pronunciation}</span><h2>{item.title}</h2></div></div>
               <p>{item.explanation}</p>
               <div className="grammar-examples">{item.examples.map((example) => <button className="korean-text" key={example} onClick={() => speak(example)}><Volume2 size={15} /> {example}</button>)}</div>
               {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
@@ -244,7 +247,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
           {culture.map((item) => (
             <article className="supplement-card" key={item.id}>
-              <div className="supplement-heading"><BookOpen size={20} /><div><span className="eyebrow">VĂN HÓA · 문화</span><h2>{item.title}</h2></div></div>
+              <div className="supplement-heading"><BookOpen size={20} /><div><span className="eyebrow">{messages.lesson.culture}</span><h2>{item.title}</h2></div></div>
               <p>{item.text}</p>
               {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
             </article>
