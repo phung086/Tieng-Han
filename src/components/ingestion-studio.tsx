@@ -30,9 +30,11 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
 import { parseCourseBundle } from "@/lib/course-bundle";
 import {
+  buildChatGptCompilationPrompt,
   buildHandoffPackage,
   downloadJsonFile,
   fingerprintFile,
+  handoffPackageFile,
   type SourceFingerprint,
 } from "@/lib/chatgpt-handoff";
 
@@ -363,10 +365,10 @@ export function IngestionStudio() {
     }
   }
 
-  async function exportChatGptHandoff() {
-    if (!files.length || !documents.length) return;
+  async function createCurrentHandoff() {
+    if (!files.length || !documents.length) return null;
 
-    const handoff = await buildHandoffPackage({
+    return buildHandoffPackage({
       files,
       documents,
       maps,
@@ -376,27 +378,56 @@ export function IngestionStudio() {
         edition: edition || undefined,
       },
     });
+  }
+
+  async function exportChatGptHandoff() {
+    const handoff = await createCurrentHandoff();
+    if (!handoff) return;
 
     downloadJsonFile("haneul-chatgpt-handoff.json", handoff);
     setHandoffNote(copy.handoffReady);
   }
 
   async function copyChatGptPrompt() {
-    const prompt = [
-      "Tôi đang dùng dự án Haneul học tiếng Hàn.",
-      "Hãy đọc toàn bộ PDF giáo trình/workbook tôi tải lên cùng file haneul-chatgpt-handoff.json.",
-      "Biên nội dung bám sát sách thành Haneul Course Bundle v1.",
-      "Yêu cầu:",
-      "- Không thêm curriculum ngoài sách.",
-      "- Bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa, nghe, nói, đọc, viết và bài tập nếu có.",
-      "- Mỗi nội dung quan trọng giữ sourceRef theo file/trang.",
-      "- Bài luyện derived chỉ dùng kiến thức đã xuất hiện trong nguồn.",
-      "- Sao chép nguyên sourceManifest từ handoff sang bundle để app xác minh đúng PDF.",
-      "- Xuất một file JSON duy nhất đúng format haneul-course-bundle version 1 để tôi import vào app.",
-    ].join("\n");
-
-    await navigator.clipboard.writeText(prompt);
+    await navigator.clipboard.writeText(
+      buildChatGptCompilationPrompt(),
+    );
     setHandoffNote(copy.promptCopied);
+  }
+
+  async function shareToChatGpt() {
+    const handoff = await createCurrentHandoff();
+    if (!handoff) return;
+
+    const shareFiles = [...files, handoffPackageFile(handoff)];
+    const shareData = {
+      title: "Haneul ChatGPT Handoff",
+      text: buildChatGptCompilationPrompt(),
+      files: shareFiles,
+    };
+
+    if (
+      typeof navigator.share !== "function" ||
+      (typeof navigator.canShare === "function" &&
+        !navigator.canShare({ files: shareFiles }))
+    ) {
+      setHandoffNote(copy.shareUnsupported);
+      return;
+    }
+
+    try {
+      await navigator.share(shareData);
+      setHandoffNote(copy.shareOpened);
+    } catch (reason) {
+      if (
+        reason instanceof DOMException &&
+        reason.name === "AbortError"
+      ) {
+        return;
+      }
+
+      setHandoffNote(copy.shareUnsupported);
+    }
   }
 
   function pageNumbersFromLesson(lesson: LessonContent) {
@@ -912,6 +943,14 @@ export function IngestionStudio() {
               >
                 <Copy size={16} />
                 {copy.copyPrompt}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void shareToChatGpt()}
+              >
+                <UploadCloud size={16} />
+                {copy.shareToChatGpt}
               </button>
             </div>
           ) : null}
