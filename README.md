@@ -33,3 +33,8 @@ cd Tieng-Han
 ```
 
 Bước tiếp theo của app là nối UI/API vào `curriculum/curriculum.json` và xây importer để tạo lesson/question data từ file nguồn.
+
+
+## Hướng dẫn nhập sách tự động
+
+Xem `docs/AUTO_IMPORT_GUIDE.md` để cấu hình và vận hành luồng PDF -> MCP -> ChatGPT Work -> checkpoint -> course hoàn chỉnh.
