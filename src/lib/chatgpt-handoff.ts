@@ -106,6 +106,31 @@ export async function buildHandoffPackage(input: {
   };
 }
 
+export function buildChatGptCompilationPrompt() {
+  return [
+    "Tôi đang dùng dự án Haneul học tiếng Hàn.",
+    "Hãy đọc toàn bộ PDF giáo trình/workbook tôi tải lên cùng file haneul-chatgpt-handoff.json.",
+    "Biên nội dung bám sát sách thành Haneul Course Bundle v1.",
+    "Yêu cầu:",
+    "- Không thêm curriculum ngoài sách.",
+    "- Bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa, nghe, nói, đọc, viết và bài tập nếu có.",
+    "- Mỗi nội dung quan trọng giữ sourceRef theo file/trang.",
+    "- Bài luyện derived chỉ dùng kiến thức đã xuất hiện trong nguồn.",
+    "- Sao chép nguyên sourceFiles từ handoff sang sourceManifest của bundle để app xác minh đúng PDF.",
+    "- Xuất một file JSON duy nhất đúng format haneul-course-bundle version 1 để tôi import vào app.",
+  ].join("\n");
+}
+
+export function handoffPackageFile(
+  value: ChatGptHandoffPackage,
+) {
+  return new File(
+    [JSON.stringify(value, null, 2)],
+    "haneul-chatgpt-handoff.json",
+    { type: "application/json" },
+  );
+}
+
 export function downloadJsonFile(
   fileName: string,
   value: unknown,
