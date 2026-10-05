@@ -53,6 +53,12 @@ export type LessonContent = {
   reading: ReadingContent | null;
   writing: WritingContent | null;
   sourceRef?: string;
+  quality?: {
+    coverageScore: number;
+    groundingScore: number;
+    issues: string[];
+    missingTopics: string[];
+  };
 };
 
 const emptyLesson = (
