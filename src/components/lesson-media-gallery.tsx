@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import type { LessonMedia } from "@/data/content";
+import { useMessages } from "@/i18n/messages";
 
 function youtubeEmbedUrl(url: string) {
   try {
@@ -64,6 +65,7 @@ export function LessonMediaGallery({
   media: LessonMedia[];
 }) {
   const [activeImage, setActiveImage] = useState<LessonMedia | null>(null);
+  const messages = useMessages();
 
   const ordered = useMemo(
     () =>
@@ -88,10 +90,10 @@ export function LessonMediaGallery({
       <section className="lesson-media-section">
         <div className="lesson-media-heading">
           <div>
-            <span className="eyebrow">MEDIA · 시각 자료</span>
-            <h2>Hình ảnh và tư liệu của bài</h2>
+            <span className="eyebrow">{messages.media.eyebrow}</span>
+            <h2>{messages.media.title}</h2>
           </div>
-          <span>{ordered.length} mục từ nguồn</span>
+          <span>{ordered.length} {messages.media.sourceItems}</span>
         </div>
 
         <div className="lesson-media-grid">
@@ -106,16 +108,14 @@ export function LessonMediaGallery({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.src} alt={item.alt} />
-                    <span><Maximize2 size={16} /> Phóng to</span>
+                    <span><Maximize2 size={16} /> {messages.media.zoom}</span>
                   </button>
 
                   <div className="lesson-media-meta">
                     <div className="lesson-media-type">
                       <ImageIcon size={14} />
                       <span>
-                        {item.role === "illustration"
-                          ? "Minh họa từ sách"
-                          : "Trang nguồn"}
+                        {item.role === "illustration" ? messages.media.illustration : messages.media.sourcePage}
                       </span>
                     </div>
                     {item.caption ? <p>{item.caption}</p> : null}
@@ -142,14 +142,14 @@ export function LessonMediaGallery({
                     ) : (
                       <a href={item.src} rel="noreferrer" target="_blank">
                         <PlayCircle size={34} />
-                        <span>Mở video nguồn</span>
+                        <span>{messages.media.openVideo}</span>
                       </a>
                     )}
                   </div>
                   <div className="lesson-media-meta">
                     <div className="lesson-media-type">
                       <PlayCircle size={14} />
-                      <span>Video từ tài liệu</span>
+                      <span>{messages.media.video}</span>
                     </div>
                     {item.sourceRef ? <small>{item.sourceRef}</small> : null}
                   </div>
@@ -167,7 +167,7 @@ export function LessonMediaGallery({
                   <div className="lesson-media-meta">
                     <div className="lesson-media-type">
                       <Music2 size={14} />
-                      <span>Audio từ tài liệu</span>
+                      <span>{messages.media.audio}</span>
                     </div>
                     {item.sourceRef ? <small>{item.sourceRef}</small> : null}
                   </div>
@@ -180,7 +180,7 @@ export function LessonMediaGallery({
                 <a href={item.src} rel="noreferrer" target="_blank">
                   <FileText size={24} />
                   <div>
-                    <strong>Tài liệu liên kết</strong>
+                    <strong>{messages.media.linkedDocument}</strong>
                     <span>{item.sourceRef ?? item.alt}</span>
                   </div>
                   <ExternalLink size={16} />
@@ -197,7 +197,7 @@ export function LessonMediaGallery({
             className="media-lightbox-close"
             onClick={() => setActiveImage(null)}
             type="button"
-            aria-label="Đóng hình ảnh"
+            aria-label={messages.media.closeImage}
           >
             <X size={20} />
           </button>
