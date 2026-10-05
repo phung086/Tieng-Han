@@ -1,81 +1,53 @@
 # Tiếng Hàn
 
-Nền tảng ôn luyện tiếng Hàn bám sát giáo trình, hỗ trợ **Từ vựng – Ngữ pháp – Nghe – Nói – Đọc – Viết** theo từng bài học.
+Ứng dụng cá nhân để học và ôn luyện tiếng Hàn bám sát giáo trình: **Từ vựng · Ngữ pháp · Nghe · Nói · Đọc · Viết**.
 
-## Kiến trúc
+## Triết lý hiện tại
 
-```text
-apps/
-  web/        Next.js learner/admin UI
-  api/        NestJS application API
+Dự án ưu tiên **local-first** và trải nghiệm học tập:
 
-packages/
-  database/   Prisma schema + migrations
-
-docs/
-  ARCHITECTURE.md
-```
-
-### Source of truth
-
-Mọi nội dung học tập phải truy vết được theo:
-
-```text
-Course -> Book -> Unit -> Section -> sourceRef
-```
-
-AI chỉ hỗ trợ tạo/luyện nội dung trong phạm vi giáo trình; nội dung AI sinh có trạng thái review trước khi publish.
-
-## Yêu cầu
-
-- Node.js >= 22.18
-- pnpm 12
-- Docker + Docker Compose
+- chạy bằng một app Next.js duy nhất;
+- không cần Docker, backend riêng hay database server ở giai đoạn đầu;
+- UI/UX được xây trước bằng dữ liệu mẫu để chốt luồng học;
+- dữ liệu giáo trình sẽ được đưa vào local storage/SQLite ở phase tiếp theo;
+- khi cần production có thể đóng gói app + SQLite persistent volume, không phải tách microservice.
 
 ## Chạy local
 
+Yêu cầu Node.js 22+ và pnpm.
+
 ```bash
-cp .env.example .env
-
-docker compose up -d
-
+corepack enable
 pnpm install
-pnpm db:generate
-pnpm db:migrate
-
 pnpm dev
 ```
 
-Sau khi chạy:
+Mở http://localhost:3000.
 
-- Web: http://localhost:3000
-- API: http://localhost:4000/api
-- Health check: http://localhost:4000/api/health
-
-## Scripts
+## Kiểm tra project
 
 ```bash
-pnpm dev
-pnpm build
-pnpm typecheck
-
-pnpm db:generate
-pnpm db:migrate
-pnpm db:studio
+pnpm check
 ```
 
-## Domain foundation
+## Các màn hình base
 
-Schema ban đầu gồm:
+- Dashboard cá nhân
+- Học theo giáo trình
+- Practice / quiz tương tác
+- Ôn tập
+- Thống kê
 
-- Course
-- Book
-- Unit
-- Section
-- Vocabulary
-- GrammarPoint
-- QuizItem
+## Cấu trúc
 
-Quiz hỗ trợ nhiều dạng thay vì hard-code 4 đáp án: multiple choice, true/false, matching, fill blank, reorder, listening, dictation, speaking, reading comprehension, translation, short answer và writing.
+```text
+src/
+  app/          routes
+  components/   UI dùng chung
+  data/         dữ liệu demo / seed trước khi nhập giáo trình thật
+docs/
+  ARCHITECTURE.md
+  UX_REFERENCE.md
+```
 
-Xem thêm [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Mọi nội dung thật sau này phải truy được về: `Course -> Book -> Unit -> Section -> sourceRef`.
