@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpenCheck,
   CheckCircle2,
   FileText,
   Copy,
