@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Headphones, Pause, Play, RotateCcw } from "lucide-react";
-import { getLesson } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
 export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
+  const { getLesson } = useContent();
   const lesson = getLesson(lessonId);
   const items = lesson?.listening ?? [];
   const [index, setIndex] = useState(0);
