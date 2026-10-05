@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Mic, MicOff, Play, RotateCcw, Volume2 } from "lucide-react";
-import { getLesson } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
@@ -34,6 +34,7 @@ function similarity(a: string, b: string) {
 
 export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
+  const { getLesson } = useContent();
   const lesson = getLesson(lessonId);
   const sentences = lesson?.speaking ?? [];
   const [index, setIndex] = useState(0);
