@@ -43,6 +43,7 @@ import {
   consumeMcpImportJob,
   getMcpImportJob,
   queueMcpImportJob,
+  requeueMcpImportJob,
 } from "@/lib/mcp-import-client";
 import type { ImportJobStatus } from "@/lib/import-jobs";
 import {
@@ -510,7 +511,17 @@ export function IngestionStudio() {
       if (mcpRunRef.current !== runId) return;
 
       try {
-        const job = await getMcpImportJob(jobId);
+        let job = await getMcpImportJob(jobId);
+
+        if (
+          job.status === "processing" &&
+          Date.now() - new Date(job.updatedAt).getTime() >
+            20 * 60 * 1000
+        ) {
+          job = await requeueMcpImportJob(jobId);
+          setHandoffNote(copy.mcpAutoRequeued);
+        }
+
         setMcpStatus(job.status);
 
         if (job.status === "failed") {
