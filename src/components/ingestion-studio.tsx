@@ -222,7 +222,7 @@ export function IngestionStudio() {
   const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
   const [maps, setMaps] = useState<DocumentMap[]>([]);
   const [courseTitle, setCourseTitle] = useState<string>(copy.defaultCourseTitle);
-  const [level, setLevel] = useState<string>(copy.defaultLevel);
+  const [level, setLevel] = useState<string>("");
   const [edition, setEdition] = useState("");
   const [targetLanguageCode, setTargetLanguageCode] = useState<string>(
     ingestionConfig.autoImport.targetLanguage,
@@ -332,7 +332,7 @@ export function IngestionStudio() {
     );
     let nextCourseTitle =
       sourceFiles[0]?.name.replace(/\.pdf$/i, "") || copy.genericCourseTitle;
-    let nextLevel = level.trim() || language.targetName;
+    let nextLevel = level.trim();
     let nextEdition = edition.trim();
 
     try {
@@ -472,7 +472,10 @@ export function IngestionStudio() {
         level,
         edition: edition || undefined,
       },
-      language: getLanguageProfile(targetLanguageCode || "ko"),
+      language: getLanguageProfile(
+        targetLanguageCode || ingestionConfig.autoImport.targetLanguage,
+        ingestionConfig.autoImport.learnerLanguage,
+      ),
     });
   }
 
