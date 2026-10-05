@@ -9,7 +9,7 @@ type ResponsePayload = {
   error?: { message?: string };
 };
 
-type InputContent = {
+export type InputContent = {
   type: "input_text" | "input_image";
   text?: string;
   image_url?: string;
