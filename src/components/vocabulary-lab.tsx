@@ -10,7 +10,7 @@ import { useMessages } from "@/i18n/messages";
 
 export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
-  const { getLesson } = useContent();
+  const { getLesson, course } = useContent();
   const messages = useMessages();
   const lesson = getLesson(lessonId);
   const deck = lesson?.vocabulary ?? [];
@@ -36,7 +36,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(card.ko);
-    utterance.lang = "ko-KR";
+    utterance.lang = course.language?.locale ?? "ko-KR";
     utterance.rate = 0.82;
     window.speechSynthesis.speak(utterance);
   }
