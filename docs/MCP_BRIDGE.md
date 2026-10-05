@@ -87,6 +87,18 @@ Authorization: Bearer <token>
 
 Tìm các sách đang chờ xử lý.
 
+### prepare_import_job
+
+Tool bootstrap khuyến nghị cho auto-compile. Với một `jobId`, tool này:
+
+- đọc import job;
+- tự claim nếu job đang `queued`;
+- trả compilation contract;
+- trả checkpoint progress hiện tại;
+- chỉ dẫn bước tiếp theo.
+
+Workflow event mới nên bắt đầu bằng tool này để giảm số call cấu hình đầu phiên.
+
 ### get_import_job
 
 Đọc:
@@ -309,11 +321,11 @@ The task must use MCP tools such as `get_import_job`, `read_import_pages`, and `
 In a Work chat with the Haneul plugin enabled, create an event-triggered task similar to:
 
 ```text
-When Haneul emits import_job.queued, claim that job, read the compilation
-contract and all source pages needed for every lesson, compile a grounded
-Haneul Course Bundle, validate source references and coverage, and submit the
-completed bundle back with submit_course_bundle. If source quality is
-insufficient, call fail_import_job instead of inventing content.
+When Haneul emits import_job.queued, call prepare_import_job with the event
+jobId, then follow the returned contract/checkpoint workflow until
+finalize_course_bundle. Read page images when text extraction is insufficient.
+If source quality is insufficient, call fail_import_job instead of inventing
+content.
 ```
 
 After that subscription exists, the intended user workflow is:
