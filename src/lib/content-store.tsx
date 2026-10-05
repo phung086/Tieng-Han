@@ -23,6 +23,7 @@ export type RuntimeCourse = {
     importedAt?: string;
     pageCount?: number;
     edition?: string;
+    coverImageDataUrl?: string;
   };
   lessons: LessonContent[];
   questions: StudyQuestion[];
