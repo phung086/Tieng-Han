@@ -13,3 +13,6 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 storage/
+
+# Local Haneul import/MCP queue
+.haneul/
