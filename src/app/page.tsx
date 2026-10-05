@@ -7,6 +7,7 @@ import { DashboardLiveStats } from "@/components/dashboard-live-stats";
 import { useContent } from "@/lib/content-store";
 import { accuracy, todayKey, useLearning, type SkillKey } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import { EmptyCourseState } from "@/components/empty-course-state";
 
 const skillTones: Record<SkillKey, string> = {
   vocabulary: "violet",
@@ -21,6 +22,14 @@ export default function DashboardPage() {
   const { state } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
+  if (!course.lessons.length) {
+    return (
+      <div className="page dashboard-page">
+        <EmptyCourseState />
+      </div>
+    );
+  }
+
   const today = todayKey();
   const todayStat = state.dailyStats[today] ?? { attempts: 0, correct: 0, xp: 0 };
   const current =
