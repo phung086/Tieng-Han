@@ -1,4 +1,5 @@
 import type { LessonContent, StudyQuestion } from "@/data/content";
+import type { LanguageProfile } from "@/lib/language-profile";
 
 export const COURSE_BUNDLE_FORMAT = "haneul-course-bundle";
 export const COURSE_BUNDLE_VERSION = 1;
@@ -7,6 +8,7 @@ export type CompiledCourseBundle = {
   format: typeof COURSE_BUNDLE_FORMAT;
   version: typeof COURSE_BUNDLE_VERSION;
   generatedAt?: string;
+  language?: LanguageProfile;
   sourceFiles?: string[];
   sourceManifest?: Array<{
     name: string;
@@ -101,6 +103,10 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
     version: COURSE_BUNDLE_VERSION,
     generatedAt:
       typeof root.generatedAt === "string" ? root.generatedAt : undefined,
+    language:
+      root.language && typeof root.language === "object"
+        ? (root.language as LanguageProfile)
+        : undefined,
     sourceFiles: Array.isArray(root.sourceFiles)
       ? root.sourceFiles.map(String)
       : undefined,
