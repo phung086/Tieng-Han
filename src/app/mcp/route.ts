@@ -18,6 +18,8 @@ import {
 } from "@/lib/import-job-store";
 import {
   parseCourseBundle,
+  CourseBundleValidationError,
+  getCompilationContract,
   type CompiledCourseBundle,
 } from "@/lib/course-bundle";
 import type {
@@ -78,6 +80,26 @@ function imageContent(dataUrl: string) {
 }
 
 function toolFailure(error: unknown) {
+  if (error instanceof CourseBundleValidationError) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              error: "CourseBundleValidationError",
+              message: error.message,
+              errors: error.errors.slice(0, 30),
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
+  }
+
   return {
     isError: true,
     content: [
@@ -509,151 +531,7 @@ function buildMcpServer() {
         const job = await getImportJob(jobId);
         if (!job) throw new Error("Không tìm thấy import job.");
 
-        const contract = {
-          output: {
-            format: "haneul-course-bundle",
-            version: 1,
-            sourceManifest:
-              "Copy exactly from job.sourceManifest.",
-          },
-          language: job.language,
-          principles: [
-            "The uploaded textbook is the curriculum source of truth.",
-            "Preserve lesson order and source page references.",
-            "Cover vocabulary, grammar, dialogue, pronunciation, culture, notes, exercises and special sections when present.",
-            "Create practice for vocabulary, grammar, listening, speaking, reading and writing without introducing unsupported curriculum.",
-            "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>.",
-            "Do not invent unreadable source content; record uncertainty instead.",
-            "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
-            "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
-            "During long lessons, call save_work_checkpoint after meaningful source-reading chunks and before long drafting or QA work so the exact page cursor and partial state survive interruption.",
-            "After finishing and checking each lesson, call save_lesson_draft immediately. Saving the lesson clears its mid-lesson work checkpoint.",
-            "Before source reading in any new or resumed run, call get_compilation_progress. Resume activeWork from its sourceCursor/phase, skip completedLessonIds, and never restart verified work unless deliberate correction is required.",
-            "Use finalize_course_bundle after all real textbook lessons are checkpointed. Detected lesson candidates are hints and may contain false positives.",
-          ],
-          checkpointWorkflow: [
-            "get_compilation_progress",
-            "resume activeWork if present",
-            "read_import_pages for the unfinished source range",
-            "save_work_checkpoint after meaningful chunks",
-            "compile and QA that lesson",
-            "save_lesson_draft",
-            "repeat only for unfinished lessons",
-            "finalize_course_bundle",
-          ],
-          runtimeSchema: {
-            course: {
-              title: "string",
-              level: "string",
-              edition: "string optional",
-              lessons: "LessonContent[]",
-              questions: "StudyQuestion[]",
-            },
-            LessonContent: {
-              id: "number",
-              targetTitle: "string preferred",
-              learnerTitle: "string preferred",
-              title: "string legacy alias accepted",
-              vi: "string legacy alias accepted",
-              objective: "string",
-              vocabulary: [
-                {
-                  id: "string",
-                  targetText: "string preferred",
-                  learnerMeaning: "string preferred",
-                  ko: "string legacy alias accepted",
-                  vi: "string legacy alias accepted",
-                  example: "string",
-                  sourceRef: "string optional",
-                },
-              ],
-              grammar: [
-                {
-                  id: "string",
-                  pattern: "string",
-                  meaning: "string",
-                  explanation: "string",
-                  examples: "string[]",
-                  sourceRef: "string optional",
-                },
-              ],
-              listening: [
-                {
-                  id: "string",
-                  text: "string",
-                  meaning: "string",
-                  choices: "string[]",
-                  answer: "string",
-                  sourceRef: "string optional",
-                },
-              ],
-              speaking: "string[]",
-              reading: {
-                title: "string",
-                text: "string",
-                translation: "string",
-                questions:
-                  "{id:string,q:string,choices:string[],answer:string,sourceRef?:string}[]",
-                sourceRef: "string optional",
-              },
-              writing: {
-                prompt: "string",
-                hint: "string",
-                targetWords: "string[]",
-                sourceRef: "string optional",
-              },
-              dialogues:
-                "{id:string,title?:string,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string}[],sourceRef?:string}[] optional",
-              pronunciation:
-                "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string}[] optional",
-              culture:
-                "{id:string,title:string,text:string,sourceRef?:string}[] optional",
-              extraSections:
-                "{id:string,kind:string,title:string,content:string[],sourceRef?:string}[] optional",
-              media: "LessonMedia[] optional",
-              sourceRef: "string optional",
-              quality:
-                "{coverageScore:number,groundingScore:number,issues:string[],missingTopics:string[]} optional",
-            },
-            StudyQuestion: {
-              id: "string",
-              lessonId: "number",
-              skill:
-                "vocabulary|grammar|listening|speaking|reading|writing",
-              type: "choice|input|reorder",
-              title: "string",
-              prompt: "string",
-              translation: "string optional",
-              choices: "string[] optional",
-              tokens: "string[] optional",
-              answer: "string",
-              explanation: "string",
-              sourceRef: "string optional",
-            },
-            requiredLessonFields: [
-              "id",
-              "objective",
-              "vocabulary",
-              "grammar",
-              "listening",
-              "speaking",
-            ],
-            titleRule:
-              "Each lesson must provide targetTitle+learnerTitle or legacy title+vi.",
-            requiredQuestionFields: [
-              "id",
-              "lessonId",
-              "skill",
-              "type",
-              "prompt",
-              "answer",
-            ],
-          },
-          runtimeCompatibility: {
-            note:
-              "Runtime v1 still exposes legacy aliases such as vocabulary.ko and vocabulary.vi to older UI components. Bundle parsing now normalizes canonical targetText/learnerMeaning and targetTitle/learnerTitle into those aliases, so new language profiles do not require changing the MCP protocol.",
-          },
-        };
+        const contract = getCompilationContract(job.language);
 
         return {
           content: [
