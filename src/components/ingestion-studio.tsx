@@ -257,6 +257,18 @@ export function IngestionStudio() {
         if (!cancelled) setAiStatus({ configured: false, contentModel: "", ocrModel: "" });
       });
 
+    void fetch("/api/import-jobs")
+      .then((res) => res.json())
+      .then((data: { jobs?: Array<{ id: string; status: ImportJobStatus }> }) => {
+        if (cancelled) return;
+        const latestJob = data.jobs?.[0];
+        if (latestJob) {
+          setMcpJobId(latestJob.id);
+          setMcpStatus(latestJob.status);
+        }
+      })
+      .catch(() => undefined);
+
     return () => {
       cancelled = true;
     };
@@ -533,14 +545,17 @@ export function IngestionStudio() {
         }
 
         if (job.status === "ready" && job.resultBundle) {
-          const bundleFile = new File(
-            [JSON.stringify(job.resultBundle)],
-            "haneul-mcp-result.json",
-            { type: "application/json" },
-          );
-
-          await importChatGptBundle(bundleFile, context);
-          await consumeMcpImportJob(jobId);
+          const consumeResult = await consumeMcpImportJob(jobId);
+          if (consumeResult.course) {
+            replaceCourse(consumeResult.course);
+          } else {
+            const bundleFile = new File(
+              [JSON.stringify(job.resultBundle)],
+              "haneul-mcp-result.json",
+              { type: "application/json" },
+            );
+            await importChatGptBundle(bundleFile, context);
+          }
 
           if (mcpRunRef.current === runId) {
             setMcpStatus("consumed");
@@ -1226,6 +1241,16 @@ export function IngestionStudio() {
                             : mcpStatus}
                 {mcpJobId ? " · " + mcpJobId : ""}
               </span>
+              {mcpStatus === "consumed" ? (
+                <Link
+                  className="secondary-button"
+                  href="/learn"
+                  style={{ marginLeft: "1rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                >
+                  <BookOpenCheck size={16} />
+                  {copy.openCourse}
+                </Link>
+              ) : null}
             </div>
           ) : null}
 

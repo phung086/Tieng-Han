@@ -21,15 +21,17 @@ const normalize = (value: string) =>
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
 
-export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
+export function StudySession({ lessonId }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
 
+  const activeLessonId = lessonId ?? course.lessons[0]?.id ?? 1;
+
   const questions = useMemo(
     () =>
-      course.questions.filter((item) => item.lessonId === lessonId),
-    [course.questions, lessonId],
+      course.questions.filter((item) => item.lessonId === activeLessonId),
+    [course.questions, activeLessonId],
   );
 
   const [index, setIndex] = useState(0);
@@ -42,7 +44,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
   if (!questions.length) {
     return (
       <EmptySkillState
-        lessonId={lessonId}
+        lessonId={activeLessonId}
         skill={messages.practice.modes.mixed.title}
       />
     );
@@ -74,6 +76,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
 
     if (isCorrect) {
       setCorrectCount((value) => value + 1);
+      completeLessonSkill(activeLessonId, question.skill);
     }
 
     recordAnswer(question.skill, isCorrect, question.id);
@@ -81,7 +84,6 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
 
   function next() {
     if (index === questions.length - 1) {
-      completeLessonSkill(lessonId, "grammar");
       setFinished(true);
       return;
     }
@@ -127,7 +129,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={17} /> {messages.common.restart}
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
+          <Link className="primary-button" href={"/learn/" + activeLessonId}>
             {messages.common.backToLesson} <ArrowRight size={17} />
           </Link>
         </div>
@@ -140,7 +142,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
       <header className="session-header">
         <Link
           className="icon-button"
-          href={"/learn/" + lessonId}
+          href={"/learn/" + activeLessonId}
           aria-label={messages.quiz.exit}
         >
           <ArrowLeft size={18} />
@@ -153,7 +155,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
 
       <main className="session-body">
         <span className="pill pill-soft">
-          {skillLabel} · {messages.common.lesson} {lessonId}
+          {skillLabel} · {messages.common.lesson} {activeLessonId}
         </span>
         <h1>{question.title}</h1>
         <div className="question-prompt korean-text">

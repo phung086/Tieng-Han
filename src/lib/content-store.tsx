@@ -64,7 +64,7 @@ function isRuntimeCourse(value: unknown): value is RuntimeCourse {
 }
 
 function isPersistableCourse(value: unknown): value is RuntimeCourse {
-  return isRuntimeCourse(value) && value.id !== "beginner-1";
+  return isRuntimeCourse(value) && value.id !== "beginner-1" && value.lessons.length > 0;
 }
 
 function readLocalFallback() {
@@ -100,9 +100,27 @@ async function restoreCourse() {
     } catch {
       // Keep using the localStorage fallback.
     }
+    return fallback;
   }
 
-  return fallback;
+  try {
+    const response = await fetch("/api/course", { cache: "no-store" });
+    if (response.ok) {
+      const data = (await response.json()) as { course?: unknown };
+      if (isPersistableCourse(data.course)) {
+        try {
+          await writeStoredCourse(data.course);
+        } catch {
+          // Keep using the runtime data
+        }
+        return data.course;
+      }
+    }
+  } catch {
+    // Offline or server not reachable
+  }
+
+  return null;
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
