@@ -422,9 +422,11 @@ export async function ocrLowTextPages(
 export function localLessonStarts(document: ExtractedDocument) {
   const starts: { lessonId: number; pageNumber: number; titleHint: string }[] = [];
   const patterns = [
-    /(?:bài|lesson|unit)\s*(\d{1,2})\b/gi,
-    /(?:제\s*)?(\d{1,2})\s*과\b/g,
-    /과\s*(\d{1,2})\b/g,
+    /(?:bài|lesson|unit|module|leçon|unité|unidad|lektion|kapitel)\s*(\d{1,3})\b/giu,
+    /(?:제\s*)?(\d{1,3})\s*과\b/g,
+    /과\s*(\d{1,3})\b/g,
+    /第\s*(\d{1,3})\s*(?:课|課|章|单元|單元)/gu,
+    /(\d{1,3})\s*(?:课|課)\b/gu,
   ];
 
   for (const page of document.pages) {
@@ -435,7 +437,7 @@ export function localLessonStarts(document: ExtractedDocument) {
       pattern.lastIndex = 0;
       for (const match of head.matchAll(pattern)) {
         const lessonId = Number(match[1]);
-        if (!Number.isFinite(lessonId) || lessonId < 1 || lessonId > 99) continue;
+        if (!Number.isFinite(lessonId) || lessonId < 1 || lessonId > 999) continue;
         candidates.push({ lessonId, index: match.index ?? 0 });
       }
     }
