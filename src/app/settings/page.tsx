@@ -1,5 +1,17 @@
 import { SettingsClient } from "@/components/settings-client";
+import { viMessages } from "@/i18n/messages";
 
 export default function SettingsPage() {
-  return <div className="page"><header className="page-header compact"><div><span className="kicker">CÀI ĐẶT · 설정</span><h1>Một app cá nhân, không cần phức tạp</h1><p>Giữ dữ liệu và hành vi local trước; khi production chỉ thêm những gì thực sự cần.</p></div></header><SettingsClient /></div>;
+  return (
+    <div className="page">
+      <header className="page-header compact">
+        <div>
+          <span className="kicker">{viMessages.settings.kicker}</span>
+          <h1>{viMessages.settings.title}</h1>
+          <p>{viMessages.settings.intro}</p>
+        </div>
+      </header>
+      <SettingsClient />
+    </div>
+  );
 }
