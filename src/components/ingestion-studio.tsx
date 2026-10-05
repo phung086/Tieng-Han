@@ -26,6 +26,7 @@ import { ingestionConfig } from "@/config/ingestion";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
+import { parseCourseBundle } from "@/lib/course-bundle";
 
 type ImportCopy = UiMessages["import"];
 
@@ -189,6 +190,7 @@ export function IngestionStudio() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [ocrUsed, setOcrUsed] = useState(false);
+  const [ocrSkipped, setOcrSkipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,11 +228,6 @@ export function IngestionStudio() {
   async function analyzeFiles() {
     if (!files.length) return;
 
-    if (aiStatus && !aiStatus.configured) {
-      setError(copy.missingAiKey);
-      return;
-    }
-
     setError("");
     setStatus("extracting");
     setProgress(0);
@@ -241,24 +238,31 @@ export function IngestionStudio() {
       const nextMaps: DocumentMap[] = [];
 
       setOcrUsed(false);
+      setOcrSkipped(false);
 
       for (let index = 0; index < files.length; index += 1) {
         let document = await extractPdf(files[index], index);
 
         if (lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
-          setOcrUsed(true);
-          setMessage(copy.ocrPrefix + " " + fileLabel(files[index].name) + "…");
+          if (aiStatus?.configured) {
+            setOcrUsed(true);
+            setMessage(copy.ocrPrefix + " " + fileLabel(files[index].name) + "…");
 
-          document = await ocrLowTextPages(
-            files[index],
-            document,
-            (completed, total) => {
-              const fileBase = index / files.length;
-              const fileShare = 1 / files.length;
-              const ocrShare = total ? completed / total : 0;
-              setProgress(Math.round((fileBase + fileShare * ocrShare * 0.4) * 55));
-            },
-          );
+            document = await ocrLowTextPages(
+              files[index],
+              document,
+              (completed, total) => {
+                const fileBase = index / files.length;
+                const fileShare = 1 / files.length;
+                const ocrShare = total ? completed / total : 0;
+                setProgress(
+                  Math.round((fileBase + fileShare * ocrShare * 0.4) * 55),
+                );
+              },
+            );
+          } else {
+            setOcrSkipped(true);
+          }
         }
 
         nextDocuments.push(document);
@@ -267,9 +271,11 @@ export function IngestionStudio() {
         setMessage(copy.mappingPrefix + " " + fileLabel(files[index].name) + "…");
 
         const localStarts = localLessonStarts(document);
-        const aiStarts = document.pages.some((page) => page.text.length > 30)
-          ? await aiMapDocument(document, copy)
-          : [];
+        const aiStarts =
+          aiStatus?.configured &&
+          document.pages.some((page) => page.text.length > 30)
+            ? await aiMapDocument(document, copy)
+            : [];
         const starts = aiStarts.length ? aiStarts : localStarts;
 
         nextMaps.push({
@@ -279,43 +285,57 @@ export function IngestionStudio() {
         });
 
         if (index === 0) {
-          setMessage(copy.detectingMetadata);
-          const metadataResponse = await fetch("/api/ingest/metadata", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pages: document.pages.slice(0, 16).map((page) => ({
-                fileName: page.fileName,
-                pageNumber: page.pageNumber,
-                text: page.text,
-              })),
-            }),
-          });
+          if (aiStatus?.configured) {
+            setMessage(copy.detectingMetadata);
+            const metadataResponse = await fetch("/api/ingest/metadata", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pages: document.pages.slice(0, 16).map((page) => ({
+                  fileName: page.fileName,
+                  pageNumber: page.pageNumber,
+                  text: page.text,
+                })),
+              }),
+            });
 
-          const metadata = (await metadataResponse.json()) as {
-            title?: string;
-            level?: string;
-            edition?: string;
-          };
+            const metadata = (await metadataResponse.json()) as {
+              title?: string;
+              level?: string;
+              edition?: string;
+            };
 
-          if (metadataResponse.ok) {
-            if (metadata.title) setCourseTitle(metadata.title);
-            if (metadata.level) setLevel(metadata.level);
-            if (metadata.edition) setEdition(metadata.edition);
+            if (metadataResponse.ok) {
+              if (metadata.title) setCourseTitle(metadata.title);
+              if (metadata.level) setLevel(metadata.level);
+              if (metadata.edition) setEdition(metadata.edition);
+            }
+          } else {
+            setCourseTitle(
+              fileLabel(files[index].name.replace(/\.pdf$/i, "")),
+            );
           }
         }
 
         setProgress(Math.round(((index + 1) / files.length) * 55));
       }
 
-      if (!nextMaps[0]?.starts.length) {
+      if (!nextMaps[0]?.starts.length && aiStatus?.configured) {
         throw new Error(copy.noLessonMap);
       }
 
       setDocuments(nextDocuments);
       setMaps(nextMaps);
       setProgress(100);
-      setMessage(copy.mapCompletePrefix + " " + nextMaps[0].starts.length + " " + copy.mapCompleteSuffix);
+      setMessage(
+        nextMaps[0]?.starts.length
+          ? copy.mapCompletePrefix +
+              " " +
+              nextMaps[0].starts.length +
+              " " +
+              copy.mapCompleteSuffix
+          : copy.localMapComplete,
+      );
       setStatus("mapped");
     } catch (reason) {
       setStatus("idle");
@@ -323,8 +343,150 @@ export function IngestionStudio() {
     }
   }
 
+  function pageNumbersFromLesson(lesson: LessonContent) {
+    const pageNumbers = new Set<number>();
+    const serialized = JSON.stringify(lesson);
+    const pattern = /p\.?\s*(\d+)(?:\s*[–-]\s*(\d+))?/gi;
+
+    for (const match of serialized.matchAll(pattern)) {
+      const start = Number(match[1]);
+      const end = Number(match[2] ?? match[1]);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+
+      const safeEnd = Math.min(end, start + 60);
+      for (let page = start; page <= safeEnd; page += 1) {
+        pageNumbers.add(page);
+      }
+    }
+
+    return pageNumbers;
+  }
+
+  function localPagesForBundleLesson(lesson: LessonContent) {
+    const mapped = documents.flatMap((document) => {
+      const map = maps.find((item) => item.documentId === document.id);
+      if (!map?.starts.some((item) => item.lessonId === lesson.id)) {
+        return [];
+      }
+
+      return pagesForLesson(document, map.starts, lesson.id);
+    });
+
+    if (mapped.length) return mapped;
+
+    const referencedPages = pageNumbersFromLesson(lesson);
+    if (!referencedPages.size) return [];
+
+    return documents.flatMap((document) =>
+      document.pages.filter((page) =>
+        referencedPages.has(page.pageNumber),
+      ),
+    );
+  }
+
+  async function importChatGptBundle(file: File) {
+    if (!documents.length) {
+      setError(copy.bundleRequiresPdf);
+      return;
+    }
+
+    setError("");
+
+    try {
+      const bundle = parseCourseBundle(await file.text());
+
+      const lessons = bundle.course.lessons
+        .map((lesson) => {
+          const localMedia = buildLessonMedia(
+            localPagesForBundleLesson(lesson),
+          );
+          const existingMedia = lesson.media ?? [];
+          const byId = new Map(
+            [...existingMedia, ...localMedia].map((item) => [
+              item.id,
+              item,
+            ]),
+          );
+
+          return {
+            ...lesson,
+            media: [...byId.values()],
+          };
+        })
+        .sort((a, b) => a.id - b.id);
+
+      const runtimeCourse: RuntimeCourse = {
+        id: "chatgpt-imported-" + Date.now(),
+        title:
+          bundle.course.title.trim() ||
+          courseTitle.trim() ||
+          copy.genericCourseTitle,
+        level:
+          bundle.course.level.trim() ||
+          level.trim() ||
+          copy.genericLevel,
+        source: {
+          fileName: files[0]?.name,
+          fileNames: files.map((item) => item.name),
+          importedAt: new Date().toISOString(),
+          pageCount: totalPages,
+          edition:
+            bundle.course.edition ||
+            edition ||
+            undefined,
+          coverImageDataUrl:
+            documents[0]?.pages[0]?.previewImageDataUrl,
+        },
+        lessons,
+        questions: bundle.course.questions,
+      };
+
+      setCourseTitle(runtimeCourse.title);
+      setLevel(runtimeCourse.level);
+      setEdition(bundle.course.edition ?? edition);
+      resetForCourse();
+      replaceCourse(runtimeCourse);
+      setStatus("done");
+      setProgress(100);
+
+      const mediaCount = lessons.reduce(
+        (sum, lesson) => sum + (lesson.media?.length ?? 0),
+        0,
+      );
+
+      setMessage(
+        copy.bundleImported +
+          " " +
+          lessons.length +
+          " " +
+          copy.importedLessons +
+          " · " +
+          runtimeCourse.questions.length +
+          " " +
+          copy.importedQuestions +
+          " · " +
+          mediaCount +
+          " " +
+          copy.importedMedia +
+          ".",
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : copy.invalidBundle,
+      );
+    }
+  }
+
   async function generateCourse() {
-    if (!documents.length || !lessonIds.length) return;
+    if (
+      !documents.length ||
+      !lessonIds.length ||
+      !aiStatus?.configured
+    ) {
+      return;
+    }
 
     setError("");
     setStatus("generating");
@@ -633,10 +795,50 @@ export function IngestionStudio() {
 
           {ocrUsed ? (
             <div className="ingest-warning">{copy.ocrUsed}</div>
+          ) : ocrSkipped ? (
+            <div className="ingest-warning">
+              {copy.localModeBody}
+            </div>
           ) : likelyScanned ? (
             <div className="ingest-warning">{copy.lowText}</div>
           ) : null}
         </article>
+      </section>
+
+      <section className="ingest-run-card assisted-import-card">
+        <div className="ingest-run-copy">
+          <span className="eyebrow">{copy.bundleStep}</span>
+          <h2>{copy.bundleTitle}</h2>
+          <p>{copy.bundleBody}</p>
+          {!aiStatus?.configured ? (
+            <div className="local-mode-note">
+              <strong>{copy.localMode}</strong>
+              <span>{copy.chatUploadHint}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <label
+          className={
+            "secondary-button bundle-file-button" +
+            (!documents.length ? " disabled" : "")
+          }
+        >
+          <FileText size={18} />
+          {copy.chooseBundle}
+          <input
+            accept="application/json,.json"
+            disabled={!documents.length}
+            type="file"
+            onChange={(event) => {
+              const bundleFile = event.target.files?.[0];
+              if (bundleFile) {
+                void importChatGptBundle(bundleFile);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
       </section>
 
       <section className="ingest-run-card">
@@ -648,11 +850,17 @@ export function IngestionStudio() {
 
         <button
           className="primary-button"
-          disabled={status !== "mapped"}
+          disabled={
+            status !== "mapped" ||
+            !aiStatus?.configured ||
+            !lessonIds.length
+          }
           onClick={generateCourse}
         >
           {status === "generating" ? <LoaderCircle className="spin" size={18} /> : <WandSparkles size={18} />}
-          {copy.generate}
+          {aiStatus?.configured
+            ? copy.generate
+            : copy.apiGenerateUnavailable}
         </button>
 
         {(status === "extracting" || status === "generating" || status === "done") ? (
