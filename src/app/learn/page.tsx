@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, BookMarked, Check, LockKeyhole, Play } from "lucide-react";
-import { course } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
 
 const chips: { key: SkillKey; label: string }[] = [
@@ -16,6 +16,7 @@ const chips: { key: SkillKey; label: string }[] = [
 
 export default function LearnPage() {
   const { state } = useLearning();
+  const { course } = useContent();
   const courseProgress = Math.round(
     course.lessons.reduce((sum, lesson) => sum + (state.lessonProgress[String(lesson.id)] ?? 0), 0) /
       Math.max(1, course.lessons.length),
