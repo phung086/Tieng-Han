@@ -28,7 +28,10 @@ import { ingestionConfig } from "@/config/ingestion";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
-import { parseCourseBundle } from "@/lib/course-bundle";
+import {
+  normalizeLessonContent,
+  parseCourseBundle,
+} from "@/lib/course-bundle";
 import {
   buildChatGptPrompt,
   buildHandoffPackage,
@@ -45,6 +48,7 @@ import type { ImportJobStatus } from "@/lib/import-jobs";
 import {
   defaultLanguageProfile,
   getLanguageProfile,
+  type LanguageProfile,
 } from "@/lib/language-profile";
 
 type ImportCopy = UiMessages["import"];
@@ -84,8 +88,10 @@ function isGeneratedLesson(value: unknown): value is LessonContent {
   const row = value as Record<string, unknown>;
   return (
     Number.isFinite(Number(row.id)) &&
-    typeof row.title === "string" &&
-    typeof row.vi === "string" &&
+    (typeof row.targetTitle === "string" ||
+      typeof row.title === "string") &&
+    (typeof row.learnerTitle === "string" ||
+      typeof row.vi === "string") &&
     typeof row.objective === "string" &&
     Array.isArray(row.vocabulary) &&
     Array.isArray(row.grammar) &&
@@ -94,7 +100,11 @@ function isGeneratedLesson(value: unknown): value is LessonContent {
   );
 }
 
-async function aiMapDocument(document: ExtractedDocument, copy: ImportCopy) {
+async function aiMapDocument(
+  document: ExtractedDocument,
+  copy: ImportCopy,
+  language: LanguageProfile,
+) {
   const collected: LessonStart[] = [];
   const chunkSize = 35;
 
@@ -108,7 +118,7 @@ async function aiMapDocument(document: ExtractedDocument, copy: ImportCopy) {
     const response = await fetch("/api/ingest/map", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pages }),
+      body: JSON.stringify({ pages, language }),
     });
 
     const result = (await response.json()) as {
@@ -146,12 +156,18 @@ async function requestGeneratedLesson(
   lessonId: number,
   pages: SourcePageInput[],
   copy: ImportCopy,
+  language: LanguageProfile,
   revisionNotes: string[] = [],
 ) {
   const response = await fetch("/api/ingest/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lessonId, pages, revisionNotes }),
+    body: JSON.stringify({
+      lessonId,
+      pages,
+      revisionNotes,
+      language,
+    }),
   });
 
   const payload = (await response.json()) as GeneratedPayload & { error?: string };
@@ -164,7 +180,10 @@ async function requestGeneratedLesson(
     throw new Error(copy.invalidGeneratedPrefix + " " + copy.lessonLabel + " " + lessonId + ".");
   }
 
-  return payload as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
+  return {
+    ...payload,
+    lesson: normalizeLessonContent(payload.lesson),
+  } as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
 }
 
 async function validateGeneratedLesson(
@@ -172,11 +191,17 @@ async function validateGeneratedLesson(
   questions: StudyQuestion[],
   pages: SourcePageInput[],
   copy: ImportCopy,
+  language: LanguageProfile,
 ) {
   const response = await fetch("/api/ingest/validate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lesson, questions, pages }),
+    body: JSON.stringify({
+      lesson,
+      questions,
+      pages,
+      language,
+    }),
   });
 
   const result = (await response.json()) as ValidationPayload;
@@ -306,7 +331,11 @@ export function IngestionStudio() {
         const aiStarts =
           aiStatus?.configured &&
           document.pages.some((page) => page.text.length > 30)
-            ? await aiMapDocument(document, copy)
+            ? await aiMapDocument(
+                document,
+                copy,
+                getLanguageProfile(targetLanguageCode || "ko"),
+              )
             : [];
         const starts = aiStarts.length ? aiStarts : localStarts;
 
@@ -328,6 +357,9 @@ export function IngestionStudio() {
                   pageNumber: page.pageNumber,
                   text: page.text,
                 })),
+                language: getLanguageProfile(
+                  targetLanguageCode || "ko",
+                ),
               }),
             });
 
@@ -802,7 +834,15 @@ export function IngestionStudio() {
 
         if (!sourcePages.length) continue;
 
-        let payload = await requestGeneratedLesson(lessonId, sourcePages, copy);
+        const language = getLanguageProfile(
+          targetLanguageCode || "ko",
+        );
+        let payload = await requestGeneratedLesson(
+          lessonId,
+          sourcePages,
+          copy,
+          language,
+        );
         let lessonQuestions = (payload.questions ?? []).map((question) => ({
           ...question,
           lessonId,
@@ -823,6 +863,7 @@ export function IngestionStudio() {
           lessonQuestions,
           sourcePages,
           copy,
+          language,
         );
 
         if (!validation.pass) {
@@ -832,7 +873,13 @@ export function IngestionStudio() {
           ];
 
           setMessage(copy.lessonLabel + " " + lessonId + " " + copy.repairPrefix);
-          payload = await requestGeneratedLesson(lessonId, sourcePages, copy, revisionNotes);
+          payload = await requestGeneratedLesson(
+            lessonId,
+            sourcePages,
+            copy,
+            language,
+            revisionNotes,
+          );
           lessonQuestions = (payload.questions ?? []).map((question) => ({
             ...question,
             lessonId,
@@ -843,6 +890,7 @@ export function IngestionStudio() {
             lessonQuestions,
             sourcePages,
             copy,
+            language,
           );
         }
 
