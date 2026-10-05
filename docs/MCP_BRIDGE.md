@@ -102,6 +102,11 @@ Tìm các sách đang chờ xử lý.
 
 Chuyển job từ `queued` sang `processing`.
 
+
+### requeue_import_job
+
+Đưa một job đang `processing` hoặc `failed` trở lại `queued` khi phiên ChatGPT bị gián đoạn. Tool này phát lại event `import_job.queued` để workflow tự động có thể nhận job lần nữa. Job `ready` hoặc `consumed` không được requeue.
+
 ### read_import_pages
 
 Đọc nguồn theo khoảng trang. Tool có thể trả cả page image để đọc PDF scan hoặc bảng/ảnh mà text extraction bỏ sót.
