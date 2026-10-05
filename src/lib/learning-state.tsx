@@ -57,7 +57,7 @@ const defaultState: LearningState = {
   dailyGoal: 50,
   todayXp: 0,
   lastActiveDate: null,
-  lessonProgress: { "1": 100, "2": 100, "3": 0 },
+  lessonProgress: {},
   skills: {
     vocabulary: { correct: 0, total: 0 },
     grammar: { correct: 0, total: 0 },
