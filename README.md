@@ -15,6 +15,30 @@ Haneul được xây theo hướng **local-first** và **textbook-first**:
 
 Không cần sửa component hoặc viết code riêng cho từng cuốn sách.
 
+## Curriculum đã tích hợp
+
+- Hangeul nhập môn
+- Sơ cấp 1: 15 bài
+- Sơ cấp 2: 15 bài
+- Sơ cấp Mastery: review tổng hợp
+- Trung cấp 3: 15 bài
+- Nâng cao: chờ nguồn mới, không hard-code kiến thức
+
+Dữ liệu curriculum nằm trong `curriculum/`:
+
+- `curriculum.json`: lộ trình, stage, unit và lesson flow
+- `sources.json`: catalog tài liệu nguồn
+- `workflow.json`: ingestion, review, mastery và question rules
+
+Nguyên tắc nền tảng:
+
+1. Mọi câu hỏi phải có bằng chứng nguồn.
+2. Không sinh kiến thức ngoài syllabus đã mở khóa.
+3. Workbook/ngân hàng dịch là nguồn bổ trợ, không thay giáo trình chính.
+4. PDF/scan có bản quyền không commit vào repo công khai; file nguồn được import local.
+5. Kiến trúc curriculum và MCP là data-driven/language-neutral để mở rộng ngôn ngữ mà không clone ứng dụng.
+
+
 ## MCP Bridge
 
 Haneul có sẵn MCP endpoint tại `/mcp`. Sau khi PDF được phân tích local, app tự tạo một **import job** gồm text, page preview, lesson map và SHA-256. Khi ChatGPT/MCP connector được bật, AI có thể đọc job trực tiếp, biên course bundle và gửi kết quả trở lại app; browser tự poll và import kết quả.
