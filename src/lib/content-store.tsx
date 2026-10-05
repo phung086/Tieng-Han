@@ -2,8 +2,6 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  course as demoCourse,
-  studyQuestions,
   type LessonContent,
   type StudyQuestion,
 } from "@/data/content";
@@ -40,9 +38,12 @@ type ContentContextValue = {
 const LEGACY_STORAGE_KEY = "haneul-course-v2";
 const FALLBACK_STORAGE_KEY = "haneul-course-fallback-v1";
 
-const demoRuntimeCourse: RuntimeCourse = {
-  ...demoCourse,
-  questions: studyQuestions,
+const emptyRuntimeCourse: RuntimeCourse = {
+  id: "empty",
+  title: "",
+  level: "",
+  lessons: [],
+  questions: [],
 };
 
 const ContentContext = createContext<ContentContextValue | null>(null);
@@ -99,7 +100,7 @@ async function restoreCourse() {
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
-  const [course, setCourse] = useState<RuntimeCourse>(demoRuntimeCourse);
+  const [course, setCourse] = useState<RuntimeCourse>(emptyRuntimeCourse);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -142,7 +143,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setCourse(nextCourse);
     },
     resetCourse() {
-      setCourse(demoRuntimeCourse);
+      setCourse(emptyRuntimeCourse);
       void clearStoredCourse().catch(() => undefined);
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
