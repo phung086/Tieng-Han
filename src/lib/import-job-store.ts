@@ -149,7 +149,7 @@ export async function getImportJob(jobId: string): Promise<ImportJob | null> {
   }
 }
 
-async function requireImportJob(jobId: string) {
+export async function requireImportJob(jobId: string) {
   const job = await getImportJob(jobId);
   if (!job) throw new Error("Không tìm thấy import job: " + jobId);
   return job;

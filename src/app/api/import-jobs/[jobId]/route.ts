@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  consumeImportJob,
   getImportJob,
   queueImportJob,
   requeueImportJob,
 } from "@/lib/import-job-store";
+import { consumeReadyImportJob } from "@/lib/course-consumer";
 
 export const runtime = "nodejs";
 
@@ -56,8 +56,10 @@ export async function PATCH(
     }
 
     if (body.action === "consume") {
+      const result = await consumeReadyImportJob(jobId);
       return NextResponse.json({
-        job: await consumeImportJob(jobId),
+        job: result.job,
+        course: result.course,
       });
     }
 
