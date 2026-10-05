@@ -19,10 +19,11 @@ The browser remains responsible for local PDF extraction and media preservation.
    - Text-layer PDFs: text and lesson markers are read locally.
    - Visual pages: page previews and extractable raster images are preserved locally.
    - Scanned PDFs without an API key: OCR is skipped, but page images are still preserved.
-4. Upload the same PDFs to ChatGPT.
-5. Ask ChatGPT to compile them into a **Haneul Course Bundle v1**.
-6. Back in `/import`, select the returned `.json` file under **ChatGPT Assisted**.
-7. Haneul validates the bundle, merges the compiled lessons with locally extracted textbook media, resets progress for the new book, and opens the imported curriculum.
+4. Download `haneul-chatgpt-handoff.json` from the Import Studio.
+5. Upload the same PDFs **and** the handoff JSON to ChatGPT.
+6. Ask ChatGPT to compile them into a **Haneul Course Bundle v1**.
+7. Back in `/import`, select the returned `.json` file under **ChatGPT Assisted**.
+8. Haneul validates the bundle fingerprint against the PDFs currently open, merges the compiled lessons with locally extracted textbook media, resets progress for the new book, and opens the imported curriculum.
 
 ## Bundle contract
 
@@ -32,6 +33,15 @@ The browser remains responsible for local PDF extraction and media preservation.
   "version": 1,
   "generatedAt": "2026-10-05T10:00:00.000Z",
   "sourceFiles": ["textbook.pdf", "workbook.pdf"],
+  "sourceManifest": [
+    {
+      "name": "textbook.pdf",
+      "size": 12345678,
+      "lastModified": 1791190000000,
+      "pageCount": 220,
+      "sha256": "..."
+    }
+  ],
   "course": {
     "title": "Exact textbook title",
     "level": "초급 1",
@@ -41,6 +51,8 @@ The browser remains responsible for local PDF extraction and media preservation.
   }
 }
 ```
+
+When a handoff file is supplied, ChatGPT should copy its `sourceFiles` fingerprint array into the output bundle as `sourceManifest`. Haneul compares SHA-256 values before importing so a bundle from another edition/book is not silently accepted.
 
 Each lesson must use the existing `LessonContent` contract in `src/data/content.ts`.
 Each question must use the existing `StudyQuestion` contract.
