@@ -253,6 +253,36 @@ export async function claimImportJob(jobId: string) {
     };
   });
 }
+\nexport async function requeueImportJob(jobId: string) {
+  const current = await requireImportJob(jobId);
+
+  if (current.status === "ready" || current.status === "consumed") {
+    throw new Error(
+      "Không thể đưa job đã hoàn tất trở lại queued. Hãy tạo import job mới nếu muốn biên lại.",
+    );
+  }
+
+  if (current.uploadedPages < current.totalPages) {
+    throw new Error(
+      "Chưa upload đủ page snapshot: " +
+        current.uploadedPages +
+        "/" +
+        current.totalPages +
+        ".",
+    );
+  }
+
+  const queued = await updateImportJob(jobId, (job) => ({
+    ...job,
+    status: "queued",
+    error: undefined,
+    resultBundle: undefined,
+  }));
+
+  await publishImportJobQueued(queued);
+  return queued;
+}
+
 
 export async function submitImportBundle(
   jobId: string,
