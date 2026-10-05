@@ -15,6 +15,8 @@ import {
 import {
   extractPdf,
   localLessonStarts,
+  lowTextRatio,
+  ocrLowTextPages,
   pagesForLesson,
   type ExtractedDocument,
 } from "@/lib/pdf-extractor";
@@ -111,6 +113,7 @@ export function IngestionStudio() {
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  const [ocrUsed, setOcrUsed] = useState(false);
 
   const primaryMap = maps[0];
   const lessonIds = useMemo(
@@ -138,8 +141,27 @@ export function IngestionStudio() {
       const nextDocuments: ExtractedDocument[] = [];
       const nextMaps: DocumentMap[] = [];
 
+      setOcrUsed(false);
+
       for (let index = 0; index < files.length; index += 1) {
-        const document = await extractPdf(files[index], index);
+        let document = await extractPdf(files[index], index);
+
+        if (lowTextRatio(document) >= 0.35) {
+          setOcrUsed(true);
+          setMessage("PDF scan: đang OCR " + fileLabel(files[index].name) + "…");
+
+          document = await ocrLowTextPages(
+            files[index],
+            document,
+            (completed, total) => {
+              const fileBase = index / files.length;
+              const fileShare = 1 / files.length;
+              const ocrShare = total ? completed / total : 0;
+              setProgress(Math.round((fileBase + fileShare * ocrShare * 0.4) * 55));
+            },
+          );
+        }
+
         nextDocuments.push(document);
 
         setProgress(Math.round(((index + 0.45) / files.length) * 45));
@@ -389,9 +411,13 @@ export function IngestionStudio() {
             </div>
           ) : null}
 
-          {likelyScanned ? (
+          {ocrUsed ? (
             <div className="ingest-warning">
-              PDF có rất ít text layer. Đây có thể là bản scan; kết quả tự động sẽ cần OCR/vision fallback để đạt độ chính xác tốt.
+              Đã dùng vision OCR cho các trang thiếu text layer. Hãy kiểm tra nhanh bản đồ bài học trước khi tạo toàn bộ giáo trình.
+            </div>
+          ) : likelyScanned ? (
+            <div className="ingest-warning">
+              Một số trang vẫn có rất ít text sau phân tích. Nội dung đó sẽ được đánh dấu cần kiểm tra khi biên bài.
             </div>
           ) : null}
         </article>
