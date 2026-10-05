@@ -12,10 +12,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       lessonId?: number;
       pages?: SourcePage[];
+      revisionNotes?: string[];
     };
 
     const lessonId = Number(body.lessonId);
     const pages = body.pages ?? [];
+    const revisionNotes = (body.revisionNotes ?? []).map(String).slice(0, 20);
 
     if (!lessonId || !pages.length) {
       return NextResponse.json({ error: "Thiếu lessonId hoặc nội dung nguồn." }, { status: 400 });
@@ -75,6 +77,9 @@ export async function POST(request: Request) {
         "10. Sinh 8-20 questions tùy lượng nội dung, phân bố nhiều dạng choice/input/reorder.",
         "Trả về DUY NHẤT một JSON object, không markdown.",
         "Hình dạng JSON tham chiếu:",
+        revisionNotes.length
+          ? "FEEDBACK TỪ VÒNG QA TRƯỚC - bắt buộc sửa: " + revisionNotes.join(" | ")
+          : "Không có feedback vòng trước.",
         JSON.stringify(schema),
       ].join("\n"),
       source,
