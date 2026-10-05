@@ -1443,3 +1443,333 @@ body::after {
     transition: none !important;
   }
 }
+
+
+/* ---------- Solo challenge / quiz ---------- */
+
+.study-session {
+  width: min(860px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: 28px 0 110px;
+}
+
+.session-header {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.session-header .icon-button {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  color: #697898;
+  background: #fff;
+  box-shadow: 0 4px 0 #dce8f2;
+}
+
+.session-progress {
+  height: 14px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #dceaf5;
+  box-shadow: 0 3px 0 #c9d9e6;
+}
+
+.session-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7a5ff4, #54bff4);
+}
+
+.session-header > strong {
+  min-width: 52px;
+  padding: 8px 10px;
+  border: 3px solid #fff;
+  border-radius: 14px;
+  color: #5e4bd3;
+  background: #f0edff;
+  box-shadow: 0 4px 0 #dcd5ff;
+  text-align: center;
+  font-size: 11px;
+}
+
+.session-body {
+  position: relative;
+  min-height: 440px;
+  padding: 34px;
+  border: 4px solid #fff;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(111,91,246,.08), transparent 16rem),
+    linear-gradient(145deg, #fff, #f8fbff);
+  box-shadow: var(--game-shadow);
+}
+
+.session-body h1 {
+  margin: 14px 0 18px;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -.035em;
+}
+
+.question-prompt {
+  min-height: 94px;
+  display: grid;
+  place-items: center;
+  margin: 8px 0 24px;
+  padding: 20px;
+  border: 3px solid #fff;
+  border-radius: 24px;
+  color: #3e4c70;
+  background: linear-gradient(145deg, #edf7ff, #f6f2ff);
+  box-shadow: inset 0 -4px 0 #dce8f2;
+  font-size: clamp(24px, 4vw, 38px);
+  font-weight: 800;
+  text-align: center;
+}
+
+.question-translation {
+  margin: -12px 0 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.session-options {
+  display: grid;
+  gap: 12px;
+}
+
+.session-option {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border: 2px solid #e3ebf4;
+  border-radius: 20px;
+  color: #405072;
+  background: #fff;
+  box-shadow: 0 5px 0 #dce7f0;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.session-option:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #dce7f0;
+}
+
+.session-option > span:first-child {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #6c59d8;
+  background: #eeeaff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.session-option.selected {
+  border-color: #836bff;
+  background: #f5f2ff;
+  box-shadow: 0 5px 0 #d8ceff;
+}
+
+.session-option.correct {
+  border-color: #45c895;
+  background: #ecfff7;
+  box-shadow: 0 5px 0 #bcebd7;
+}
+
+.session-option.wrong {
+  border-color: #f37a8a;
+  background: #fff0f2;
+  box-shadow: 0 5px 0 #f7c8ce;
+}
+
+.text-answer,
+.built-sentence {
+  min-height: 66px;
+  border: 3px solid #e4edf5;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: inset 0 -4px 0 #e4edf5;
+}
+
+.text-answer {
+  width: 100%;
+  padding: 0 18px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.built-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+}
+
+.token-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.token-bank button,
+.built-sentence button {
+  min-height: 42px;
+  padding: 0 13px;
+  border: 2px solid #dfe8f2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 0 #d8e3ed;
+  font-weight: 800;
+}
+
+.session-footer {
+  position: fixed;
+  z-index: 25;
+  left: 116px;
+  right: 0;
+  bottom: 0;
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 14px 34px;
+  border-top: 3px solid #fff;
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 -10px 30px rgba(55,91,132,.08);
+}
+
+.session-footer.success {
+  background: rgba(231,255,245,.97);
+}
+
+.session-footer.error {
+  background: rgba(255,239,242,.97);
+}
+
+.session-feedback {
+  width: min(560px, 100%);
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.feedback-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  background: #45c895;
+  box-shadow: 0 4px 0 #27966c;
+}
+
+.session-footer.error .feedback-icon {
+  background: #f06f82;
+  box-shadow: 0 4px 0 #c74c5e;
+}
+
+.session-feedback p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.session-complete {
+  width: min(680px, calc(100% - 30px));
+  margin: 46px auto;
+  padding: 42px;
+  border: 4px solid #fff;
+  border-radius: 36px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,218,75,.24), transparent 15rem),
+    linear-gradient(145deg, #fff, #f3f1ff);
+  box-shadow: var(--game-shadow);
+  text-align: center;
+}
+
+.complete-orb {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #ffd95b, #f1ad26);
+  box-shadow: 0 8px 0 #c78919, 0 18px 28px rgba(199,137,25,.18);
+}
+
+.score-ring-big {
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  margin: 24px auto;
+  border: 12px solid #dff7ec;
+  border-top-color: #3cc38e;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.score-ring-big strong {
+  font-size: 34px;
+}
+
+.score-ring-big span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+@media (max-width: 820px) {
+  .study-session {
+    padding-top: 10px;
+  }
+
+  .session-footer {
+    left: 0;
+    bottom: 80px;
+    padding: 12px 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .session-body {
+    min-height: 380px;
+    padding: 22px 16px;
+  }
+
+  .session-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .session-footer .primary-button {
+    width: 100%;
+  }
+}
