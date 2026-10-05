@@ -1,5 +1,15 @@
-export type TargetLanguageCode = "ko" | "en" | "zh";
-export type LearnerLanguageCode = "vi" | "en";
+export type TargetLanguageCode = string;
+export type LearnerLanguageCode = string;
+
+export type WritingSystem =
+  | "hangul"
+  | "latin"
+  | "han"
+  | "kana"
+  | "arabic"
+  | "cyrillic"
+  | "devanagari"
+  | "other";
 
 export type LanguageProfile = {
   target: TargetLanguageCode;
@@ -7,10 +17,10 @@ export type LanguageProfile = {
   targetName: string;
   learnerName: string;
   locale: string;
-  script: "hangul" | "latin" | "han";
+  script: WritingSystem;
 };
 
-export const languageProfiles: Record<TargetLanguageCode, LanguageProfile> = {
+export const languageProfiles: Record<string, LanguageProfile> = {
   ko: {
     target: "ko",
     learner: "vi",
@@ -37,16 +47,54 @@ export const languageProfiles: Record<TargetLanguageCode, LanguageProfile> = {
   },
 };
 
+const learnerNames: Record<string, string> = {
+  vi: "Tiếng Việt",
+  en: "English",
+};
+
 export const defaultLanguageProfile = languageProfiles.ko;
+
+export function createLanguageProfile(input: {
+  target: string;
+  learner?: string;
+  targetName?: string;
+  learnerName?: string;
+  locale?: string;
+  script?: WritingSystem;
+}): LanguageProfile {
+  const target = input.target.trim();
+  const learner = (input.learner ?? "vi").trim();
+
+  if (!target) {
+    throw new Error("Target language code không được để trống.");
+  }
+
+  return {
+    target,
+    learner,
+    targetName: input.targetName?.trim() || target,
+    learnerName:
+      input.learnerName?.trim() || learnerNames[learner] || learner,
+    locale: input.locale?.trim() || target,
+    script: input.script ?? "other",
+  };
+}
 
 export function getLanguageProfile(
   target: TargetLanguageCode,
   learner: LearnerLanguageCode = "vi",
+  overrides?: Partial<Omit<LanguageProfile, "target" | "learner">>,
 ): LanguageProfile {
   const base = languageProfiles[target];
-  return {
-    ...base,
+
+  return createLanguageProfile({
+    target,
     learner,
-    learnerName: learner === "vi" ? "Tiếng Việt" : "English",
-  };
+    targetName: overrides?.targetName ?? base?.targetName,
+    learnerName:
+      overrides?.learnerName ??
+      (learner === base?.learner ? base?.learnerName : undefined),
+    locale: overrides?.locale ?? base?.locale,
+    script: overrides?.script ?? base?.script,
+  });
 }
