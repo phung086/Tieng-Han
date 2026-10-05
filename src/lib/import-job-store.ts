@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { publishImportJobQueued } from "@/lib/mcp-events";
 import {
@@ -45,14 +52,27 @@ function draftsDir(jobId: string) {
   return path.join(jobDir(jobId), "drafts");
 }
 
-function lessonDraftFile(jobId: string, lessonId: number) {
+function assertLessonId(lessonId: number) {
   if (!Number.isInteger(lessonId) || lessonId < 1 || lessonId > 10000) {
     throw new Error("lessonId không hợp lệ.");
   }
+}
+
+function lessonDraftFile(jobId: string, lessonId: number) {
+  assertLessonId(lessonId);
 
   return path.join(
     draftsDir(jobId),
     "lesson-" + String(lessonId).padStart(5, "0") + ".json",
+  );
+}
+
+function workCheckpointFile(jobId: string, lessonId: number) {
+  assertLessonId(lessonId);
+
+  return path.join(
+    draftsDir(jobId),
+    "work-" + String(lessonId).padStart(5, "0") + ".json",
   );
 }
 
@@ -314,6 +334,26 @@ type StoredLessonDraft = {
   questions: StudyQuestion[];
 };
 
+export type WorkCheckpointPhase =
+  | "source-reading"
+  | "drafting"
+  | "qa";
+
+export type WorkCheckpoint = {
+  version: 1;
+  lessonId: number;
+  phase: WorkCheckpointPhase;
+  savedAt: string;
+  sourceCursor?: {
+    documentId?: string;
+    fileName?: string;
+    pageNumber?: number;
+  };
+  notes: string[];
+  partialLesson?: Record<string, unknown>;
+  partialQuestions?: Array<Record<string, unknown>>;
+};
+
 async function readLessonDrafts(jobId: string): Promise<StoredLessonDraft[]> {
   await mkdir(draftsDir(jobId), { recursive: true });
   const files = (await readdir(draftsDir(jobId)))
@@ -328,6 +368,91 @@ async function readLessonDrafts(jobId: string): Promise<StoredLessonDraft[]> {
   }
 
   return drafts;
+}
+
+async function readWorkCheckpoints(
+  jobId: string,
+): Promise<WorkCheckpoint[]> {
+  await mkdir(draftsDir(jobId), { recursive: true });
+  const files = (await readdir(draftsDir(jobId)))
+    .filter((name) => /^work-\d{5}\.json$/.test(name))
+    .sort();
+
+  const checkpoints: WorkCheckpoint[] = [];
+  for (const file of files) {
+    checkpoints.push(
+      await readJson<WorkCheckpoint>(path.join(draftsDir(jobId), file)),
+    );
+  }
+
+  return checkpoints;
+}
+
+export async function saveWorkCheckpoint(
+  jobId: string,
+  input: {
+    lessonId: number;
+    phase: WorkCheckpointPhase;
+    sourceCursor?: {
+      documentId?: string;
+      fileName?: string;
+      pageNumber?: number;
+    };
+    notes?: string[];
+    partialLesson?: Record<string, unknown>;
+    partialQuestions?: Array<Record<string, unknown>>;
+  },
+) {
+  const job = await requireImportJob(jobId);
+  if (job.status === "ready" || job.status === "consumed") {
+    throw new Error(
+      "Job đã hoàn tất. Không thể ghi work checkpoint.",
+    );
+  }
+
+  assertLessonId(input.lessonId);
+
+  const checkpoint: WorkCheckpoint = {
+    version: 1,
+    lessonId: input.lessonId,
+    phase: input.phase,
+    savedAt: new Date().toISOString(),
+    sourceCursor: input.sourceCursor
+      ? {
+          documentId: input.sourceCursor.documentId,
+          fileName: input.sourceCursor.fileName,
+          pageNumber:
+            typeof input.sourceCursor.pageNumber === "number"
+              ? input.sourceCursor.pageNumber
+              : undefined,
+        }
+      : undefined,
+    notes: (input.notes ?? []).map(String).slice(0, 100),
+    partialLesson: input.partialLesson,
+    partialQuestions: input.partialQuestions?.slice(0, 100),
+  };
+
+  await writeJsonAtomic(
+    workCheckpointFile(jobId, input.lessonId),
+    checkpoint,
+  );
+
+  await updateImportJob(jobId, (current) => ({
+    ...current,
+    status:
+      current.status === "queued" ? "processing" : current.status,
+    error: undefined,
+  }));
+
+  return checkpoint;
+}
+
+async function clearWorkCheckpoint(jobId: string, lessonId: number) {
+  try {
+    await unlink(workCheckpointFile(jobId, lessonId));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
 
 function normalizeDraft(
@@ -407,6 +532,8 @@ export async function saveLessonDraft(
     draft,
   );
 
+  await clearWorkCheckpoint(jobId, normalized.lesson.id);
+
   await updateImportJob(jobId, (current) => ({
     ...current,
     status:
@@ -420,6 +547,7 @@ export async function saveLessonDraft(
 export async function getCompilationProgress(jobId: string) {
   const job = await requireImportJob(jobId);
   const drafts = await readLessonDrafts(jobId);
+  const workCheckpoints = await readWorkCheckpoints(jobId);
   const completedLessonIds = drafts
     .map((draft) => draft.lessonId)
     .sort((a, b) => a - b);
@@ -459,6 +587,17 @@ export async function getCompilationProgress(jobId: string) {
       groundingScore: draft.lesson.quality?.groundingScore,
       issues: draft.lesson.quality?.issues ?? [],
     })),
+    activeWork: workCheckpoints
+      .filter((checkpoint) => !completed.has(checkpoint.lessonId))
+      .map((checkpoint) => ({
+        lessonId: checkpoint.lessonId,
+        phase: checkpoint.phase,
+        savedAt: checkpoint.savedAt,
+        sourceCursor: checkpoint.sourceCursor,
+        notes: checkpoint.notes,
+        partialLesson: checkpoint.partialLesson,
+        partialQuestions: checkpoint.partialQuestions,
+      })),
     detectedCandidates,
     pendingDetectedLessonIds,
     nextDetectedLessonId: pendingDetectedLessonIds[0] ?? null,
