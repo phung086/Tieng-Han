@@ -1067,37 +1067,49 @@ export function IngestionStudio() {
       <section className="ingest-hero">
         <div>
           <span className="kicker">{copy.kicker}</span>
-          <h1>{copy.title}</h1>
-          <p>{copy.intro}</p>
+          <h1>{copy.autoTitle}</h1>
+          <p>{copy.autoIntro}</p>
         </div>
         <div className="ingest-hero-side">
           <div className="ingest-orb"><WandSparkles size={42} /></div>
-          <span className={aiStatus?.configured ? "ai-ready-badge ready" : "ai-ready-badge"}>
-            {aiStatus?.configured
-              ? copy.aiReady + " · " + aiStatus.contentModel
-              : aiStatus
-                ? copy.aiMissing
-                : copy.aiChecking}
+          <span
+            className={
+              bridgeSetup?.configured
+                ? "ai-ready-badge ready"
+                : "ai-ready-badge"
+            }
+          >
+            {bridgeSetup?.configured
+              ? copy.bridgeReady
+              : bridgeSetup
+                ? copy.bridgeNeedsSetup
+                : copy.bridgeChecking}
           </span>
         </div>
       </section>
 
-      <section className="ingest-grid">
-        <article className="ingest-panel">
-          <div className="ingest-panel-title">
-            <span>01</span>
-            <div><strong>{copy.chooseDocuments}</strong><small>{copy.orderHint}</small></div>
-          </div>
+      <section className="ingest-run-card assisted-import-card">
+        <div className="ingest-run-copy">
+          <span className="eyebrow">{copy.autoStep}</span>
+          <h2>{copy.choosePdf}</h2>
+          <p>{copy.autoDropHint}</p>
 
           <label className="pdf-dropzone">
-            <UploadCloud size={30} />
-            <strong>{copy.choosePdf}</strong>
-            <span>{copy.primaryHint}</span>
+            {status === "extracting" || mcpStatus === "syncing" ? (
+              <LoaderCircle className="spin" size={32} />
+            ) : (
+              <UploadCloud size={32} />
+            )}
+            <strong>
+              {files.length ? copy.replacePdf : copy.choosePdf}
+            </strong>
+            <span>{copy.autoPrimaryHint}</span>
             <input
               accept="application/pdf,.pdf"
               multiple
               onChange={(event) => {
-                setFiles(Array.from(event.target.files ?? []));
+                const selected = Array.from(event.target.files ?? []);
+                setFiles(selected);
                 setDocuments([]);
                 setMaps([]);
                 mcpRunRef.current += 1;
@@ -1105,7 +1117,17 @@ export function IngestionStudio() {
                 setMcpStatus("idle");
                 setMcpSyncProgress(0);
                 setStatus("idle");
+                setProgress(0);
+                setMessage("");
                 setError("");
+                setHandoffNote("");
+
+                if (
+                  selected.length &&
+                  ingestionConfig.autoImport.autoStartOnFileSelection
+                ) {
+                  void analyzeFiles(selected);
+                }
               }}
               type="file"
             />
@@ -1118,252 +1140,328 @@ export function IngestionStudio() {
                   <FileText size={18} />
                   <div>
                     <strong>{file.name}</strong>
-                    <span>{index === 0 ? copy.primary : copy.supplement} · {formatBytes(file.size)}</span>
+                    <span>
+                      {index === 0 ? copy.primary : copy.supplement}
+                      {" · "}
+                      {formatBytes(file.size)}
+                    </span>
                   </div>
-                  <span className="file-order">0{index + 1}</span>
+                  <span className="file-order">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                 </div>
               ))}
             </div>
           ) : null}
 
-          <button
-            className="primary-button ingest-main-button"
-            disabled={!files.length || status === "extracting" || status === "generating"}
-            onClick={analyzeFiles}
-          >
-            {status === "extracting" ? <LoaderCircle className="spin" size={18} /> : <Sparkles size={18} />}
-            {copy.analyze}
-          </button>
-        </article>
+          {files.length || mcpStatus !== "idle" ? (
+            <div className="ingest-progress-wrap">
+              <div className="ingest-progress">
+                <span style={{ width: progress + "%" }} />
+              </div>
+              <div className="ingest-progress-label">
+                <span>
+                  {message ||
+                    (mcpStatus === "syncing"
+                      ? copy.mcpSyncing + " " + mcpSyncProgress + "%"
+                      : copy.autoPreparing)}
+                </span>
+                <strong>{progress}%</strong>
+              </div>
+            </div>
+          ) : null}
 
-        <article className="ingest-panel">
-          <div className="ingest-panel-title">
-            <span>02</span>
-            <div><strong>{copy.mapTitle}</strong><small>{copy.mapHint}</small></div>
+          <div className="auto-import-steps">
+            <div
+              className={
+                files.length ? "auto-import-step done" : "auto-import-step"
+              }
+            >
+              <span>1</span>
+              <div>
+                <strong>{copy.autoStagePdf}</strong>
+                <small>{copy.autoStagePdfNote}</small>
+              </div>
+            </div>
+            <div
+              className={
+                documents.length || mcpStatus !== "idle"
+                  ? "auto-import-step done"
+                  : "auto-import-step"
+              }
+            >
+              <span>2</span>
+              <div>
+                <strong>{copy.autoStageSource}</strong>
+                <small>{copy.autoStageSourceNote}</small>
+              </div>
+            </div>
+            <div
+              className={
+                mcpStatus === "processing" ||
+                mcpStatus === "ready" ||
+                mcpStatus === "consumed"
+                  ? "auto-import-step done"
+                  : mcpStatus === "queued"
+                    ? "auto-import-step active"
+                    : "auto-import-step"
+              }
+            >
+              <span>3</span>
+              <div>
+                <strong>{copy.autoStageCompile}</strong>
+                <small>
+                  {mcpStatus === "queued"
+                    ? copy.mcpWaiting
+                    : mcpStatus === "processing"
+                      ? copy.mcpProcessing
+                      : copy.autoStageCompileNote}
+                </small>
+              </div>
+            </div>
+            <div
+              className={
+                mcpStatus === "consumed"
+                  ? "auto-import-step done"
+                  : mcpStatus === "ready"
+                    ? "auto-import-step active"
+                    : "auto-import-step"
+              }
+            >
+              <span>4</span>
+              <div>
+                <strong>{copy.autoStageReady}</strong>
+                <small>{copy.autoStageReadyNote}</small>
+              </div>
+            </div>
           </div>
 
-          <div className="ingest-fields">
-            <label>
-              <span>{copy.targetLanguage}</span>
-              <input
-                list="haneul-language-codes"
-                placeholder={copy.targetLanguageHint}
-                value={targetLanguageCode}
-                onChange={(event) =>
-                  setTargetLanguageCode(
-                    event.target.value.trim().toLowerCase(),
-                  )
-                }
-              />
-              <datalist id="haneul-language-codes">
-                <option value="ko">Tiếng Hàn</option>
-                <option value="en">Tiếng Anh</option>
-                <option value="zh">Tiếng Trung</option>
-                <option value="ja">Tiếng Nhật</option>
-                <option value="fr">Tiếng Pháp</option>
-              </datalist>
-            </label>
-            <label>
-              <span>{copy.courseName}</span>
-              <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} />
-            </label>
-            <label>
-              <span>{copy.level}</span>
-              <input value={level} onChange={(event) => setLevel(event.target.value)} />
-            </label>
-            <label>
-              <span>{copy.edition}</span>
-              <input
-                placeholder={copy.autoDetect}
-                value={edition}
-                onChange={(event) => setEdition(event.target.value)}
-              />
-            </label>
-          </div>
-
-          {documents.length ? (
-            <div className="ingest-metrics">
-              <div><strong>{documents.length}</strong><span>{copy.pdf}</span></div>
-              <div><strong>{totalPages}</strong><span>{copy.pages}</span></div>
-              <div><strong>{lessonIds.length}</strong><span>{copy.lessons}</span></div>
-              <div><strong>{averageCharacters}</strong><span>{copy.charsPerPage}</span></div>
-            </div>
-          ) : (
-            <div className="ingest-placeholder">
-              <BookOpenCheck size={28} />
-              <span>{copy.mapPlaceholder}</span>
-            </div>
-          )}
-
-          {lessonIds.length ? (
-            <div className="detected-lessons">
-              {primaryMap.starts.map((item, index) => {
-                const next = primaryMap.starts[index + 1];
-                return (
-                  <div key={item.lessonId}>
-                    <span>{copy.lessonLabel} {item.lessonId}</span>
-                    <strong>p.{item.pageNumber}{next ? "–" + (next.pageNumber - 1) : "+"}</strong>
-                    <small>{item.titleHint || copy.detectedTitle}</small>
-                  </div>
-                );
-              })}
+          {bridgeSetup && !bridgeSetup.configured ? (
+            <div className="ingest-warning">
+              <strong>{copy.bridgeNeedsSetup}</strong>
+              <span>{copy.bridgeSetupOnce}</span>
             </div>
           ) : null}
 
           {ocrUsed ? (
             <div className="ingest-warning">{copy.ocrUsed}</div>
           ) : ocrSkipped ? (
-            <div className="ingest-warning">
-              {copy.localModeBody}
-            </div>
+            <div className="ingest-warning">{copy.ocrSkippedBridge}</div>
           ) : likelyScanned ? (
             <div className="ingest-warning">{copy.lowText}</div>
           ) : null}
-        </article>
-      </section>
 
-      <section className="ingest-run-card assisted-import-card">
-        <div className="ingest-run-copy">
-          <span className="eyebrow">{copy.bundleStep}</span>
-          <h2>{copy.bundleTitle}</h2>
-          <p>{copy.bundleBody}</p>
-          {!aiStatus?.configured ? (
-            <div className="local-mode-note">
-              <strong>{copy.localMode}</strong>
-              <span>{copy.chatUploadHint}</span>
-            </div>
-          ) : null}
-
-          {documents.length ? (
-            <div className="handoff-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void exportChatGptHandoff()}
-              >
-                <Download size={16} />
-                {copy.exportHandoff}
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void copyChatGptPrompt()}
-              >
-                <Copy size={16} />
-                {copy.copyPrompt}
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void shareToChatGpt()}
-              >
-                <UploadCloud size={16} />
-                {copy.shareToChatGpt}
-              </button>
-            </div>
-          ) : null}
-
-          {mcpStatus !== "idle" ? (
-            <div className="mcp-bridge-status">
-              <strong>{copy.mcpBridge}</strong>
-              <span>
-                {mcpStatus === "syncing"
-                  ? copy.mcpSyncing + " " + mcpSyncProgress + "%"
-                  : mcpStatus === "queued"
-                    ? copy.mcpWaiting
-                    : mcpStatus === "processing"
-                      ? copy.mcpProcessing
-                      : mcpStatus === "ready"
-                        ? copy.mcpReady
-                        : mcpStatus === "consumed"
-                          ? copy.mcpConsumed
-                          : mcpStatus === "failed"
-                            ? copy.mcpFailed
-                            : mcpStatus}
-                {mcpJobId ? " · " + mcpJobId : ""}
-              </span>
-              {mcpStatus === "consumed" ? (
-                <Link
+          {error ? (
+            <div className="ingest-error">
+              <span>{error}</span>
+              {files.length ? (
+                <button
                   className="secondary-button"
-                  href="/learn"
-                  style={{ marginLeft: "1rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                  type="button"
+                  onClick={() => void analyzeFiles(files)}
                 >
-                  <BookOpenCheck size={16} />
-                  {copy.openCourse}
-                </Link>
+                  <Sparkles size={16} />
+                  {copy.retryAutoImport}
+                </button>
               ) : null}
             </div>
           ) : null}
 
-          {handoffNote ? (
-            <div className="handoff-note">{handoffNote}</div>
+          {status === "done" || mcpStatus === "consumed" ? (
+            <div className="ingest-success">
+              <CheckCircle2 size={24} />
+              <div>
+                <strong>{copy.successTitle}</strong>
+                <span>{message || copy.autoComplete}</span>
+              </div>
+              <Link className="primary-button" href="/learn">
+                {copy.openCourse} <ArrowRight size={17} />
+              </Link>
+            </div>
           ) : null}
         </div>
+      </section>
 
-        <label
-          className={
-            "secondary-button bundle-file-button" +
-            (!documents.length ? " disabled" : "")
-          }
-        >
-          <FileText size={18} />
-          {copy.chooseBundle}
-          <input
-            accept="application/json,.json"
-            disabled={!documents.length}
-            type="file"
-            onChange={(event) => {
-              const bundleFile = event.target.files?.[0];
-              if (bundleFile) {
-                void importChatGptBundle(bundleFile);
+      <details className="ingest-advanced">
+        <summary>{copy.advancedOptions}</summary>
+        <div className="ingest-grid">
+          <article className="ingest-panel">
+            <div className="ingest-panel-title">
+              <span>A</span>
+              <div>
+                <strong>{copy.courseMetadata}</strong>
+                <small>{copy.autoDetectedEditable}</small>
+              </div>
+            </div>
+
+            <div className="ingest-fields">
+              <label>
+                <span>{copy.targetLanguage}</span>
+                <input
+                  list="haneul-language-codes"
+                  placeholder={copy.targetLanguageHint}
+                  value={targetLanguageCode}
+                  onChange={(event) =>
+                    setTargetLanguageCode(
+                      event.target.value.trim().toLowerCase(),
+                    )
+                  }
+                />
+                <datalist id="haneul-language-codes">
+                  <option value="ko">Tiếng Hàn</option>
+                  <option value="en">Tiếng Anh</option>
+                  <option value="zh">Tiếng Trung</option>
+                  <option value="ja">Tiếng Nhật</option>
+                  <option value="fr">Tiếng Pháp</option>
+                </datalist>
+              </label>
+              <label>
+                <span>{copy.courseName}</span>
+                <input
+                  value={courseTitle}
+                  onChange={(event) => setCourseTitle(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>{copy.level}</span>
+                <input
+                  value={level}
+                  onChange={(event) => setLevel(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>{copy.edition}</span>
+                <input
+                  placeholder={copy.autoDetect}
+                  value={edition}
+                  onChange={(event) => setEdition(event.target.value)}
+                />
+              </label>
+            </div>
+
+            {documents.length ? (
+              <div className="ingest-metrics">
+                <div><strong>{documents.length}</strong><span>{copy.pdf}</span></div>
+                <div><strong>{totalPages}</strong><span>{copy.pages}</span></div>
+                <div><strong>{lessonIds.length}</strong><span>{copy.lessons}</span></div>
+                <div><strong>{averageCharacters}</strong><span>{copy.charsPerPage}</span></div>
+              </div>
+            ) : null}
+
+            {lessonIds.length ? (
+              <div className="detected-lessons">
+                {primaryMap.starts.map((item, index) => {
+                  const next = primaryMap.starts[index + 1];
+                  return (
+                    <div key={item.lessonId}>
+                      <span>{copy.lessonLabel} {item.lessonId}</span>
+                      <strong>
+                        p.{item.pageNumber}
+                        {next ? "–" + (next.pageNumber - 1) : "+"}
+                      </strong>
+                      <small>{item.titleHint || copy.detectedTitle}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </article>
+
+          <article className="ingest-panel">
+            <div className="ingest-panel-title">
+              <span>B</span>
+              <div>
+                <strong>{copy.fallbackTools}</strong>
+                <small>{copy.fallbackToolsHint}</small>
+              </div>
+            </div>
+
+            {documents.length ? (
+              <div className="handoff-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void exportChatGptHandoff()}
+                >
+                  <Download size={16} />
+                  {copy.exportHandoff}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void copyChatGptPrompt()}
+                >
+                  <Copy size={16} />
+                  {copy.copyPrompt}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => void shareToChatGpt()}
+                >
+                  <UploadCloud size={16} />
+                  {copy.shareToChatGpt}
+                </button>
+              </div>
+            ) : null}
+
+            <label
+              className={
+                "secondary-button bundle-file-button" +
+                (!documents.length ? " disabled" : "")
               }
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-      </section>
+            >
+              <FileText size={18} />
+              {copy.chooseBundle}
+              <input
+                accept="application/json,.json"
+                disabled={!documents.length}
+                type="file"
+                onChange={(event) => {
+                  const bundleFile = event.target.files?.[0];
+                  if (bundleFile) {
+                    void importChatGptBundle(bundleFile);
+                  }
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
 
-      <section className="ingest-run-card">
-        <div className="ingest-run-copy">
-          <span className="eyebrow">{copy.generateStep}</span>
-          <h2>{copy.generateTitle}</h2>
-          <p>{copy.generateBody}</p>
+            {aiStatus?.configured ? (
+              <button
+                className="secondary-button"
+                disabled={
+                  status !== "mapped" ||
+                  !lessonIds.length
+                }
+                onClick={generateCourse}
+                type="button"
+              >
+                {status === "generating" ? (
+                  <LoaderCircle className="spin" size={18} />
+                ) : (
+                  <WandSparkles size={18} />
+                )}
+                {copy.generateDirectFallback}
+              </button>
+            ) : null}
+
+            {mcpJobId ? (
+              <div className="mcp-bridge-status">
+                <strong>{copy.mcpBridge}</strong>
+                <span>{mcpJobId}</span>
+              </div>
+            ) : null}
+
+            {handoffNote ? (
+              <div className="handoff-note">{handoffNote}</div>
+            ) : null}
+          </article>
         </div>
-
-        <button
-          className="primary-button"
-          disabled={
-            status !== "mapped" ||
-            !aiStatus?.configured ||
-            !lessonIds.length
-          }
-          onClick={generateCourse}
-        >
-          {status === "generating" ? <LoaderCircle className="spin" size={18} /> : <WandSparkles size={18} />}
-          {aiStatus?.configured
-            ? copy.generate
-            : copy.apiGenerateUnavailable}
-        </button>
-
-        {(status === "extracting" || status === "generating" || status === "done") ? (
-          <div className="ingest-progress-wrap">
-            <div className="ingest-progress"><span style={{ width: progress + "%" }} /></div>
-            <div className="ingest-progress-label"><span>{message}</span><strong>{progress}%</strong></div>
-          </div>
-        ) : null}
-
-        {error ? <div className="ingest-error">{error}</div> : null}
-
-        {status === "done" ? (
-          <div className="ingest-success">
-            <CheckCircle2 size={24} />
-            <div><strong>{copy.successTitle}</strong><span>{message}</span></div>
-            <Link className="primary-button" href="/learn">{copy.openCourse} <ArrowRight size={17} /></Link>
-          </div>
-        ) : null}
-      </section>
+      </details>
     </div>
   );
+
 }
 
 function fileLabel(name: string) {
