@@ -503,9 +503,9 @@ export function IngestionStudio() {
         ),
         onProgress(uploaded, total) {
           if (mcpRunRef.current !== runId) return;
-          setMcpSyncProgress(
-            total ? Math.round((uploaded / total) * 100) : 0,
-          );
+          const percent = total ? Math.round((uploaded / total) * 100) : 0;
+          setMcpSyncProgress(percent);
+          setProgress(60 + Math.round(percent * 0.15));
         },
       });
 
@@ -513,6 +513,8 @@ export function IngestionStudio() {
 
       setMcpJobId(job.id);
       setMcpStatus(job.status);
+      setProgress(75);
+      setMessage(copy.mcpWaiting);
       setHandoffNote(copy.mcpQueued);
 
       await monitorMcpJob(
@@ -560,6 +562,16 @@ export function IngestionStudio() {
         }
 
         setMcpStatus(job.status);
+        if (job.status === "queued") {
+          setProgress(75);
+          setMessage(copy.mcpWaiting);
+        } else if (job.status === "processing") {
+          setProgress(84);
+          setMessage(copy.mcpProcessing);
+        } else if (job.status === "ready") {
+          setProgress(95);
+          setMessage(copy.mcpReady);
+        }
 
         if (job.status === "failed") {
           setError(
