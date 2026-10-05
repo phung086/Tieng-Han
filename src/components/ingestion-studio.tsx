@@ -25,6 +25,9 @@ import { buildLessonMedia } from "@/lib/lesson-media";
 import { ingestionConfig } from "@/config/ingestion";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
+import { useMessages, type UiMessages } from "@/i18n/messages";
+
+type ImportCopy = UiMessages["import"];
 
 type LessonStart = {
   lessonId: number;
@@ -71,7 +74,7 @@ function isGeneratedLesson(value: unknown): value is LessonContent {
   );
 }
 
-async function aiMapDocument(document: ExtractedDocument) {
+async function aiMapDocument(document: ExtractedDocument, copy: ImportCopy) {
   const collected: LessonStart[] = [];
   const chunkSize = 35;
 
@@ -94,7 +97,7 @@ async function aiMapDocument(document: ExtractedDocument) {
     };
 
     if (!response.ok) {
-      throw new Error(result.error || "Không thể phân tích cấu trúc PDF.");
+      throw new Error(result.error || copy.mapError);
     }
 
     collected.push(...(result.starts ?? []));
@@ -121,6 +124,7 @@ type ValidationPayload = {
 async function requestGeneratedLesson(
   lessonId: number,
   pages: SourcePageInput[],
+  copy: ImportCopy,
   revisionNotes: string[] = [],
 ) {
   const response = await fetch("/api/ingest/generate", {
@@ -132,11 +136,11 @@ async function requestGeneratedLesson(
   const payload = (await response.json()) as GeneratedPayload & { error?: string };
 
   if (!response.ok) {
-    throw new Error(payload.error || "Không thể sinh Bài " + lessonId + ".");
+    throw new Error(payload.error || copy.generateErrorPrefix + " " + copy.lessonLabel + " " + lessonId + ".");
   }
 
   if (!isGeneratedLesson(payload.lesson)) {
-    throw new Error("AI trả về dữ liệu không hợp lệ cho Bài " + lessonId + ".");
+    throw new Error(copy.invalidGeneratedPrefix + " " + copy.lessonLabel + " " + lessonId + ".");
   }
 
   return payload as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
@@ -146,6 +150,7 @@ async function validateGeneratedLesson(
   lesson: LessonContent,
   questions: StudyQuestion[],
   pages: SourcePageInput[],
+  copy: ImportCopy,
 ) {
   const response = await fetch("/api/ingest/validate", {
     method: "POST",
@@ -156,7 +161,7 @@ async function validateGeneratedLesson(
   const result = (await response.json()) as ValidationPayload;
 
   if (!response.ok) {
-    throw new Error(result.error || "Không thể kiểm định nội dung bài học.");
+    throw new Error(result.error || copy.validateError);
   }
 
   return result;
@@ -165,11 +170,13 @@ async function validateGeneratedLesson(
 export function IngestionStudio() {
   const { replaceCourse } = useContent();
   const { resetForCourse } = useLearning();
+  const messages = useMessages();
+  const copy = messages.import;
   const [files, setFiles] = useState<File[]>([]);
   const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
   const [maps, setMaps] = useState<DocumentMap[]>([]);
-  const [courseTitle, setCourseTitle] = useState("Tiếng Hàn Sơ cấp 1");
-  const [level, setLevel] = useState("초급 1");
+  const [courseTitle, setCourseTitle] = useState(copy.defaultCourseTitle);
+  const [level, setLevel] = useState(copy.defaultLevel);
   const [edition, setEdition] = useState("");
   const [aiStatus, setAiStatus] = useState<{
     configured: boolean;
@@ -219,14 +226,14 @@ export function IngestionStudio() {
     if (!files.length) return;
 
     if (aiStatus && !aiStatus.configured) {
-      setError("Chưa cấu hình OPENAI_API_KEY trong .env.local. Import tự động cần AI để map và biên nội dung bám sách.");
+      setError(copy.missingAiKey);
       return;
     }
 
     setError("");
     setStatus("extracting");
     setProgress(0);
-    setMessage("Đang trích xuất text từ PDF…");
+    setMessage(copy.extracting);
 
     try {
       const nextDocuments: ExtractedDocument[] = [];
@@ -239,7 +246,7 @@ export function IngestionStudio() {
 
         if (lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
           setOcrUsed(true);
-          setMessage("PDF scan: đang OCR " + fileLabel(files[index].name) + "…");
+          setMessage(copy.ocrPrefix + " " + fileLabel(files[index].name) + "…");
 
           document = await ocrLowTextPages(
             files[index],
@@ -256,11 +263,11 @@ export function IngestionStudio() {
         nextDocuments.push(document);
 
         setProgress(Math.round(((index + 0.45) / files.length) * 45));
-        setMessage("Đang nhận diện bài học trong " + fileLabel(files[index].name) + "…");
+        setMessage(copy.mappingPrefix + " " + fileLabel(files[index].name) + "…");
 
         const localStarts = localLessonStarts(document);
         const aiStarts = document.pages.some((page) => page.text.length > 30)
-          ? await aiMapDocument(document)
+          ? await aiMapDocument(document, copy)
           : [];
         const starts = aiStarts.length ? aiStarts : localStarts;
 
@@ -271,7 +278,7 @@ export function IngestionStudio() {
         });
 
         if (index === 0) {
-          setMessage("Đang nhận diện tên sách và cấp độ…");
+          setMessage(copy.detectingMetadata);
           const metadataResponse = await fetch("/api/ingest/metadata", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -301,19 +308,17 @@ export function IngestionStudio() {
       }
 
       if (!nextMaps[0]?.starts.length) {
-        throw new Error(
-          "Không nhận diện được cấu trúc bài học. PDF có thể là bản scan không có text layer hoặc tiêu đề bài quá khác chuẩn.",
-        );
+        throw new Error(copy.noLessonMap);
       }
 
       setDocuments(nextDocuments);
       setMaps(nextMaps);
       setProgress(100);
-      setMessage("Đã lập bản đồ " + nextMaps[0].starts.length + " bài từ giáo trình chính.");
+      setMessage(copy.mapCompletePrefix + " " + nextMaps[0].starts.length + " " + copy.mapCompleteSuffix);
       setStatus("mapped");
     } catch (reason) {
       setStatus("idle");
-      setError(reason instanceof Error ? reason.message : "Không thể phân tích PDF.");
+      setError(reason instanceof Error ? reason.message : copy.analyzeError);
     }
   }
 
@@ -331,7 +336,7 @@ export function IngestionStudio() {
       for (let index = 0; index < lessonIds.length; index += 1) {
         const lessonId = lessonIds[index];
         setMessage(
-          "Đang biên Bài " +
+          copy.generatingPrefix + " " + copy.lessonLabel + " " +
             lessonId +
             " · " +
             (index + 1) +
@@ -356,14 +361,14 @@ export function IngestionStudio() {
 
         if (!sourcePages.length) continue;
 
-        let payload = await requestGeneratedLesson(lessonId, sourcePages);
+        let payload = await requestGeneratedLesson(lessonId, sourcePages, copy);
         let lessonQuestions = (payload.questions ?? []).map((question) => ({
           ...question,
           lessonId,
         }));
 
         setMessage(
-          "Đang kiểm định Bài " +
+          copy.validatingPrefix + " " + copy.lessonLabel + " " +
             lessonId +
             " · " +
             (index + 1) +
@@ -376,16 +381,17 @@ export function IngestionStudio() {
           { ...payload.lesson, id: lessonId },
           lessonQuestions,
           sourcePages,
+          copy,
         );
 
         if (!validation.pass) {
           const revisionNotes = [
-            ...validation.issues.map((item) => "Lỗi: " + item),
-            ...validation.missingTopics.map((item) => "Thiếu: " + item),
+            ...validation.issues.map((item) => copy.revisionIssue + " " + item),
+            ...validation.missingTopics.map((item) => copy.revisionMissing + " " + item),
           ];
 
-          setMessage("Bài " + lessonId + " chưa đạt QA, đang tự biên lại…");
-          payload = await requestGeneratedLesson(lessonId, sourcePages, revisionNotes);
+          setMessage(copy.lessonLabel + " " + lessonId + " " + copy.repairPrefix);
+          payload = await requestGeneratedLesson(lessonId, sourcePages, copy, revisionNotes);
           lessonQuestions = (payload.questions ?? []).map((question) => ({
             ...question,
             lessonId,
@@ -395,6 +401,7 @@ export function IngestionStudio() {
             { ...payload.lesson, id: lessonId },
             lessonQuestions,
             sourcePages,
+            copy,
           );
         }
 
@@ -403,11 +410,18 @@ export function IngestionStudio() {
           validation.groundingScore < ingestionConfig.validation.minimumGrounding
         ) {
           throw new Error(
-            "Bài " +
+            copy.lessonLabel +
+              " " +
               lessonId +
-              " không đạt ngưỡng kiểm định sau lần tự sửa: coverage " +
+              " " +
+              copy.qualityErrorPrefix +
+              ": " +
+              copy.coverageLabel +
+              " " +
               validation.coverageScore +
-              "%, grounding " +
+              "%, " +
+              copy.groundingLabel +
+              " " +
               validation.groundingScore +
               "%.",
           );
@@ -431,13 +445,13 @@ export function IngestionStudio() {
       }
 
       if (!lessons.length) {
-        throw new Error("Không có bài học nào được sinh thành công.");
+        throw new Error(copy.noGeneratedLesson);
       }
 
       const runtimeCourse: RuntimeCourse = {
         id: "imported-" + Date.now(),
-        title: courseTitle.trim() || "Giáo trình đã nhập",
-        level: level.trim() || "Korean",
+        title: courseTitle.trim() || copy.genericCourseTitle,
+        level: level.trim() || copy.genericLevel,
         source: {
           fileName: files[0]?.name,
           fileNames: files.map((file) => file.name),
@@ -461,22 +475,31 @@ export function IngestionStudio() {
       );
 
       setMessage(
-        "Đã nhập " +
+        copy.importedPrefix +
+          " " +
           runtimeCourse.lessons.length +
-          " bài, " +
+          " " +
+          copy.importedLessons +
+          ", " +
           runtimeCourse.questions.length +
-          " câu luyện · " +
+          " " +
+          copy.importedQuestions +
+          " · " +
           runtimeCourse.lessons.reduce(
             (sum, lesson) => sum + (lesson.media?.length ?? 0),
             0,
           ) +
-          " media · grounding trung bình " +
+          " " +
+          copy.importedMedia +
+          " · " +
+          copy.groundingAverage +
+          " " +
           averageGrounding +
           "%.",
       );
     } catch (reason) {
       setStatus("mapped");
-      setError(reason instanceof Error ? reason.message : "Không thể tạo giáo trình.");
+      setError(reason instanceof Error ? reason.message : copy.genericGenerateError);
     }
   }
 
@@ -484,21 +507,18 @@ export function IngestionStudio() {
     <div className="ingestion-studio">
       <section className="ingest-hero">
         <div>
-          <span className="kicker">CONTENT INGESTION · 교재 가져오기</span>
-          <h1>Thả PDF vào, Haneul tự dựng giáo trình học.</h1>
-          <p>
-            PDF chỉ được đọc trong phiên import. AI xử lý theo từng bài và mọi kiến thức
-            được yêu cầu giữ nguồn trang để hạn chế sinh nội dung lệch sách.
-          </p>
+          <span className="kicker">{copy.kicker}</span>
+          <h1>{copy.title}</h1>
+          <p>{copy.intro}</p>
         </div>
         <div className="ingest-hero-side">
           <div className="ingest-orb"><WandSparkles size={42} /></div>
           <span className={aiStatus?.configured ? "ai-ready-badge ready" : "ai-ready-badge"}>
             {aiStatus?.configured
-              ? "AI ready · " + aiStatus.contentModel
+              ? copy.aiReady + " · " + aiStatus.contentModel
               : aiStatus
-                ? "AI chưa cấu hình"
-                : "Đang kiểm tra AI…"}
+                ? copy.aiMissing
+                : copy.aiChecking}
           </span>
         </div>
       </section>
@@ -507,13 +527,13 @@ export function IngestionStudio() {
         <article className="ingest-panel">
           <div className="ingest-panel-title">
             <span>01</span>
-            <div><strong>Chọn tài liệu</strong><small>Giáo trình chính trước, workbook sau</small></div>
+            <div><strong>{copy.chooseDocuments}</strong><small>{copy.orderHint}</small></div>
           </div>
 
           <label className="pdf-dropzone">
             <UploadCloud size={30} />
-            <strong>Chọn một hoặc nhiều PDF</strong>
-            <span>PDF đầu tiên được dùng để xác định thứ tự bài học.</span>
+            <strong>{copy.choosePdf}</strong>
+            <span>{copy.primaryHint}</span>
             <input
               accept="application/pdf,.pdf"
               multiple
@@ -535,7 +555,7 @@ export function IngestionStudio() {
                   <FileText size={18} />
                   <div>
                     <strong>{file.name}</strong>
-                    <span>{index === 0 ? "Giáo trình chính" : "Tài liệu bổ sung"} · {formatBytes(file.size)}</span>
+                    <span>{index === 0 ? copy.primary : copy.supplement} · {formatBytes(file.size)}</span>
                   </div>
                   <span className="file-order">0{index + 1}</span>
                 </div>
@@ -549,29 +569,29 @@ export function IngestionStudio() {
             onClick={analyzeFiles}
           >
             {status === "extracting" ? <LoaderCircle className="spin" size={18} /> : <Sparkles size={18} />}
-            Phân tích cấu trúc sách
+            {copy.analyze}
           </button>
         </article>
 
         <article className="ingest-panel">
           <div className="ingest-panel-title">
             <span>02</span>
-            <div><strong>Bản đồ giáo trình</strong><small>Kiểm tra trước khi biên toàn bộ bài</small></div>
+            <div><strong>{copy.mapTitle}</strong><small>{copy.mapHint}</small></div>
           </div>
 
           <div className="ingest-fields">
             <label>
-              <span>Tên giáo trình</span>
+              <span>{copy.courseName}</span>
               <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} />
             </label>
             <label>
-              <span>Cấp độ</span>
+              <span>{copy.level}</span>
               <input value={level} onChange={(event) => setLevel(event.target.value)} />
             </label>
             <label>
-              <span>Edition</span>
+              <span>{copy.edition}</span>
               <input
-                placeholder="Tự nhận diện"
+                placeholder={copy.autoDetect}
                 value={edition}
                 onChange={(event) => setEdition(event.target.value)}
               />
@@ -580,15 +600,15 @@ export function IngestionStudio() {
 
           {documents.length ? (
             <div className="ingest-metrics">
-              <div><strong>{documents.length}</strong><span>PDF</span></div>
-              <div><strong>{totalPages}</strong><span>trang</span></div>
-              <div><strong>{lessonIds.length}</strong><span>bài</span></div>
-              <div><strong>{averageCharacters}</strong><span>ký tự/trang</span></div>
+              <div><strong>{documents.length}</strong><span>{copy.pdf}</span></div>
+              <div><strong>{totalPages}</strong><span>{copy.pages}</span></div>
+              <div><strong>{lessonIds.length}</strong><span>{copy.lessons}</span></div>
+              <div><strong>{averageCharacters}</strong><span>{copy.charsPerPage}</span></div>
             </div>
           ) : (
             <div className="ingest-placeholder">
               <BookOpenCheck size={28} />
-              <span>Bản đồ bài học sẽ xuất hiện sau khi phân tích PDF.</span>
+              <span>{copy.mapPlaceholder}</span>
             </div>
           )}
 
@@ -598,9 +618,9 @@ export function IngestionStudio() {
                 const next = primaryMap.starts[index + 1];
                 return (
                   <div key={item.lessonId}>
-                    <span>Bài {item.lessonId}</span>
+                    <span>{copy.lessonLabel} {item.lessonId}</span>
                     <strong>p.{item.pageNumber}{next ? "–" + (next.pageNumber - 1) : "+"}</strong>
-                    <small>{item.titleHint || "Đã nhận diện tiêu đề bài"}</small>
+                    <small>{item.titleHint || copy.detectedTitle}</small>
                   </div>
                 );
               })}
@@ -608,25 +628,18 @@ export function IngestionStudio() {
           ) : null}
 
           {ocrUsed ? (
-            <div className="ingest-warning">
-              Đã dùng vision OCR cho các trang thiếu text layer. Hãy kiểm tra nhanh bản đồ bài học trước khi tạo toàn bộ giáo trình.
-            </div>
+            <div className="ingest-warning">{copy.ocrUsed}</div>
           ) : likelyScanned ? (
-            <div className="ingest-warning">
-              Một số trang vẫn có rất ít text sau phân tích. Nội dung đó sẽ được đánh dấu cần kiểm tra khi biên bài.
-            </div>
+            <div className="ingest-warning">{copy.lowText}</div>
           ) : null}
         </article>
       </section>
 
       <section className="ingest-run-card">
         <div className="ingest-run-copy">
-          <span className="eyebrow">03 · GENERATE</span>
-          <h2>Tạo toàn bộ nội dung học tập</h2>
-          <p>
-            Mỗi bài được xử lý riêng: vocabulary, grammar, listening transcript nếu có,
-            speaking, reading, writing và quiz. Không có nội dung nguồn thì không tự bịa phần đó.
-          </p>
+          <span className="eyebrow">{copy.generateStep}</span>
+          <h2>{copy.generateTitle}</h2>
+          <p>{copy.generateBody}</p>
         </div>
 
         <button
@@ -635,7 +648,7 @@ export function IngestionStudio() {
           onClick={generateCourse}
         >
           {status === "generating" ? <LoaderCircle className="spin" size={18} /> : <WandSparkles size={18} />}
-          Tạo giáo trình
+          {copy.generate}
         </button>
 
         {(status === "extracting" || status === "generating" || status === "done") ? (
@@ -650,8 +663,8 @@ export function IngestionStudio() {
         {status === "done" ? (
           <div className="ingest-success">
             <CheckCircle2 size={24} />
-            <div><strong>Giáo trình đã sẵn sàng để học.</strong><span>{message}</span></div>
-            <Link className="primary-button" href="/learn">Mở giáo trình <ArrowRight size={17} /></Link>
+            <div><strong>{copy.successTitle}</strong><span>{message}</span></div>
+            <Link className="primary-button" href="/learn">{copy.openCourse} <ArrowRight size={17} /></Link>
           </div>
         ) : null}
       </section>
