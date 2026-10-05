@@ -122,9 +122,13 @@ Khuyến nghị compiler:
 
 Đọc checkpoint biên soạn theo từng bài. ChatGPT phải gọi tool này trước khi đọc source trong mọi phiên mới hoặc phiên resume để bỏ qua các bài đã hoàn thành.
 
+### save_work_checkpoint
+
+Lưu checkpoint giữa bài theo phase `source-reading`, `drafting` hoặc `qa`. Checkpoint có thể chứa source cursor, notes và partial lesson/question state. Dùng tool này sau các chunk đọc nguồn quan trọng để nếu phiên bị ngắt thì tiếp tục đúng trang gần nhất thay vì đọc lại từ đầu bài.
+
 ### save_lesson_draft
 
-Lưu một bài đã biên và QA xong thành checkpoint bền vững. Gọi lại cùng lessonId sẽ chỉ ghi đè bài đó, không ảnh hưởng các bài khác.
+Lưu một bài đã biên và QA xong thành checkpoint bền vững. Gọi lại cùng lessonId sẽ chỉ ghi đè bài đó, không ảnh hưởng các bài khác. Khi lesson draft được lưu, mid-lesson work checkpoint của bài đó được xóa tự động.
 
 Checkpoint nằm trong:
 
@@ -338,9 +342,13 @@ Workflow chuẩn:
 ```text
 get_compilation_progress
         ↓
-đọc source của bài chưa xong
+nếu activeWork có dữ liệu → resume đúng phase/sourceCursor
         ↓
-biên + QA bài đó
+đọc một chunk source chưa xong
+        ↓
+save_work_checkpoint
+        ↓
+tiếp tục đọc / draft / QA
         ↓
 save_lesson_draft
         ↓
@@ -349,14 +357,14 @@ lặp lại với bài tiếp theo
 finalize_course_bundle
 ```
 
-Nếu ChatGPT bị ngắt ở Bài 12:
+Nếu ChatGPT bị ngắt ở giữa Bài 12:
 
 ```text
-Bài 1-11 = draft đã lưu
-Bài 12   = chưa lưu
+Bài 1-11 = lesson draft đã lưu
+Bài 12   = work checkpoint, ví dụ source cursor p.187
 ```
 
-Phiên sau gọi `get_compilation_progress` và tiếp tục từ Bài 12. Không đọc/biên lại Bài 1-11.
+Phiên sau gọi `get_compilation_progress`, bỏ qua Bài 1-11 và tiếp tục Bài 12 từ checkpoint gần nhất. Không cần đọc lại từ đầu khóa hoặc từ đầu bài.
 
 Nếu cần sửa riêng Bài 5, gọi `save_lesson_draft` lại với lessonId 5. Chỉ checkpoint Bài 5 được thay thế.
 
@@ -376,3 +384,12 @@ learnerMeaning
 Các field legacy `title/vi`, `vocabulary.ko/vi`, `dialogue.ko/vi` vẫn được normalize tự động để UI cũ tiếp tục chạy.
 
 Vì vậy có thể thêm ngôn ngữ mới bằng LanguageProfile mà không đổi MCP job protocol, event protocol hay checkpoint workflow.
+
+
+## Automatic stale-job recovery
+
+Browser Import Studio theo dõi job đang `processing`. Nếu job không được cập nhật quá 20 phút, Haneul coi phiên AI đã bị gián đoạn, tự gọi requeue và phát lại `import_job.queued`.
+
+Mỗi `save_work_checkpoint` hoặc `save_lesson_draft` cập nhật `updatedAt`, vì vậy một compiler đang hoạt động và checkpoint đều đặn sẽ không bị requeue nhầm.
+
+Đây là lớp recovery bổ sung cho trường hợp Work chat/tunnel bị ngắt trong lúc biên sách dài.
