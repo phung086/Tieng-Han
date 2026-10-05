@@ -68,7 +68,7 @@ type PdfOperatorList = Awaited<ReturnType<PdfPage["getOperatorList"]>>;
 
 async function renderPagePreview(
   page: PdfPage,
-  scale = ingestionConfig.pdf.previewScale,
+  scale: number = ingestionConfig.pdf.previewScale,
 ) {
   const baseViewport = page.getViewport({ scale });
   const widthScale =
@@ -129,7 +129,9 @@ function rawPixelsToDataUrl(image: PdfImageLike) {
   const context = canvas.getContext("2d");
   if (!context) return null;
 
-  context.putImageData(new ImageData(rgba, width, height), 0, 0);
+  const safeRgba = new Uint8ClampedArray(new ArrayBuffer(rgba.length));
+  safeRgba.set(rgba);
+  context.putImageData(new ImageData(safeRgba, width, height), 0, 0);
 
   return {
     width,
