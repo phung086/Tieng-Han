@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "sources": [
+    {
+      "id": "ko-core-01",
+      "role": "core",
+      "level": "beginner-1",
+      "title": "Tiếng Hàn Tổng hợp dành cho người Việt Nam 1",
+      "localFile": "SÁCH SƠ CẤP 1.pdf",
+      "notes": "Hangeul + 15 bài; bốn kỹ năng, phát âm, văn hóa."
+    },
+    {
+      "id": "ko-core-02",
+      "role": "core",
+      "level": "beginner-2",
+      "title": "Tiếng Hàn Tổng hợp dành cho người Việt Nam 2",
+      "localFile": "sách học.pdf",
+      "notes": "15 bài tiếp nối Sơ cấp 1."
+    },
+    {
+      "id": "ko-core-03",
+      "role": "core",
+      "level": "intermediate-3",
+      "title": "Tiếng Hàn Tổng hợp dành cho người Việt Nam 3",
+      "localFile": "SÁCH.pdf",
+      "notes": "15 bài đầu của trình độ trung cấp."
+    },
+    {
+      "id": "ko-ref-grammar-basic",
+      "role": "reference",
+      "level": "beginner",
+      "title": "Ngữ pháp tiếng Hàn sơ cấp",
+      "localFile": "NGỮ PHÁP TIẾNG HÀN SƠ CẤP.docx",
+      "notes": "Kho giải thích ngữ pháp/remedial, không thay giáo trình chính."
+    },
+    {
+      "id": "ko-practice-s2-translation-1000",
+      "role": "practice",
+      "level": "beginner-2",
+      "title": "1000 câu luyện dịch Việt-Hàn Sơ cấp 2",
+      "localFile": "1000 câu luyện dịch Sơ cấp 2. ( đáp án cuối sách ) .pdf",
+      "notes": "Active recall và sentence production theo cấu trúc đã học."
+    },
+    {
+      "id": "ko-practice-s2-workbook-plus",
+      "role": "practice",
+      "level": "beginner-2",
+      "title": "Sách bài tập bổ trợ Tiếng Hàn tổng hợp Sơ cấp 2",
+      "localFile": "SBT-NÂNG-CAO- ( đáp án cuối sách ).pdf",
+      "notes": "Nghe, đọc, dịch, ngữ pháp, củng cố và TOPIK sơ cấp."
+    }
+  ],
+  "copyright": "Không commit bản scan/PDF có bản quyền vào repo công khai. Repo chứa curriculum, metadata và nội dung học đã cấu trúc; file nguồn được import cục bộ khi triển khai."
+}
