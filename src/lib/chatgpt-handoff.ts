@@ -55,7 +55,7 @@ function bytesToHex(bytes: Uint8Array) {
 function normalizeTitle(value: string) {
   return value
     .normalize("NFKD")
-    .replace(/[^\\p{L}\\p{N}]+/gu, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
 }
