@@ -19,6 +19,7 @@ import type {
   ImportJob,
   ImportJobStatus,
 } from "@/lib/import-jobs";
+import { handleMcpEventRpc } from "@/lib/mcp-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -455,6 +456,10 @@ function unauthorizedResponse() {
 
 async function handleMcp(request: Request) {
   if (!authorizeMcp(request)) return unauthorizedResponse();
+
+  const eventResponse = await handleMcpEventRpc(request);
+  if (eventResponse) return eventResponse;
+
   return handler.fetch(request);
 }
 
