@@ -407,6 +407,13 @@ export async function saveLessonDraft(
     draft,
   );
 
+  await updateImportJob(jobId, (current) => ({
+    ...current,
+    status:
+      current.status === "queued" ? "processing" : current.status,
+    error: undefined,
+  }));
+
   return draft;
 }
 
