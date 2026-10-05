@@ -42,6 +42,7 @@ import {
   queueMcpImportJob,
 } from "@/lib/mcp-import-client";
 import type { ImportJobStatus } from "@/lib/import-jobs";
+import { defaultLanguageProfile } from "@/lib/language-profile";
 
 type ImportCopy = UiMessages["import"];
 
@@ -681,6 +682,7 @@ export function IngestionStudio() {
 
       const runtimeCourse: RuntimeCourse = {
         id: "chatgpt-imported-" + Date.now(),
+        language: bundle.language ?? defaultLanguageProfile,
         title:
           bundle.course.title.trim() ||
           courseTitle.trim() ||
@@ -881,6 +883,7 @@ export function IngestionStudio() {
 
       const runtimeCourse: RuntimeCourse = {
         id: "imported-" + Date.now(),
+        language: defaultLanguageProfile,
         title: courseTitle.trim() || copy.genericCourseTitle,
         level: level.trim() || copy.genericLevel,
         source: {
