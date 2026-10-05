@@ -152,33 +152,44 @@ export async function ocrLowTextPages(
 export function localLessonStarts(document: ExtractedDocument) {
   const starts: { lessonId: number; pageNumber: number; titleHint: string }[] = [];
   const patterns = [
-    /(?:^|\s)(?:bài|lesson|unit)\s*(\d{1,2})\b/i,
-    /(?:^|\s)(?:제\s*)?(\d{1,2})\s*과\b/,
-    /(?:^|\s)과\s*(\d{1,2})\b/,
+    /(?:bài|lesson|unit)\s*(\d{1,2})\b/gi,
+    /(?:제\s*)?(\d{1,2})\s*과\b/g,
+    /과\s*(\d{1,2})\b/g,
   ];
 
   for (const page of document.pages) {
-    const head = page.text.slice(0, 1200);
+    const head = page.text.slice(0, 1600);
+    const candidates: Array<{ lessonId: number; index: number }> = [];
 
     for (const pattern of patterns) {
-      const match = head.match(pattern);
-      if (!match) continue;
-
-      const lessonId = Number(match[1]);
-      if (!Number.isFinite(lessonId) || lessonId < 1 || lessonId > 99) continue;
-
-      if (!starts.some((item) => item.lessonId === lessonId)) {
-        starts.push({
-          lessonId,
-          pageNumber: page.pageNumber,
-          titleHint: head.slice(
-            Math.max(0, match.index ?? 0),
-            Math.min(head.length, (match.index ?? 0) + 120),
-          ),
-        });
+      pattern.lastIndex = 0;
+      for (const match of head.matchAll(pattern)) {
+        const lessonId = Number(match[1]);
+        if (!Number.isFinite(lessonId) || lessonId < 1 || lessonId > 99) continue;
+        candidates.push({ lessonId, index: match.index ?? 0 });
       }
-      break;
     }
+
+    const uniqueIds = [...new Set(candidates.map((item) => item.lessonId))];
+
+    // A page that lists many lesson numbers is almost always 목차 / table of contents.
+    if (uniqueIds.length !== 1) continue;
+
+    const lessonId = uniqueIds[0];
+    if (starts.some((item) => item.lessonId === lessonId)) continue;
+
+    const first = candidates
+      .filter((item) => item.lessonId === lessonId)
+      .sort((a, b) => a.index - b.index)[0];
+
+    starts.push({
+      lessonId,
+      pageNumber: page.pageNumber,
+      titleHint: head.slice(
+        Math.max(0, first.index),
+        Math.min(head.length, first.index + 140),
+      ),
+    });
   }
 
   return starts.sort((a, b) => a.lessonId - b.lessonId);
