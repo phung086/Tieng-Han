@@ -109,6 +109,7 @@ export async function ocrLowTextPages(
       if (!context) throw new Error("Trình duyệt không tạo được canvas để OCR.");
 
       await page.render({
+        canvas,
         canvasContext: context,
         viewport,
       }).promise;
