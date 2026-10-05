@@ -30,6 +30,7 @@ type LearningContextValue = {
   completeActivity: (activityId: string, xp?: number) => void;
   completeLessonSkill: (lessonId: number, skill: SkillKey) => void;
   resetProgress: () => void;
+  resetForCourse: () => void;
 };
 
 const STORAGE_KEY = "haneul-learning-state-v2";
@@ -56,7 +57,7 @@ const defaultState: LearningState = {
   dailyGoal: 50,
   todayXp: 0,
   lastActiveDate: null,
-  lessonProgress: {},
+  lessonProgress: { "1": 100, "2": 100, "3": 0 },
   skills: {
     vocabulary: { correct: 0, total: 0 },
     grammar: { correct: 0, total: 0 },
@@ -264,6 +265,13 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
     },
     resetProgress() {
       setState(defaultState);
+      window.localStorage.removeItem(STORAGE_KEY);
+    },
+    resetForCourse() {
+      setState({
+        ...defaultState,
+        lessonProgress: {},
+      });
       window.localStorage.removeItem(STORAGE_KEY);
     },
   }), [state, hydrated]);
