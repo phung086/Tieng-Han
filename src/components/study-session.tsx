@@ -10,7 +10,7 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 const normalize = (value: string) => value.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
 
 export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
-  const { recordAnswer } = useLearning();
+  const { recordAnswer, completeLessonSkill } = useLearning();
   const questions = useMemo(() => studyQuestions.filter((item) => item.lessonId === lessonId), [lessonId]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -38,7 +38,7 @@ export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function next() {
-    if (index === questions.length - 1) { setFinished(true); return; }
+    if (index === questions.length - 1) { completeLessonSkill(lessonId, "grammar"); setFinished(true); return; }
     setIndex((value) => value + 1); setAnswer(""); setTokens([]); setChecked(false);
   }
 
