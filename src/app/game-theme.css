@@ -1423,3 +1423,23 @@ body::after {
     flex:0 0 auto;
   }
 }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .haneul-mascot,
+  .mascot-star,
+  .world-stop.current .world-node::after {
+    animation: none !important;
+  }
+
+  .nav-item,
+  .primary-button,
+  .secondary-button,
+  .skill-card,
+  .lesson-card,
+  .lesson-step-list > button,
+  .lesson-step-list > a,
+  .lesson-vocab-grid article {
+    transition: none !important;
+  }
+}
