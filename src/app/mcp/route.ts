@@ -9,6 +9,7 @@ import {
   getImportJob,
   listImportJobs,
   readImportPages,
+  requeueImportJob,
   submitImportBundle,
 } from "@/lib/import-job-store";
 import {
@@ -179,6 +180,32 @@ function buildMcpServer() {
     },
   );
 
+
+  server.registerTool(
+    "requeue_import_job",
+    {
+      description:
+        "Return a stuck or interrupted processing/failed Haneul import job to queued so another ChatGPT run can pick it up. This re-emits import_job.queued.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+      }),
+    },
+    async ({ jobId }) => {
+      try {
+        const job = await requeueImportJob(jobId);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(withoutResult(job), null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
   server.registerTool(
     "read_import_pages",
     {
