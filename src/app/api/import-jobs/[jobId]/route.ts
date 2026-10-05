@@ -3,6 +3,7 @@ import {
   consumeImportJob,
   getImportJob,
   queueImportJob,
+  requeueImportJob,
 } from "@/lib/import-job-store";
 
 export const runtime = "nodejs";
@@ -57,6 +58,12 @@ export async function PATCH(
     if (body.action === "consume") {
       return NextResponse.json({
         job: await consumeImportJob(jobId),
+      });
+    }
+
+    if (body.action === "requeue") {
+      return NextResponse.json({
+        job: await requeueImportJob(jobId),
       });
     }
 
