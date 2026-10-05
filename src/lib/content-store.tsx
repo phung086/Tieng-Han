@@ -5,6 +5,7 @@ import {
   type LessonContent,
   type StudyQuestion,
 } from "@/data/content";
+import type { LanguageProfile } from "@/lib/language-profile";
 import {
   clearStoredCourse,
   readStoredCourse,
@@ -15,6 +16,7 @@ export type RuntimeCourse = {
   id: string;
   title: string;
   level: string;
+  language?: LanguageProfile;
   source?: {
     fileName?: string;
     fileNames?: string[];
