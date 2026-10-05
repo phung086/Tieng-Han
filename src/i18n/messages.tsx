@@ -87,6 +87,8 @@ export const viMessages = {
     completedLessons: "bài hoàn thành",
     remainingLessons: "bài còn lại",
     localProgress: "Local progress",
+    koreanBook: "한국어",
+    beginnerBook: "Korean Beginner",
     current: "Đang học",
     done: "Đã xong",
     reviewLesson: "Ôn lại bài",
