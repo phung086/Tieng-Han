@@ -101,6 +101,65 @@ async function aiMapDocument(document: ExtractedDocument) {
   return dedupeStarts(collected);
 }
 
+type SourcePageInput = {
+  fileName: string;
+  pageNumber: number;
+  text: string;
+};
+
+type ValidationPayload = {
+  coverageScore: number;
+  groundingScore: number;
+  issues: string[];
+  missingTopics: string[];
+  pass: boolean;
+  error?: string;
+};
+
+async function requestGeneratedLesson(
+  lessonId: number,
+  pages: SourcePageInput[],
+  revisionNotes: string[] = [],
+) {
+  const response = await fetch("/api/ingest/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lessonId, pages, revisionNotes }),
+  });
+
+  const payload = (await response.json()) as GeneratedPayload & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Không thể sinh Bài " + lessonId + ".");
+  }
+
+  if (!isGeneratedLesson(payload.lesson)) {
+    throw new Error("AI trả về dữ liệu không hợp lệ cho Bài " + lessonId + ".");
+  }
+
+  return payload as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
+}
+
+async function validateGeneratedLesson(
+  lesson: LessonContent,
+  questions: StudyQuestion[],
+  pages: SourcePageInput[],
+) {
+  const response = await fetch("/api/ingest/validate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lesson, questions, pages }),
+  });
+
+  const result = (await response.json()) as ValidationPayload;
+
+  if (!response.ok) {
+    throw new Error(result.error || "Không thể kiểm định nội dung bài học.");
+  }
+
+  return result;
+}
+
 export function IngestionStudio() {
   const { replaceCourse } = useContent();
   const { resetProgress } = useLearning();
@@ -235,33 +294,72 @@ export function IngestionStudio() {
 
         if (!sourcePages.length) continue;
 
-        const response = await fetch("/api/ingest/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lessonId, pages: sourcePages }),
-        });
+        let payload = await requestGeneratedLesson(lessonId, sourcePages);
+        let lessonQuestions = (payload.questions ?? []).map((question) => ({
+          ...question,
+          lessonId,
+        }));
 
-        const payload = (await response.json()) as GeneratedPayload & { error?: string };
+        setMessage(
+          "Đang kiểm định Bài " +
+            lessonId +
+            " · " +
+            (index + 1) +
+            "/" +
+            lessonIds.length +
+            "…",
+        );
 
-        if (!response.ok) {
-          throw new Error(payload.error || "Không thể sinh Bài " + lessonId + ".");
+        let validation = await validateGeneratedLesson(
+          { ...payload.lesson, id: lessonId },
+          lessonQuestions,
+          sourcePages,
+        );
+
+        if (!validation.pass) {
+          const revisionNotes = [
+            ...validation.issues.map((item) => "Lỗi: " + item),
+            ...validation.missingTopics.map((item) => "Thiếu: " + item),
+          ];
+
+          setMessage("Bài " + lessonId + " chưa đạt QA, đang tự biên lại…");
+          payload = await requestGeneratedLesson(lessonId, sourcePages, revisionNotes);
+          lessonQuestions = (payload.questions ?? []).map((question) => ({
+            ...question,
+            lessonId,
+          }));
+
+          validation = await validateGeneratedLesson(
+            { ...payload.lesson, id: lessonId },
+            lessonQuestions,
+            sourcePages,
+          );
         }
 
-        if (!isGeneratedLesson(payload.lesson)) {
-          throw new Error("AI trả về dữ liệu không hợp lệ cho Bài " + lessonId + ".");
+        if (validation.coverageScore < 75 || validation.groundingScore < 85) {
+          throw new Error(
+            "Bài " +
+              lessonId +
+              " không đạt ngưỡng kiểm định sau lần tự sửa: coverage " +
+              validation.coverageScore +
+              "%, grounding " +
+              validation.groundingScore +
+              "%.",
+          );
         }
 
         lessons.push({
           ...payload.lesson,
           id: lessonId,
+          quality: {
+            coverageScore: validation.coverageScore,
+            groundingScore: validation.groundingScore,
+            issues: validation.issues,
+            missingTopics: validation.missingTopics,
+          },
         });
 
-        for (const question of payload.questions ?? []) {
-          questions.push({
-            ...question,
-            lessonId,
-          });
-        }
+        questions.push(...lessonQuestions);
 
         setProgress(Math.round(((index + 1) / lessonIds.length) * 100));
       }
@@ -288,12 +386,21 @@ export function IngestionStudio() {
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
+      const averageGrounding = Math.round(
+        runtimeCourse.lessons.reduce(
+          (sum, lesson) => sum + (lesson.quality?.groundingScore ?? 0),
+          0,
+        ) / runtimeCourse.lessons.length,
+      );
+
       setMessage(
         "Đã nhập " +
           runtimeCourse.lessons.length +
-          " bài và " +
+          " bài, " +
           runtimeCourse.questions.length +
-          " câu luyện vào Haneul.",
+          " câu luyện · grounding trung bình " +
+          averageGrounding +
+          "%.",
       );
     } catch (reason) {
       setStatus("mapped");
