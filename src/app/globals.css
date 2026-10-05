@@ -4939,6 +4939,29 @@ a:focus-visible {
   line-height: 1.6;
 }
 
+.mcp-bridge-status {
+  display: grid;
+  gap: 4px;
+  max-width: 760px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #d8e5ff;
+  border-radius: 14px;
+  background: #f5f8ff;
+}
+
+.mcp-bridge-status strong {
+  color: var(--primary);
+  font-size: 9px;
+}
+
+.mcp-bridge-status span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
 @media (max-width: 640px) {
   .handoff-actions {
     display: grid;
