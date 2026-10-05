@@ -35,6 +35,7 @@ export async function POST(request: Request) {
         "- coverageScore: dữ liệu đã bao phủ từ vựng, ngữ pháp, nghe/nói, đọc/viết, hội thoại, phát âm, văn hóa và các mục/hoạt động quan trọng của nguồn đến đâu.",
         "- groundingScore: các nội dung generated có thực sự được hỗ trợ bởi nguồn hay có hallucination.",
         "Câu hỏi luyện tập mới được phép paraphrase/tạo distractor, nhưng đáp án/kiến thức phải bám nguồn.",
+        "Kiểm tra thêm tính sẵn sàng học: lesson cần có vocabulary/grammar theo nguồn và practice đủ Nghe, Nói, Đọc, Viết. Phần Đọc/Viết được phép derived từ chính nội dung nguồn nếu sách không có section riêng, nhưng không được thêm curriculum mới.",
         "Trả JSON duy nhất:",
         '{"coverageScore":0,"groundingScore":0,"issues":["..."],"missingTopics":["..."],"pass":true}',
         "pass chỉ true khi coverageScore >= 82 và groundingScore >= 90 và không có lỗi nghiêm trọng.",
