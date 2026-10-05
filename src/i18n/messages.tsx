@@ -228,6 +228,8 @@ export const viMessages = {
     audio: "Audio từ tài liệu",
     linkedDocument: "Tài liệu liên kết",
     closeImage: "Đóng hình ảnh",
+    showAll: "Xem tất cả tư liệu",
+    showLess: "Thu gọn tư liệu",
   },
   vocabulary: {
     eyebrow: "어휘 · TỪ VỰNG",
