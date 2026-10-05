@@ -128,7 +128,7 @@ export async function consumeMcpImportJob(jobId: string) {
       body: JSON.stringify({ action: "consume" }),
     },
   );
-  return (await jsonResponse<{ job: ImportJob }>(response)).job;
+  return await jsonResponse<{ job: ImportJob; course?: import("@/lib/content-store").RuntimeCourse }>(response);
 }
 
 export async function requeueMcpImportJob(jobId: string) {
