@@ -77,13 +77,17 @@ import_job.queued
 Instruction tối giản:
 
 ```text
-Khi Haneul phát import_job.queued, hãy biên import job đó đến khi hoàn tất.
-Dùng Haneul Learning Bridge, gọi get_compilation_contract và tuân theo
-workflow/checkpoint trong contract. Chỉ dùng nội dung có nguồn từ PDF,
-không bịa nội dung, và finalize course khi tất cả bài thật đã hoàn thành.
+Khi Haneul phát import_job.queued, lấy jobId từ event và gọi
+prepare_import_job(jobId). Sau đó làm đúng workflow trong contract trả về
+cho tới finalize_course_bundle. Chỉ dùng nội dung có nguồn từ PDF.
 ```
 
-Các quy tắc chi tiết về grounding, lesson structure, lượng bài luyện, checkpoint và QA đã nằm trong `get_compilation_contract`, vì vậy không cần lặp lại một prompt dài cho mỗi sách.
+`prepare_import_job` tự gom ba việc trước đây phải làm riêng: đọc job, claim job
+nếu đang queued, và trả về cả compilation contract + checkpoint progress. Vì vậy
+automation chỉ cần được cấu hình một lần; mỗi sách mới không cần prompt mới.
+
+Các quy tắc chi tiết về grounding, lesson structure, lượng bài luyện, checkpoint và QA
+đều nằm trong compilation contract, vì vậy không lặp lại một prompt dài cho từng PDF.
 
 Subscription mặc định được tạo với thời hạn dài hơn và Haneul có endpoint trạng thái để giao diện biết auto-compile đã sẵn sàng hay chưa.
 
