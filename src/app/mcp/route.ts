@@ -154,6 +154,63 @@ function buildMcpServer() {
   );
 
   server.registerTool(
+    "prepare_import_job",
+    {
+      description:
+        "One-call bootstrap for the automated Haneul compiler. Reads the job, claims it when queued, and returns the current compilation contract plus resumable progress so ChatGPT can start or resume without separate setup calls.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+      }),
+    },
+    async ({ jobId }) => {
+      try {
+        let job = await getImportJob(jobId);
+        if (!job) throw new Error("Không tìm thấy import job.");
+
+        if (job.status === "queued") {
+          job = await claimImportJob(jobId);
+        }
+
+        if (!["processing", "ready", "consumed"].includes(job.status)) {
+          throw new Error(
+            "Import job chưa sẵn sàng để biên. Trạng thái hiện tại: " +
+              job.status +
+              ".",
+          );
+        }
+
+        const [progress, contract] = await Promise.all([
+          getCompilationProgress(jobId),
+          Promise.resolve(getCompilationContract(job.language)),
+        ]);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  job: withoutResult(job),
+                  progress,
+                  contract,
+                  nextAction:
+                    job.status === "processing"
+                      ? "Resume unfinished textbook lessons from progress, save checkpoints/drafts, then finalize_course_bundle."
+                      : "No compilation work is required for this job status.",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
     "get_import_job",
     {
       description:
