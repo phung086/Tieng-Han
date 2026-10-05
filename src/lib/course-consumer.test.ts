@@ -186,6 +186,22 @@ describe("course-consumer", () => {
     expect(active?.lessons).toHaveLength(1);
   });
 
+
+  it("uses language-neutral fallbacks for blank imported metadata", () => {
+    const bundle = sampleBundle();
+    const runtime = buildRuntimeCourseFromBundle("job-generic", {
+      ...bundle,
+      course: {
+        ...bundle.course,
+        title: "",
+        level: "",
+      },
+    });
+
+    expect(runtime.title).toBe("Tiếng Hàn");
+    expect(runtime.level).toBe("General");
+  });
+
   it("buildRuntimeCourseFromBundle formats course bundle correctly", () => {
     const runtime = buildRuntimeCourseFromBundle(
       "job-123",
