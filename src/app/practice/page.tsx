@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, BookOpenText, Brain, Headphones, Layers3, Mic2, PenLine, Sparkles } from "lucide-react";
-import { course } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 
 const modes = [
@@ -16,6 +16,7 @@ const modes = [
 
 export default function PracticePage() {
   const { state } = useLearning();
+  const { course } = useContent();
   const current =
     course.lessons.find((lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100) ??
     course.lessons[course.lessons.length - 1];
