@@ -19,6 +19,7 @@ import {
   type ExtractedDocument,
 } from "@/lib/pdf-extractor";
 import { useContent, type RuntimeCourse } from "@/lib/content-store";
+import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 
 type LessonStart = {
@@ -100,6 +101,7 @@ async function aiMapDocument(document: ExtractedDocument) {
 
 export function IngestionStudio() {
   const { replaceCourse } = useContent();
+  const { resetProgress } = useLearning();
   const [files, setFiles] = useState<File[]>([]);
   const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
   const [maps, setMaps] = useState<DocumentMap[]>([]);
@@ -260,6 +262,7 @@ export function IngestionStudio() {
         questions,
       };
 
+      resetProgress();
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
