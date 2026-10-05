@@ -1,35 +1,61 @@
-# Kiến trúc dự án
+# Architecture — Local First
 
-## Mục tiêu
+## Quyết định
 
-Tiếng Hàn là nền tảng ôn luyện bám sát giáo trình. Mọi nội dung luyện tập phải truy vết được về:
+Giai đoạn hiện tại dùng **một ứng dụng Next.js** thay vì tách web/API/database service.
 
-`Course -> Book -> Unit -> Section -> Source reference`.
+Lý do:
 
-## Monorepo
+- đây là ứng dụng cá nhân;
+- cần thời gian phát triển tập trung vào nội dung và UX;
+- local phải chạy nhanh, ít dependency hạ tầng;
+- tách service sớm không tạo thêm giá trị cho bài toán học tập.
 
-- `apps/web`: Next.js — giao diện học viên và admin.
-- `apps/api`: NestJS — API nghiệp vụ.
-- `packages/database`: Prisma schema và migrations.
-- Package dùng chung sẽ bổ sung khi bắt đầu auth, design system và AI pipeline.
+## Kiến trúc hiện tại
 
-## Domain ban đầu
+```text
+Browser
+  |
+Next.js App Router
+  |
+UI + local learning state
+  |
+demo data / textbook seed
+```
 
-- Course
-- Book
-- Unit
-- Section
-- Vocabulary
-- GrammarPoint
-- QuizItem
+Phase dữ liệu tiếp theo:
 
-Quiz không bị khóa vào cấu trúc A/B/C/D. Payload nội dung, choices và answer dùng JSON để hỗ trợ nhiều loại bài: multiple choice, matching, fill blank, reorder, dictation, speaking, reading comprehension, translation và writing.
+```text
+Next.js
+  |
+SQLite local file
+  |
+Course -> Book -> Unit -> Section
+                  |-> Vocabulary
+                  |-> Grammar
+                  |-> Reading
+                  |-> Listening
+                  |-> Exercise
+                  |-> Quiz
+```
 
-## Nguyên tắc kiến trúc
+## Production sau này
+
+Ưu tiên đường deploy đơn giản:
+
+```text
+1 Docker container
++ 1 persistent volume cho SQLite/media
++ backup định kỳ
+```
+
+Nếu nhu cầu thay đổi, tầng persistence sẽ được thay bằng Postgres/Turso mà không đổi luồng UI.
+
+## Nguyên tắc domain
 
 1. Giáo trình là source of truth.
-2. Nội dung AI sinh phải có sourceRef và trạng thái review.
+2. Mỗi nội dung phải có `sourceRef`.
 3. AI không tự quyết định curriculum.
-4. UI, API, database và pipeline nhập giáo trình được tách biệt.
-5. Feature học tập phải gắn với Book/Unit/Skill.
-6. Không public nguyên nội dung có bản quyền nếu chưa có quyền sử dụng.
+4. Quiz sinh tự động phải review được.
+5. Progress được lưu theo lesson + skill + knowledge item.
+6. Gamification hỗ trợ động lực, không che mất mục tiêu học.
