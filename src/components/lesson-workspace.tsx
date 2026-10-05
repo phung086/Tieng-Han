@@ -57,7 +57,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ko-KR";
+    utterance.lang = course.language?.locale ?? "ko-KR";
     utterance.rate = 0.8;
     window.speechSynthesis.speak(utterance);
   }
