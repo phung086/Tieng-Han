@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Lightbulb, PenLine, RotateCcw } from "lucide-react";
-import { getLesson } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
 export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
+  const { getLesson } = useContent();
   const lesson = getLesson(lessonId);
   const content = lesson?.writing;
   const [text, setText] = useState("");
