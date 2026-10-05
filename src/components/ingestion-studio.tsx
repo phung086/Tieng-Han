@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -34,8 +34,14 @@ import {
   buildHandoffPackage,
   downloadJsonFile,
   handoffFileName,
-  verifyBundleSource
+  verifyBundleSource,
 } from "@/lib/chatgpt-handoff";
+import {
+  consumeMcpImportJob,
+  getMcpImportJob,
+  queueMcpImportJob,
+} from "@/lib/mcp-import-client";
+import type { ImportJobStatus } from "@/lib/import-jobs";
 
 type ImportCopy = UiMessages["import"];
 
@@ -201,6 +207,12 @@ export function IngestionStudio() {
   const [ocrUsed, setOcrUsed] = useState(false);
   const [ocrSkipped, setOcrSkipped] = useState(false);
   const [handoffNote, setHandoffNote] = useState("");
+  const [mcpJobId, setMcpJobId] = useState("");
+  const [mcpStatus, setMcpStatus] = useState<
+    ImportJobStatus | "idle" | "syncing"
+  >("idle");
+  const [mcpSyncProgress, setMcpSyncProgress] = useState(0);
+  const mcpRunRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +250,11 @@ export function IngestionStudio() {
   async function analyzeFiles() {
     if (!files.length) return;
 
+    const runId = mcpRunRef.current + 1;
+    mcpRunRef.current = runId;
+    setMcpJobId("");
+    setMcpStatus("idle");
+    setMcpSyncProgress(0);
     setError("");
     setStatus("extracting");
     setProgress(0);
@@ -347,25 +364,149 @@ export function IngestionStudio() {
           : copy.localMapComplete,
       );
       setStatus("mapped");
+
+      void syncImportToMcp(
+        nextDocuments,
+        nextMaps,
+        [...files],
+        runId,
+      );
     } catch (reason) {
       setStatus("idle");
       setError(reason instanceof Error ? reason.message : copy.analyzeError);
     }
   }
 
-  async function createCurrentHandoff() {
-    if (!files.length || !documents.length) return null;
+  async function createCurrentHandoff(context?: {
+    files: File[];
+    documents: ExtractedDocument[];
+    maps: DocumentMap[];
+  }) {
+    const sourceFiles = context?.files ?? files;
+    const sourceDocuments = context?.documents ?? documents;
+    const sourceMaps = context?.maps ?? maps;
+
+    if (!sourceFiles.length || !sourceDocuments.length) return null;
 
     return buildHandoffPackage({
-      files,
-      documents,
-      maps,
+      files: sourceFiles,
+      documents: sourceDocuments,
+      maps: sourceMaps,
       courseHint: {
         title: courseTitle,
         level,
         edition: edition || undefined,
       },
     });
+  }
+
+  async function syncImportToMcp(
+    sourceDocuments: ExtractedDocument[],
+    sourceMaps: DocumentMap[],
+    sourceFiles: File[],
+    runId: number,
+  ) {
+    setMcpStatus("syncing");
+    setMcpSyncProgress(0);
+
+    try {
+      const job = await queueMcpImportJob({
+        files: sourceFiles,
+        documents: sourceDocuments,
+        maps: sourceMaps,
+        courseHint: {
+          title:
+            courseTitle.trim() ||
+            sourceFiles[0]?.name.replace(/\.pdf$/i, "") ||
+            copy.genericCourseTitle,
+          level: level.trim() || copy.genericLevel,
+          edition: edition.trim() || undefined,
+        },
+        onProgress(uploaded, total) {
+          if (mcpRunRef.current !== runId) return;
+          setMcpSyncProgress(
+            total ? Math.round((uploaded / total) * 100) : 0,
+          );
+        },
+      });
+
+      if (mcpRunRef.current !== runId) return;
+
+      setMcpJobId(job.id);
+      setMcpStatus(job.status);
+      setHandoffNote(copy.mcpQueued);
+
+      await monitorMcpJob(
+        job.id,
+        {
+          files: sourceFiles,
+          documents: sourceDocuments,
+          maps: sourceMaps,
+        },
+        runId,
+      );
+    } catch (reason) {
+      if (mcpRunRef.current !== runId) return;
+      setMcpStatus("failed");
+      setHandoffNote(
+        copy.mcpSyncFailed +
+          (reason instanceof Error ? " " + reason.message : ""),
+      );
+    }
+  }
+
+  async function monitorMcpJob(
+    jobId: string,
+    context: {
+      files: File[];
+      documents: ExtractedDocument[];
+      maps: DocumentMap[];
+    },
+    runId: number,
+  ) {
+    while (mcpRunRef.current === runId) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2500));
+      if (mcpRunRef.current !== runId) return;
+
+      try {
+        const job = await getMcpImportJob(jobId);
+        setMcpStatus(job.status);
+
+        if (job.status === "failed") {
+          setError(
+            copy.mcpJobFailed +
+              (job.error ? " " + job.error : ""),
+          );
+          return;
+        }
+
+        if (job.status === "ready" && job.resultBundle) {
+          const bundleFile = new File(
+            [JSON.stringify(job.resultBundle)],
+            "haneul-mcp-result.json",
+            { type: "application/json" },
+          );
+
+          await importChatGptBundle(bundleFile, context);
+          await consumeMcpImportJob(jobId);
+
+          if (mcpRunRef.current === runId) {
+            setMcpStatus("consumed");
+            setHandoffNote(copy.mcpImported);
+          }
+          return;
+        }
+
+        if (job.status === "consumed") return;
+      } catch (reason) {
+        if (mcpRunRef.current !== runId) return;
+        setHandoffNote(
+          copy.mcpPollingError +
+            (reason instanceof Error ? " " + reason.message : ""),
+        );
+        return;
+      }
+    }
   }
 
   async function exportChatGptHandoff() {
@@ -445,9 +586,13 @@ export function IngestionStudio() {
     return pageNumbers;
   }
 
-  function localPagesForBundleLesson(lesson: LessonContent) {
-    const mapped = documents.flatMap((document) => {
-      const map = maps.find((item) => item.documentId === document.id);
+  function localPagesForBundleLesson(
+    lesson: LessonContent,
+    sourceDocuments: ExtractedDocument[] = documents,
+    sourceMaps: DocumentMap[] = maps,
+  ) {
+    const mapped = sourceDocuments.flatMap((document) => {
+      const map = sourceMaps.find((item) => item.documentId === document.id);
       if (!map?.starts.some((item) => item.lessonId === lesson.id)) {
         return [];
       }
@@ -460,15 +605,26 @@ export function IngestionStudio() {
     const referencedPages = pageNumbersFromLesson(lesson);
     if (!referencedPages.size) return [];
 
-    return documents.flatMap((document) =>
+    return sourceDocuments.flatMap((document) =>
       document.pages.filter((page) =>
         referencedPages.has(page.pageNumber),
       ),
     );
   }
 
-  async function importChatGptBundle(file: File) {
-    if (!documents.length) {
+  async function importChatGptBundle(
+    file: File,
+    context?: {
+      files: File[];
+      documents: ExtractedDocument[];
+      maps: DocumentMap[];
+    },
+  ) {
+    const sourceFiles = context?.files ?? files;
+    const sourceDocuments = context?.documents ?? documents;
+    const sourceMaps = context?.maps ?? maps;
+
+    if (!sourceDocuments.length) {
       setError(copy.bundleRequiresPdf);
       return;
     }
@@ -478,7 +634,11 @@ export function IngestionStudio() {
     try {
       const bundle = parseCourseBundle(await file.text());
 
-      const handoff = await createCurrentHandoff();
+      const handoff = await createCurrentHandoff({
+        files: sourceFiles,
+        documents: sourceDocuments,
+        maps: sourceMaps,
+      });
       if (!handoff) {
         throw new Error(copy.bundleRequiresPdf);
       }
@@ -498,7 +658,11 @@ export function IngestionStudio() {
       const lessons = bundle.course.lessons
         .map((lesson) => {
           const localMedia = buildLessonMedia(
-            localPagesForBundleLesson(lesson),
+            localPagesForBundleLesson(
+              lesson,
+              sourceDocuments,
+              sourceMaps,
+            ),
           );
           const existingMedia = lesson.media ?? [];
           const byId = new Map(
@@ -526,16 +690,19 @@ export function IngestionStudio() {
           level.trim() ||
           copy.genericLevel,
         source: {
-          fileName: files[0]?.name,
-          fileNames: files.map((item) => item.name),
+          fileName: sourceFiles[0]?.name,
+          fileNames: sourceFiles.map((item) => item.name),
           importedAt: new Date().toISOString(),
-          pageCount: totalPages,
+          pageCount: sourceDocuments.reduce(
+            (sum, document) => sum + document.pageCount,
+            0,
+          ),
           edition:
             bundle.course.edition ||
             edition ||
             undefined,
           coverImageDataUrl:
-            documents[0]?.pages[0]?.previewImageDataUrl,
+            sourceDocuments[0]?.pages[0]?.previewImageDataUrl,
         },
         lessons,
         questions: bundle.course.questions,
@@ -807,6 +974,10 @@ export function IngestionStudio() {
                 setFiles(Array.from(event.target.files ?? []));
                 setDocuments([]);
                 setMaps([]);
+                mcpRunRef.current += 1;
+                setMcpJobId("");
+                setMcpStatus("idle");
+                setMcpSyncProgress(0);
                 setStatus("idle");
                 setError("");
               }}
@@ -943,6 +1114,28 @@ export function IngestionStudio() {
                 <UploadCloud size={16} />
                 {copy.shareToChatGpt}
               </button>
+            </div>
+          ) : null}
+
+          {mcpStatus !== "idle" ? (
+            <div className="mcp-bridge-status">
+              <strong>{copy.mcpBridge}</strong>
+              <span>
+                {mcpStatus === "syncing"
+                  ? copy.mcpSyncing + " " + mcpSyncProgress + "%"
+                  : mcpStatus === "queued"
+                    ? copy.mcpWaiting
+                    : mcpStatus === "processing"
+                      ? copy.mcpProcessing
+                      : mcpStatus === "ready"
+                        ? copy.mcpReady
+                        : mcpStatus === "consumed"
+                          ? copy.mcpConsumed
+                          : mcpStatus === "failed"
+                            ? copy.mcpFailed
+                            : mcpStatus}
+                {mcpJobId ? " · " + mcpJobId : ""}
+              </span>
             </div>
           ) : null}
 
