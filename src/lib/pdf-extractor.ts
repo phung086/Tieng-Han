@@ -1,10 +1,15 @@
 "use client";
 
+import { ingestionConfig } from "@/config/ingestion";
+
 export type ExtractedPage = {
   documentId: string;
   fileName: string;
   pageNumber: number;
   text: string;
+  hasVisual: boolean;
+  previewImageDataUrl?: string;
+  externalLinks: string[];
 };
 
 export type ExtractedDocument = {
@@ -35,31 +40,112 @@ async function loadPdf(file: File) {
   ).toString();
 
   const data = new Uint8Array(await file.arrayBuffer());
-  return pdfjs.getDocument({ data }).promise;
+
+  return {
+    pdfjs,
+    pdf: await pdfjs.getDocument({ data }).promise,
+  };
+}
+
+async function renderPagePreview(
+  page: Awaited<ReturnType<Awaited<ReturnType<typeof loadPdf>>["pdf"]["getPage"]>>,
+  scale = ingestionConfig.pdf.previewScale,
+) {
+  const baseViewport = page.getViewport({ scale });
+  const widthScale =
+    baseViewport.width > ingestionConfig.pdf.maxPreviewWidth
+      ? ingestionConfig.pdf.maxPreviewWidth / baseViewport.width
+      : 1;
+  const viewport = page.getViewport({ scale: scale * widthScale });
+  const canvas = window.document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    throw new Error("Trình duyệt không tạo được canvas để render PDF.");
+  }
+
+  await page.render({
+    canvas,
+    canvasContext: context,
+    viewport,
+  }).promise;
+
+  return canvas.toDataURL(
+    "image/jpeg",
+    ingestionConfig.pdf.previewJpegQuality,
+  );
+}
+
+function extractAnnotationLinks(annotations: Awaited<ReturnType<Awaited<ReturnType<Awaited<ReturnType<typeof loadPdf>>["pdf"]["getPage"]>>["getAnnotations"]>>) {
+  const urls = annotations
+    .map((annotation) => {
+      if ("url" in annotation && typeof annotation.url === "string") {
+        return annotation.url;
+      }
+      if ("unsafeUrl" in annotation && typeof annotation.unsafeUrl === "string") {
+        return annotation.unsafeUrl;
+      }
+      return "";
+    })
+    .filter(Boolean);
+
+  return [...new Set(urls)];
 }
 
 export async function extractPdf(
   file: File,
   documentIndex: number,
 ): Promise<ExtractedDocument> {
-  const pdf = await loadPdf(file);
+  const { pdf, pdfjs } = await loadPdf(file);
   const id = "doc-" + documentIndex;
   const pages: ExtractedPage[] = [];
+  const imageOps = new Set<number>([
+    pdfjs.OPS.paintImageXObject,
+    pdfjs.OPS.paintInlineImageXObject,
+    pdfjs.OPS.paintImageMaskXObject,
+    pdfjs.OPS.paintSolidColorImageMask,
+  ]);
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
+    const [textContent, operatorList, annotations] = await Promise.all([
+      page.getTextContent(),
+      page.getOperatorList(),
+      page.getAnnotations({ intent: "display" }),
+    ]);
 
     const lines = textContent.items
       .map((item) => ("str" in item ? item.str : ""))
       .filter(Boolean)
       .join(" ");
 
+    const externalLinks = extractAnnotationLinks(annotations);
+    const hasRasterVisual = operatorList.fnArray.some((operation) =>
+      imageOps.has(operation),
+    );
+    const hasVisual =
+      hasRasterVisual ||
+      externalLinks.some((url) => /youtube|youtu\.be|vimeo|video|mp4|webm/i.test(url));
+
+    let previewImageDataUrl: string | undefined;
+    if (hasVisual) {
+      try {
+        previewImageDataUrl = await renderPagePreview(page);
+      } catch {
+        // Text ingestion remains usable if a visual preview cannot be rendered.
+      }
+    }
+
     pages.push({
       documentId: id,
       fileName: file.name,
       pageNumber,
       text: cleanPageText(lines),
+      hasVisual,
+      previewImageDataUrl,
+      externalLinks,
     });
   }
 
@@ -73,7 +159,9 @@ export async function extractPdf(
 
 export function lowTextRatio(document: ExtractedDocument) {
   if (!document.pages.length) return 1;
-  const low = document.pages.filter((page) => page.text.length < 80).length;
+  const low = document.pages.filter(
+    (page) => page.text.length < ingestionConfig.pdf.lowTextCharacters,
+  ).length;
   return low / document.pages.length;
 }
 
@@ -82,10 +170,12 @@ export async function ocrLowTextPages(
   extracted: ExtractedDocument,
   onProgress?: (completed: number, total: number) => void,
 ) {
-  const targets = extracted.pages.filter((page) => page.text.length < 80);
+  const targets = extracted.pages.filter(
+    (page) => page.text.length < ingestionConfig.pdf.lowTextCharacters,
+  );
   if (!targets.length) return extracted;
 
-  const pdf = await loadPdf(file);
+  const { pdf } = await loadPdf(file);
   const pages = extracted.pages.map((page) => ({ ...page }));
   const batchSize = 3;
   let completed = 0;
@@ -100,25 +190,23 @@ export async function ocrLowTextPages(
 
     for (const target of batchTargets) {
       const page = await pdf.getPage(target.pageNumber);
-      const viewport = page.getViewport({ scale: 1.35 });
-      const canvas = window.document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-
-      const context = canvas.getContext("2d", { alpha: false });
-      if (!context) throw new Error("Trình duyệt không tạo được canvas để OCR.");
-
-      await page.render({
-        canvas,
-        canvasContext: context,
-        viewport,
-      }).promise;
+      const imageDataUrl =
+        target.previewImageDataUrl ??
+        (await renderPagePreview(page, 1.35));
 
       images.push({
         fileName: file.name,
         pageNumber: target.pageNumber,
-        imageDataUrl: canvas.toDataURL("image/jpeg", 0.72),
+        imageDataUrl,
       });
+
+      const storedPage = pages.find(
+        (item) => item.pageNumber === target.pageNumber,
+      );
+      if (storedPage && !storedPage.previewImageDataUrl) {
+        storedPage.previewImageDataUrl = imageDataUrl;
+        storedPage.hasVisual = true;
+      }
     }
 
     const response = await fetch("/api/ingest/ocr", {
@@ -172,7 +260,6 @@ export function localLessonStarts(document: ExtractedDocument) {
 
     const uniqueIds = [...new Set(candidates.map((item) => item.lessonId))];
 
-    // A page that lists many lesson numbers is almost always 목차 / table of contents.
     if (uniqueIds.length !== 1) continue;
 
     const lessonId = uniqueIds[0];
