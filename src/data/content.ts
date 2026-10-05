@@ -41,6 +41,18 @@ export type WritingContent = {
   sourceRef?: string;
 };
 
+export type LessonMedia = {
+  id: string;
+  type: "image" | "video" | "audio" | "document";
+  role: "illustration" | "diagram" | "source-page" | "external";
+  src: string;
+  alt: string;
+  caption?: string;
+  sourceRef?: string;
+  fileName?: string;
+  pageNumber?: number;
+};
+
 export type DialogueItem = {
   id: string;
   title?: string;
@@ -90,6 +102,7 @@ export type LessonContent = {
   pronunciation?: PronunciationItem[];
   culture?: CultureItem[];
   extraSections?: ExtraSection[];
+  media?: LessonMedia[];
   sourceRef?: string;
   quality?: {
     coverageScore: number;
