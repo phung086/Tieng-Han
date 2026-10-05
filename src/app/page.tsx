@@ -1,13 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, ChevronRight, Clock3, Headphones, Sparkles } from "lucide-react";
-import { ProgressRing } from "@/components/progress-ring";
-import { DashboardLiveStats } from "@/components/dashboard-live-stats";
-import { useContent } from "@/lib/content-store";
-import { accuracy, todayKey, useLearning, type SkillKey } from "@/lib/learning-state";
-import { useMessages } from "@/i18n/messages";
+import {
+  ArrowRight,
+  BookOpen,
+  Flame,
+  RotateCcw,
+  Sparkles,
+  Star,
+  Target,
+  Trophy,
+} from "lucide-react";
+import { HaneulMascot } from "@/components/haneul-mascot";
 import { EmptyCourseState } from "@/components/empty-course-state";
+import { useContent } from "@/lib/content-store";
+import {
+  accuracy,
+  todayKey,
+  useLearning,
+  type SkillKey,
+} from "@/lib/learning-state";
+import { useMessages } from "@/i18n/messages";
 
 const skillTones: Record<SkillKey, string> = {
   vocabulary: "violet",
@@ -22,6 +35,7 @@ export default function DashboardPage() {
   const { state } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
+
   if (!course.lessons.length) {
     return (
       <div className="page dashboard-page">
@@ -31,125 +45,179 @@ export default function DashboardPage() {
   }
 
   const today = todayKey();
-  const todayStat = state.dailyStats[today] ?? { attempts: 0, correct: 0, xp: 0 };
   const current =
-    course.lessons.find((lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100) ??
-    course.lessons[course.lessons.length - 1];
+    course.lessons.find(
+      (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100,
+    ) ?? course.lessons[course.lessons.length - 1];
+
   const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
   const courseProgress = Math.round(
-    course.lessons.reduce((sum, lesson) => sum + (state.lessonProgress[String(lesson.id)] ?? 0), 0) /
-      Math.max(1, course.lessons.length),
+    course.lessons.reduce(
+      (sum, lesson) =>
+        sum + (state.lessonProgress[String(lesson.id)] ?? 0),
+      0,
+    ) / Math.max(1, course.lessons.length),
   );
-  const dueCount = Object.values(state.mastery).filter((item) => item.dueAt <= today).length;
-  const completedCurrentSkills = state.completedActivities.filter((id) => id.startsWith("lesson:" + current.id + ":")).length;
+  const completedLessons = course.lessons.filter(
+    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
+  ).length;
+  const dueCount = Object.values(state.mastery).filter(
+    (item) => item.dueAt <= today,
+  ).length;
+  const completedCurrentSkills = state.completedActivities.filter((id) =>
+    id.startsWith("lesson:" + current.id + ":"),
+  ).length;
   const goalProgress = Math.min(
     100,
     Math.round((state.todayXp / Math.max(1, state.dailyGoal)) * 100),
   );
-  const floatWords = current.vocabulary.slice(0, 3).map((item) => item.ko);
 
   return (
     <div className="page dashboard-page">
-      <header className="page-header">
+      <header className="game-topbar">
         <div>
-          <span className="kicker">{messages.dashboard.kicker}</span>
-          <h1>{messages.dashboard.greeting}</h1>
-          <p>{messages.dashboard.intro}</p>
+          <span className="game-kicker">HANEUL ADVENTURE</span>
+          <h1>Hôm nay mình học gì?</h1>
+          <p>Mỗi chặng nhỏ là một bước tiến gần hơn đến phản xạ tiếng Hàn tự nhiên.</p>
         </div>
-        <DashboardLiveStats />
+
+        <div className="game-hud" aria-label="Tiến độ hôm nay">
+          <div className="hud-chip streak">
+            <Flame size={18} />
+            <span>{state.streak} ngày</span>
+          </div>
+          <div className="hud-chip xp">
+            <Star size={18} />
+            <span>{state.xp} XP</span>
+          </div>
+          <div className="hud-chip goal">
+            <Target size={18} />
+            <span>{state.todayXp}/{state.dailyGoal}</span>
+          </div>
+        </div>
       </header>
 
-      <section className="dashboard-grid">
-        <article className="continue-card">
-          <div className="continue-copy">
-            <span className="pill pill-soft">{messages.dashboard.continueStudy}</span>
-            <div className="lesson-index">{messages.common.lesson} {current.id} · {course.level}</div>
-            <h2>{current.title}</h2>
-            <p>{current.vi} · {current.objective}</p>
-            <div className="continue-meta">
-              <span><Clock3 size={16} /> {completedCurrentSkills}/6 {messages.dashboard.completedSkills}</span>
-              <span><BookOpen size={16} /> {currentProgress}% {messages.dashboard.lessonProgress}</span>
+      <section className="game-hero">
+        <div className="game-hero-copy">
+          <span className="hero-label">
+            <Sparkles size={14} />
+            Tiếp tục hành trình
+          </span>
+          <h2>{current.title}</h2>
+          <p>{current.vi} · {current.objective}</p>
+
+          <div className="hero-progress-line">
+            <div className="hero-progress-track">
+              <span style={{ width: currentProgress + "%" }} />
             </div>
-            <Link className="primary-button" href={"/learn/" + current.id}>{messages.dashboard.studyMore} <ArrowRight size={18} /></Link>
+            <strong>{currentProgress}%</strong>
           </div>
-          <div className="continue-visual">
-            {floatWords.map((word, index) => (
-              <div
-                className={"float-word word-" + ["one", "two", "three"][index]}
-                key={word + index}
-              >
-                {word}
-              </div>
-            ))}
-            <ProgressRing
-              value={currentProgress}
-              size={132}
-              label={messages.dashboard.progressLabel}
-            />
+
+          <Link className="primary-button" href={"/learn/" + current.id}>
+            Học tiếp
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+
+        <div className="game-hero-visual">
+          <HaneulMascot size="lg" />
+          <div className="hero-level-bubble">
+            Bài {current.id} · {completedCurrentSkills}/6 kỹ năng
           </div>
+        </div>
+      </section>
+
+      <section className="quest-grid" aria-label="Nhiệm vụ học tập">
+        <article className="quest-card review">
+          <div className="quest-icon">
+            <RotateCcw size={24} />
+          </div>
+          <h3>Ôn tập hôm nay</h3>
+          <p>
+            {dueCount
+              ? dueCount + " nội dung đang đến hạn ôn lại."
+              : "Chưa có nội dung quá hạn. Bạn đang giữ nhịp rất tốt."}
+          </p>
+          <Link className="text-button" href="/review">
+            Mở ôn tập <ArrowRight size={15} />
+          </Link>
         </article>
 
-        <article className="today-card">
-          <div className="card-heading">
-            <div><span className="eyebrow">{messages.dashboard.reviewToday}</span><h3>{dueCount ? dueCount + " " + messages.dashboard.dueItems : messages.dashboard.noOverdue}</h3></div>
-            <span className="review-count">{dueCount}</span>
+        <article className="quest-card daily">
+          <div className="quest-icon">
+            <Target size={24} />
           </div>
-          <div className="review-breakdown">
-            <div><span className="dot violet" /><span>{todayStat.attempts} {messages.dashboard.attemptsToday}</span><strong>{messages.dashboard.todayKo}</strong></div>
-            <div><span className="dot blue" /><span>{todayStat.correct} {messages.dashboard.correctToday}</span><strong>{messages.dashboard.correctKo}</strong></div>
-            <div><span className="dot mint" /><span>{state.todayXp}/{state.dailyGoal} {messages.dashboard.xpGoal}</span><strong>XP</strong></div>
+          <h3>Nhiệm vụ ngày</h3>
+          <p>Kiếm {state.dailyGoal} XP để giữ chuỗi học đều đặn.</p>
+          <div className="quest-progress">
+            <span style={{ width: goalProgress + "%" }} />
           </div>
-          <Link className="secondary-button wide" href="/review">{dueCount ? messages.dashboard.reviewDue : messages.dashboard.viewReview} <ChevronRight size={18} /></Link>
+          <strong>{state.todayXp} / {state.dailyGoal} XP</strong>
+        </article>
+
+        <article className="quest-card course">
+          <div className="quest-icon">
+            <Trophy size={24} />
+          </div>
+          <h3>Hành trình giáo trình</h3>
+          <p>
+            Đã hoàn thành {completedLessons}/{course.lessons.length} bài · tổng tiến độ {courseProgress}%.
+          </p>
+          <Link className="text-button" href="/learn">
+            Xem bản đồ học <ArrowRight size={15} />
+          </Link>
         </article>
       </section>
 
-      <section className="section-block">
-        <div className="section-title-row">
-          <div><span className="eyebrow">{messages.dashboard.yourSkills}</span><h2>{messages.dashboard.skillHeadline}</h2></div>
-          <Link href="/stats">{messages.dashboard.viewProgress} <ArrowRight size={16} /></Link>
+      <section>
+        <div className="game-section-title">
+          <div>
+            <span className="game-kicker">SKILL ISLANDS</span>
+            <h2>6 kỹ năng của bạn</h2>
+          </div>
+          <Link className="text-button" href="/stats">
+            Xem thống kê <ArrowRight size={15} />
+          </Link>
         </div>
-        <div className="skill-grid">
+
+        <div className="skill-islands">
           {(Object.keys(skillTones) as SkillKey[]).map((key) => {
             const score = accuracy(state.skills[key]);
             const label = messages.skills[key];
             return (
-              <article className={"skill-card tone-" + skillTones[key]} key={key}>
-                <div className="skill-top"><div><span className="skill-korean">{label.ko}</span><h3>{label.vi}</h3></div><strong>{score}%</strong></div>
-                <div className="mini-progress"><span style={{ width: score + "%" }} /></div>
-                <p>{!state.skills[key].total ? messages.dashboard.noAttempts : score < 60 ? messages.dashboard.weak : score < 80 ? messages.dashboard.improving : messages.dashboard.strong}</p>
+              <article
+                className={"skill-island tone-" + skillTones[key]}
+                key={key}
+              >
+                <span className="skill-korean">{label.ko}</span>
+                <h3>{label.vi}</h3>
+                <strong className="skill-score">{score}%</strong>
+                <div className="mini-progress">
+                  <span style={{ width: score + "%" }} />
+                </div>
+                <p>
+                  {state.skills[key].total
+                    ? state.skills[key].correct +
+                      "/" +
+                      state.skills[key].total +
+                      " câu đúng"
+                    : "Chưa bắt đầu"}
+                </p>
               </article>
             );
           })}
         </div>
       </section>
 
-      <section className="dashboard-bottom-grid">
-        <article className="path-preview">
-          <div className="card-heading"><div><span className="eyebrow">{messages.dashboard.textbookPath}</span><h3>{course.title}</h3></div><span className="course-progress">{courseProgress}%</span></div>
-          <div className="path-list">
-            {course.lessons.slice(Math.max(0, current.id - 2), Math.min(course.lessons.length, current.id + 2)).map((lesson) => {
-              const progress = state.lessonProgress[String(lesson.id)] ?? 0;
-              const status = progress >= 100 ? "done" : lesson.id === current.id ? "current" : "locked";
-              return (
-                <div className={"path-row " + status} key={lesson.id}>
-                  <div className="path-node">{status === "done" ? "✓" : lesson.id}</div>
-                  <div><strong>{lesson.title}</strong><span>{lesson.vi}</span></div>
-                  {status === "current" ? <span className="current-tag">{messages.dashboard.current}</span> : null}
-                </div>
-              );
-            })}
-          </div>
-          <Link className="text-button" href="/learn">{messages.dashboard.openFullCourse} <ArrowRight size={16} /></Link>
-        </article>
-
-        <article className="daily-mission">
-          <div className="mission-icon"><Headphones size={28} /></div>
-          <span className="eyebrow">{messages.dashboard.dailyGoal}</span>
-          <h3>{state.todayXp >= state.dailyGoal ? messages.dashboard.goalDone : messages.dashboard.goalPrefix + " " + state.dailyGoal + " " + messages.dashboard.goalSuffix}</h3>
-          <p>{state.todayXp >= state.dailyGoal ? messages.dashboard.goalDoneNote : messages.dashboard.goalPendingNote}</p>
-          <div className="mission-progress"><span style={{ width: goalProgress + "%" }} /></div>
-          <div className="mission-footer"><span>{state.todayXp} / {state.dailyGoal} XP</span><Link href={"/listening?lesson=" + current.id}><Sparkles size={16} /> {messages.dashboard.practiceNow}</Link></div>
-        </article>
+      <section className="game-section-title">
+        <div>
+          <span className="game-kicker">QUICK START</span>
+          <h2>Vào học ngay</h2>
+        </div>
+        <Link className="secondary-button small" href={"/learn/" + current.id}>
+          <BookOpen size={16} />
+          Bài {current.id}
+        </Link>
       </section>
     </div>
   );
