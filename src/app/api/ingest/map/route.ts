@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { callContentModel } from "@/lib/content-ai";
 
+export const maxDuration = 120;
+
 type PageInput = {
   fileName: string;
   pageNumber: number;
