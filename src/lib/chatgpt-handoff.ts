@@ -55,7 +55,7 @@ function bytesToHex(bytes: Uint8Array) {
 function normalizeTitle(value: string) {
   return value
     .normalize("NFKD")
-    .replace(/[^p{L}p{N}]+/gu, "-")
+    .replace(/[^\\p{L}\\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
 }
@@ -202,6 +202,30 @@ export function buildChatGptPrompt(handoff: ChatGptHandoffPackage) {
       handoff.expectedOutput.format +
       "\" để tôi tải về và import lại vào Haneul.",
   ].join("\n");
+}
+
+export function buildChatGptCompilationPrompt(
+  handoff?: ChatGptHandoffPackage,
+) {
+  if (handoff) return buildChatGptPrompt(handoff);
+
+  return [
+    "Hãy đọc toàn bộ các PDF và file haneul-chatgpt-handoff.json tôi đính kèm.",
+    "Biên chúng thành một Haneul Course Bundle hoàn chỉnh cho ứng dụng Haneul.",
+    "Bám sát toàn bộ nội dung sách, giữ thứ tự bài học, sourceRef theo file/trang, và giữ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa, ghi chú, luyện tập cùng các mục đặc biệt.",
+    "Flow học phải đủ 6 kỹ năng: Từ vựng, Ngữ pháp, Nghe, Nói, Đọc, Viết. Nội dung derived chỉ được dùng kiến thức thật sự có trong đúng bài nguồn.",
+    "Không nhúng base64 ảnh lớn; app sẽ ghép media local từ PDF.",
+    "Trong output, sourceManifest phải copy chính xác sourceFiles từ handoff để Haneul xác minh đúng bộ PDF.",
+    "Trả về một file JSON theo đúng expectedOutput trong handoff, không chỉ đưa ví dụ rút gọn.",
+  ].join("\n");
+}
+
+export function handoffPackageFile(handoff: ChatGptHandoffPackage) {
+  return new File(
+    [JSON.stringify(handoff, null, 2)],
+    "haneul-chatgpt-handoff.json",
+    { type: "application/json" },
+  );
 }
 
 export function verifyBundleSource(
