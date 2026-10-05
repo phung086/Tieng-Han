@@ -673,6 +673,28 @@ export function getCompilationContract(language: LanguageProfile) {
       "Before source reading in any new or resumed run, call get_compilation_progress. Resume activeWork from its sourceCursor/phase, skip completedLessonIds, and never restart verified work unless deliberate correction is required.",
       "Use finalize_course_bundle after all real textbook lessons are checkpointed. Detected lesson candidates are hints and may contain false positives.",
     ],
+    pedagogy: {
+      lessonFlow: [
+        "Start with source-grounded recognition: key vocabulary and patterns.",
+        "Move to controlled application using examples and short comprehension checks.",
+        "Finish with productive use: speaking and writing prompts that reuse only the lesson knowledge.",
+        "Keep explanations concise enough for self-study and preserve textbook terminology.",
+      ],
+      practiceVolume:
+        "Target roughly 12-20 StudyQuestion items per normal lesson, scaled down for short lessons and up only when the source is dense. Never pad the count with unsupported content.",
+      practiceBalance: [
+        "Vocabulary: about 25-35% of generated questions when vocabulary is present.",
+        "Grammar: about 20-30% when grammar points are present.",
+        "Listening and reading: together about 20-30%, derived from source-grounded sentences or passages.",
+        "Speaking and writing: use short productive prompts and input/reorder checks where they make pedagogical sense.",
+      ],
+      reviewDesign: [
+        "Prefer retrieval over repeated explanation.",
+        "Reuse the same knowledge across different modalities without copying the exact same question wording.",
+        "Wrong-answer distractors must remain plausible but must not introduce facts or grammar outside the lesson.",
+        "Mark every derived practice item with a sourceRef pointing to the source pages it was derived from.",
+      ],
+    },
     checkpointWorkflow: [
       "get_compilation_progress",
       "resume activeWork if present",
