@@ -44,6 +44,7 @@ export async function queueMcpImportJob(input: QueueInput) {
     documents: input.documents,
     maps: input.maps,
     courseHint: input.courseHint,
+    language: input.language ?? defaultLanguageProfile,
   });
 
   const createResponse = await fetch("/api/import-jobs", {
