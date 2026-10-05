@@ -311,7 +311,7 @@ export async function extractPdf(
     let previewImageDataUrl: string | undefined;
     let embeddedImages: EmbeddedPdfImage[] = [];
 
-    if (hasVisual) {
+    if (hasVisual || pageNumber === 1) {
       try {
         previewImageDataUrl = await renderPagePreview(page);
         embeddedImages = extractEmbeddedImages(page, operatorList, imageOps);
