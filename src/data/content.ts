@@ -5,6 +5,7 @@ export type VocabularyItem = {
   ko: string;
   vi: string;
   example: string;
+  sourceRef?: string;
 };
 
 export type GrammarItem = {
@@ -13,6 +14,7 @@ export type GrammarItem = {
   meaning: string;
   explanation: string;
   examples: string[];
+  sourceRef?: string;
 };
 
 export type ListeningItem = {
@@ -21,19 +23,22 @@ export type ListeningItem = {
   meaning: string;
   choices: string[];
   answer: string;
+  sourceRef?: string;
 };
 
 export type ReadingContent = {
   title: string;
   text: string;
   translation: string;
-  questions: { id: string; q: string; choices: string[]; answer: string }[];
+  questions: { id: string; q: string; choices: string[]; answer: string; sourceRef?: string }[];
+  sourceRef?: string;
 };
 
 export type WritingContent = {
   prompt: string;
   hint: string;
   targetWords: string[];
+  sourceRef?: string;
 };
 
 export type LessonContent = {
@@ -191,6 +196,7 @@ export type StudyQuestion = {
   tokens?: string[];
   answer: string;
   explanation: string;
+  sourceRef?: string;
 };
 
 export const studyQuestions: StudyQuestion[] = [
