@@ -1,7 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { course as demoCourse, type LessonContent } from "@/data/content";
+import {
+  course as demoCourse,
+  studyQuestions,
+  type LessonContent,
+  type StudyQuestion,
+} from "@/data/content";
 
 export type RuntimeCourse = {
   id: string;
@@ -9,11 +14,13 @@ export type RuntimeCourse = {
   level: string;
   source?: {
     fileName?: string;
+    fileNames?: string[];
     importedAt?: string;
     pageCount?: number;
     edition?: string;
   };
   lessons: LessonContent[];
+  questions: StudyQuestion[];
 };
 
 type ContentContextValue = {
@@ -24,7 +31,12 @@ type ContentContextValue = {
   resetCourse: () => void;
 };
 
-const STORAGE_KEY = "haneul-course-v1";
+const STORAGE_KEY = "haneul-course-v2";
+const demoRuntimeCourse: RuntimeCourse = {
+  ...demoCourse,
+  questions: studyQuestions,
+};
+
 const ContentContext = createContext<ContentContextValue | null>(null);
 
 function isRuntimeCourse(value: unknown): value is RuntimeCourse {
@@ -34,12 +46,13 @@ function isRuntimeCourse(value: unknown): value is RuntimeCourse {
     typeof record.id === "string" &&
     typeof record.title === "string" &&
     typeof record.level === "string" &&
-    Array.isArray(record.lessons)
+    Array.isArray(record.lessons) &&
+    Array.isArray(record.questions)
   );
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
-  const [course, setCourse] = useState<RuntimeCourse>(demoCourse);
+  const [course, setCourse] = useState<RuntimeCourse>(demoRuntimeCourse);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -78,7 +91,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setCourse(nextCourse);
     },
     resetCourse() {
-      setCourse(demoCourse);
+      setCourse(demoRuntimeCourse);
       window.localStorage.removeItem(STORAGE_KEY);
     },
   }), [course, hydrated]);
