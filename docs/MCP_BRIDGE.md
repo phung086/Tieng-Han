@@ -118,13 +118,33 @@ Khuyến nghị compiler:
 3. bật `includeImages` khi trang thiếu text hoặc có visual;
 4. giữ `sourceRef` cho mọi knowledge object.
 
+### get_compilation_progress
+
+Đọc checkpoint biên soạn theo từng bài. ChatGPT phải gọi tool này trước khi đọc source trong mọi phiên mới hoặc phiên resume để bỏ qua các bài đã hoàn thành.
+
+### save_lesson_draft
+
+Lưu một bài đã biên và QA xong thành checkpoint bền vững. Gọi lại cùng lessonId sẽ chỉ ghi đè bài đó, không ảnh hưởng các bài khác.
+
+Checkpoint nằm trong:
+
+```text
+.haneul/import-jobs/<job-id>/drafts/
+```
+
 ### get_compilation_contract
 
-Trả về quy tắc grounding, target language, learner language và contract bundle hiện tại.
+Trả về quy tắc grounding, language profile, schema và workflow checkpoint hiện tại.
+
+### finalize_course_bundle
+
+Ghép các lesson draft đã lưu thành Course Bundle cuối cùng ở server. Có thể truyền danh sách lessonIds đã xác minh để loại bỏ lesson detector false-positive. Sau khi finalize, job chuyển sang `ready`.
 
 ### submit_course_bundle
 
-Nộp kết quả hoàn chỉnh. Server kiểm:
+Giữ lại để tương thích với client cũ. Workflow mới nên ưu tiên `save_lesson_draft` + `finalize_course_bundle`.
+
+Khi dùng trực tiếp, server kiểm:
 
 - bundle format/version;
 - SHA-256/source manifest;
@@ -307,3 +327,52 @@ Upload PDF in Haneul
 No repeated prompt is required for each textbook.
 
 For development through ngrok, keep the Haneul dev server and ngrok session running. A stable deployment or reserved tunnel URL is recommended for long-lived event subscriptions because changing the MCP URL requires refreshing the plugin connection and subscription.
+
+
+## Resumable compilation
+
+Compiler không còn cần giữ toàn bộ course trong một phiên ChatGPT.
+
+Workflow chuẩn:
+
+```text
+get_compilation_progress
+        ↓
+đọc source của bài chưa xong
+        ↓
+biên + QA bài đó
+        ↓
+save_lesson_draft
+        ↓
+lặp lại với bài tiếp theo
+        ↓
+finalize_course_bundle
+```
+
+Nếu ChatGPT bị ngắt ở Bài 12:
+
+```text
+Bài 1-11 = draft đã lưu
+Bài 12   = chưa lưu
+```
+
+Phiên sau gọi `get_compilation_progress` và tiếp tục từ Bài 12. Không đọc/biên lại Bài 1-11.
+
+Nếu cần sửa riêng Bài 5, gọi `save_lesson_draft` lại với lessonId 5. Chỉ checkpoint Bài 5 được thay thế.
+
+## Language-neutral content contract
+
+MCP protocol không còn giới hạn target language ở ko/en/zh. `LanguageProfile.target` và `learner` nhận language code dạng chuỗi; locale và script đi kèm profile.
+
+Canonical content fields mới:
+
+```text
+targetTitle
+learnerTitle
+targetText
+learnerMeaning
+```
+
+Các field legacy `title/vi`, `vocabulary.ko/vi`, `dialogue.ko/vi` vẫn được normalize tự động để UI cũ tiếp tục chạy.
+
+Vì vậy có thể thêm ngôn ngữ mới bằng LanguageProfile mà không đổi MCP job protocol, event protocol hay checkpoint workflow.
