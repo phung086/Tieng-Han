@@ -8,6 +8,13 @@ export type CompiledCourseBundle = {
   version: typeof COURSE_BUNDLE_VERSION;
   generatedAt?: string;
   sourceFiles?: string[];
+  sourceManifest?: Array<{
+    name: string;
+    size: number;
+    lastModified: number;
+    pageCount: number;
+    sha256: string;
+  }>;
   course: {
     title: string;
     level: string;
@@ -96,6 +103,26 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
       typeof root.generatedAt === "string" ? root.generatedAt : undefined,
     sourceFiles: Array.isArray(root.sourceFiles)
       ? root.sourceFiles.map(String)
+      : undefined,
+    sourceManifest: Array.isArray(root.sourceManifest)
+      ? root.sourceManifest
+          .map((item) => {
+            const row = item as Record<string, unknown>;
+            return {
+              name: String(row.name ?? ""),
+              size: Number(row.size ?? 0),
+              lastModified: Number(row.lastModified ?? 0),
+              pageCount: Number(row.pageCount ?? 0),
+              sha256: String(row.sha256 ?? ""),
+            };
+          })
+          .filter(
+            (item) =>
+              item.name &&
+              item.sha256 &&
+              Number.isFinite(item.size) &&
+              Number.isFinite(item.pageCount),
+          )
       : undefined,
     course: {
       title: course.title,
