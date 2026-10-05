@@ -427,14 +427,45 @@ function buildMcpServer() {
 
 const handler = createMcpHandler(buildMcpServer);
 
-export async function GET(request: Request) {
+function authorizeMcp(request: Request) {
+  const token = process.env.HANEUL_MCP_TOKEN?.trim();
+
+  if (!token) {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  return request.headers.get("authorization") === "Bearer " + token;
+}
+
+function unauthorizedResponse() {
+  return new Response(
+    JSON.stringify({
+      error:
+        "MCP endpoint chưa được cấp quyền. Cấu hình HANEUL_MCP_TOKEN và gửi Bearer token.",
+    }),
+    {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate": "Bearer",
+      },
+    },
+  );
+}
+
+async function handleMcp(request: Request) {
+  if (!authorizeMcp(request)) return unauthorizedResponse();
   return handler.fetch(request);
+}
+
+export async function GET(request: Request) {
+  return handleMcp(request);
 }
 
 export async function POST(request: Request) {
-  return handler.fetch(request);
+  return handleMcp(request);
 }
 
 export async function DELETE(request: Request) {
-  return handler.fetch(request);
+  return handleMcp(request);
 }
