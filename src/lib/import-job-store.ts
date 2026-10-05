@@ -253,7 +253,7 @@ export async function claimImportJob(jobId: string) {
     };
   });
 }
-\nexport async function requeueImportJob(jobId: string) {
+export async function requeueImportJob(jobId: string) {
   const current = await requireImportJob(jobId);
 
   if (current.status === "ready" || current.status === "consumed") {
