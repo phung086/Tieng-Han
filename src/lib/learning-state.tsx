@@ -51,14 +51,21 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    let savedState: LearningState | null = null;
+
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) setState({ ...defaultState, ...JSON.parse(saved) });
+      if (saved) savedState = { ...defaultState, ...JSON.parse(saved) };
     } catch {
       // Persistence is optional; the app still works when storage is unavailable.
-    } finally {
-      setHydrated(true);
     }
+
+    const timer = window.setTimeout(() => {
+      if (savedState) setState(savedState);
+      setHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
