@@ -1,51 +1,74 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, BookMarked, Check, LockKeyhole, Play } from "lucide-react";
-import { lessons } from "@/data/demo";
+import { course } from "@/data/content";
+import { useLearning, type SkillKey } from "@/lib/learning-state";
 
-const chips = ["Từ vựng", "Ngữ pháp", "Nghe", "Nói", "Đọc", "Viết"];
+const chips: { key: SkillKey; label: string }[] = [
+  { key: "vocabulary", label: "Từ vựng" },
+  { key: "grammar", label: "Ngữ pháp" },
+  { key: "listening", label: "Nghe" },
+  { key: "speaking", label: "Nói" },
+  { key: "reading", label: "Đọc" },
+  { key: "writing", label: "Viết" },
+];
 
 export default function LearnPage() {
+  const { state } = useLearning();
+  const courseProgress = Math.round(
+    course.lessons.reduce((sum, lesson) => sum + (state.lessonProgress[String(lesson.id)] ?? 0), 0) /
+      Math.max(1, course.lessons.length),
+  );
+  const completed = course.lessons.filter((lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100).length;
+
   return (
     <div className="page">
       <header className="page-header compact">
-        <div>
-          <span className="kicker">GIÁO TRÌNH · 초급 1</span>
-          <h1>Tiếng Hàn Sơ cấp 1</h1>
-          <p>Đi theo từng bài của sách. Mỗi bài gom toàn bộ từ vựng, ngữ pháp và bốn kỹ năng vào một luồng.</p>
-        </div>
+        <div><span className="kicker">GIÁO TRÌNH · {course.level}</span><h1>{course.title}</h1><p>Mỗi bài đi theo cùng một workflow; khi nhập sách thật, lộ trình tự mở khóa theo tiến độ học của bạn.</p></div>
       </header>
 
       <section className="course-hero">
-        <div className="book-cover"><span>한국어</span><strong>초급 1</strong><small>Korean Beginner</small></div>
+        <div className="book-cover"><span>한국어</span><strong>{course.level}</strong><small>Korean Beginner</small></div>
         <div className="course-copy">
-          <span className="pill pill-soft">Giáo trình đang học</span>
-          <h2>6 bài mẫu · 32% hoàn thành</h2>
-          <p>Toàn bộ lesson UI đã sẵn sàng; khi nhập sách thật chỉ thay dữ liệu bài học và nguồn tham chiếu.</p>
-          <div className="course-progress-track"><span style={{ width: "32%" }} /></div>
-          <div className="course-meta"><span>2 bài hoàn thành</span><span>1 bài đang học</span><span>3 bài phía trước</span></div>
+          <span className="pill pill-soft">Giáo trình đang học</span><h2>{course.lessons.length} bài · {courseProgress}% hoàn thành</h2>
+          <p>{completed} bài đã hoàn thành. Tiến độ này được tính từ 6 kỹ năng của từng bài.</p>
+          <div className="course-progress-track"><span style={{ width: courseProgress + "%" }} /></div>
+          <div className="course-meta"><span>{completed} bài hoàn thành</span><span>{course.lessons.length - completed} bài còn lại</span><span>Local progress</span></div>
         </div>
       </section>
 
       <section className="lesson-path">
         <div className="lesson-rail" />
-        {lessons.map((lesson) => {
-          const locked = lesson.status === "locked";
+        {course.lessons.map((lesson, index) => {
+          const progress = state.lessonProgress[String(lesson.id)] ?? 0;
+          const previousDone = index === 0 || (state.lessonProgress[String(course.lessons[index - 1].id)] ?? 0) >= 100;
+          const done = progress >= 100;
+          const unlocked = done || previousDone;
+          const current = unlocked && !done;
+          const status = done ? "done" : current ? "current" : "locked";
+
           return (
-            <article className={"lesson-card " + lesson.status} key={lesson.number}>
-              <div className="lesson-node">{lesson.status === "done" ? <Check size={22} /> : locked ? <LockKeyhole size={19} /> : lesson.number}</div>
+            <article className={"lesson-card " + status} key={lesson.id}>
+              <div className="lesson-node">{done ? <Check size={22} /> : !unlocked ? <LockKeyhole size={19} /> : lesson.id}</div>
               <div className="lesson-card-body">
                 <div className="lesson-card-title">
-                  <div><span>Bài {lesson.number}</span><h3>{lesson.title}</h3><p>{lesson.vi}</p></div>
-                  {lesson.status === "current" ? <span className="pill">Đang học · {lesson.progress}%</span> : null}
-                  {lesson.status === "done" ? <span className="complete-label">Đã xong</span> : null}
+                  <div><span>Bài {lesson.id}</span><h3>{lesson.title}</h3><p>{lesson.vi}</p></div>
+                  {current ? <span className="pill">Đang học · {progress}%</span> : null}
+                  {done ? <span className="complete-label">Đã xong</span> : null}
                 </div>
+
                 <div className="lesson-chips">
-                  {chips.map((chip, index) => <span className={lesson.status === "done" || (lesson.status === "current" && index < 4) ? "chip done" : "chip"} key={chip}>{chip}</span>)}
+                  {chips.map((chip) => {
+                    const finished = state.completedActivities.includes("lesson:" + lesson.id + ":" + chip.key) || done;
+                    return <span className={finished ? "chip done" : "chip"} key={chip.key}>{chip.label}</span>;
+                  })}
                 </div>
-                {!locked ? (
-                  <Link className={lesson.status === "current" ? "primary-button small" : "secondary-button small"} href={"/learn/" + lesson.number}>
-                    {lesson.status === "done" ? <BookMarked size={17} /> : <Play size={17} />}
-                    {lesson.status === "done" ? "Ôn lại bài" : lesson.status === "current" ? "Tiếp tục bài" : "Mở bài"}
+
+                {unlocked ? (
+                  <Link className={current ? "primary-button small" : "secondary-button small"} href={"/learn/" + lesson.id}>
+                    {done ? <BookMarked size={17} /> : <Play size={17} />}
+                    {done ? "Ôn lại bài" : progress > 0 ? "Tiếp tục bài" : "Bắt đầu bài"}
                     <ArrowRight size={16} />
                   </Link>
                 ) : <span className="locked-note">Hoàn thành bài trước để mở khóa</span>}
