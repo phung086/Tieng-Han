@@ -62,7 +62,33 @@ Có thể chọn nhiều file:
 
 PDF đầu tiên được dùng để xác định lộ trình bài học.
 
-Pipeline:
+Có hai pipeline dùng chung một content contract.
+
+### Không cần API key
+
+```text
+PDF trong Haneul
+ ↓
+Local PDF.js extraction
+ ↓
+Text / images / cover / links
+ ↓
+SHA-256 handoff package
+ ↓
+Share/upload PDF + handoff to ChatGPT
+ ↓
+ChatGPT compiles Haneul Course Bundle
+ ↓
+Haneul verifies PDF fingerprint
+ ↓
+Merge bundle + local textbook media
+ ↓
+IndexedDB
+ ↓
+Learning Path
+```
+
+### Có API key
 
 ```text
 PDF
@@ -110,7 +136,7 @@ Importer không được dùng AI để viết một giáo trình mới.
 
 ## PDF scan
 
-Nếu PDF không có text layer, Haneul tự:
+Nếu PDF không có text layer và có AI API key, Haneul tự:
 
 ```text
 PDF page
@@ -121,6 +147,8 @@ PDF page
 ```
 
 OCR chỉ chạy cho các trang thiếu text để giảm chi phí và thời gian.
+
+Nếu chưa có API key, Haneul vẫn giữ preview ảnh của các trang scan. Khi dùng ChatGPT-assisted, ChatGPT đọc trực tiếp PDF bạn tải vào cuộc trò chuyện và bundle được ghép lại với media local theo `sourceRef`/lesson map.
 
 ## Dữ liệu local
 
