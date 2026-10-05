@@ -21,6 +21,8 @@ import {
   type ExtractedDocument,
 } from "@/lib/pdf-extractor";
 import { useContent, type RuntimeCourse } from "@/lib/content-store";
+import { buildLessonMedia } from "@/lib/lesson-media";
+import { ingestionConfig } from "@/config/ingestion";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 
@@ -209,7 +211,9 @@ export function IngestionStudio() {
     0,
   );
   const averageCharacters = totalPages ? Math.round(totalCharacters / totalPages) : 0;
-  const likelyScanned = Boolean(totalPages && averageCharacters < 80);
+  const likelyScanned = Boolean(
+    totalPages && averageCharacters < ingestionConfig.pdf.lowTextCharacters,
+  );
 
   async function analyzeFiles() {
     if (!files.length) return;
@@ -233,7 +237,7 @@ export function IngestionStudio() {
       for (let index = 0; index < files.length; index += 1) {
         let document = await extractPdf(files[index], index);
 
-        if (lowTextRatio(document) >= 0.35) {
+        if (lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
           setOcrUsed(true);
           setMessage("PDF scan: đang OCR " + fileLabel(files[index].name) + "…");
 
@@ -336,16 +340,19 @@ export function IngestionStudio() {
             "…",
         );
 
-        const sourcePages = documents.flatMap((document) => {
+        const lessonPages = documents.flatMap((document) => {
           const map = maps.find((item) => item.documentId === document.id);
           if (!map) return [];
-
-          return pagesForLesson(document, map.starts, lessonId).map((page) => ({
-            fileName: page.fileName,
-            pageNumber: page.pageNumber,
-            text: page.text,
-          }));
+          return pagesForLesson(document, map.starts, lessonId);
         });
+
+        const sourcePages = lessonPages.map((page) => ({
+          fileName: page.fileName,
+          pageNumber: page.pageNumber,
+          text: page.text,
+        }));
+
+        const lessonMedia = buildLessonMedia(lessonPages);
 
         if (!sourcePages.length) continue;
 
@@ -391,7 +398,10 @@ export function IngestionStudio() {
           );
         }
 
-        if (validation.coverageScore < 75 || validation.groundingScore < 85) {
+        if (
+          validation.coverageScore < ingestionConfig.validation.minimumCoverage ||
+          validation.groundingScore < ingestionConfig.validation.minimumGrounding
+        ) {
           throw new Error(
             "Bài " +
               lessonId +
@@ -412,6 +422,7 @@ export function IngestionStudio() {
             issues: validation.issues,
             missingTopics: validation.missingTopics,
           },
+          media: lessonMedia,
         });
 
         questions.push(...lessonQuestions);
@@ -454,7 +465,12 @@ export function IngestionStudio() {
           runtimeCourse.lessons.length +
           " bài, " +
           runtimeCourse.questions.length +
-          " câu luyện · grounding trung bình " +
+          " câu luyện · " +
+          runtimeCourse.lessons.reduce(
+            (sum, lesson) => sum + (lesson.media?.length ?? 0),
+            0,
+          ) +
+          " media · grounding trung bình " +
           averageGrounding +
           "%.",
       );
