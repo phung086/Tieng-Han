@@ -6,10 +6,13 @@ import * as z from "zod/v4";
 import {
   claimImportJob,
   failImportJob,
+  finalizeCourseFromDrafts,
+  getCompilationProgress,
   getImportJob,
   listImportJobs,
   readImportPages,
   requeueImportJob,
+  saveLessonDraft,
   submitImportBundle,
 } from "@/lib/import-job-store";
 import {
@@ -299,6 +302,124 @@ function buildMcpServer() {
   );
 
   server.registerTool(
+    "get_compilation_progress",
+    {
+      description:
+        "Read persistent lesson-level compilation checkpoints for a Haneul import job. Use this before reading source pages so interrupted runs resume from unfinished lessons instead of restarting.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+      }),
+    },
+    async ({ jobId }) => {
+      try {
+        const progress = await getCompilationProgress(jobId);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(progress, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "save_lesson_draft",
+    {
+      description:
+        "Persist one fully compiled lesson and its questions as an idempotent checkpoint. Calling again with the same lessonId replaces only that lesson draft, so future runs can resume without recompiling completed lessons.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+        lesson: z.record(z.string(), z.unknown()),
+        questions: z
+          .array(z.record(z.string(), z.unknown()))
+          .optional()
+          .default([]),
+      }),
+    },
+    async ({ jobId, lesson, questions }) => {
+      try {
+        const draft = await saveLessonDraft(
+          jobId,
+          lesson as never,
+          questions as never,
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  ok: true,
+                  lessonId: draft.lessonId,
+                  title: draft.lesson.title,
+                  savedAt: draft.savedAt,
+                  questionCount: draft.questions.length,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "finalize_course_bundle",
+    {
+      description:
+        "Assemble the final Haneul Course Bundle server-side from saved lesson checkpoints. Use only after get_compilation_progress confirms all textbook lessons have verified drafts. This avoids resending the full course and preserves completed work across interruptions.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+        lessonIds: z.array(z.number().int().min(1)).optional(),
+        title: z.string().optional(),
+        level: z.string().optional(),
+        edition: z.string().optional(),
+      }),
+    },
+    async ({ jobId, lessonIds, title, level, edition }) => {
+      try {
+        const saved = await finalizeCourseFromDrafts(jobId, {
+          lessonIds,
+          title,
+          level,
+          edition,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  ok: true,
+                  jobId: saved.id,
+                  status: saved.status,
+                  lessons: saved.resultBundle?.course.lessons.length ?? 0,
+                  questions: saved.resultBundle?.course.questions.length ?? 0,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
     "get_compilation_contract",
     {
       description:
@@ -327,11 +448,23 @@ function buildMcpServer() {
             "Create practice for vocabulary, grammar, listening, speaking, reading and writing without introducing unsupported curriculum.",
             "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>.",
             "Do not invent unreadable source content; record uncertainty instead.",
-            "Keep the compiler language-neutral. The job.language target may be Korean, English, Chinese or another future profile.",
+            "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
+            "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
+            "After finishing and checking each lesson, call save_lesson_draft immediately. Never keep many completed lessons only in chat context.",
+            "Before source reading in any new or resumed run, call get_compilation_progress and skip lessonIds already checkpointed unless they need deliberate correction.",
+            "Use finalize_course_bundle after all real textbook lessons are checkpointed. Detected lesson candidates are hints and may contain false positives.",
+          ],
+          checkpointWorkflow: [
+            "get_compilation_progress",
+            "read_import_pages for one lesson",
+            "compile and QA that lesson",
+            "save_lesson_draft",
+            "repeat only for unfinished lessons",
+            "finalize_course_bundle",
           ],
           runtimeCompatibility: {
             note:
-              "Haneul runtime v1 was originally Korean-first. Existing field names such as vocabulary.ko and vocabulary.vi are legacy storage keys: ko currently means target-language text and vi means learner-language meaning. The MCP bridge itself is language-neutral and a generic runtime schema can replace these aliases later without changing the job protocol.",
+              "Runtime v1 still exposes legacy aliases such as vocabulary.ko and vocabulary.vi to older UI components. Bundle parsing now normalizes canonical targetText/learnerMeaning and targetTitle/learnerTitle into those aliases, so new language profiles do not require changing the MCP protocol.",
           },
         };
 
