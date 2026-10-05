@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { publishImportJobQueued } from "@/lib/mcp-events";
-import type { CompiledCourseBundle } from "@/lib/course-bundle";
+import {
+  COURSE_BUNDLE_FORMAT,
+  COURSE_BUNDLE_VERSION,
+  parseCourseBundle,
+  type CompiledCourseBundle,
+} from "@/lib/course-bundle";
+import type { LessonContent, StudyQuestion } from "@/data/content";
 import {
   IMPORT_JOB_FORMAT,
   IMPORT_JOB_VERSION,
@@ -33,6 +39,21 @@ function jobFile(jobId: string) {
 
 function pagesDir(jobId: string) {
   return path.join(jobDir(jobId), "pages");
+}
+
+function draftsDir(jobId: string) {
+  return path.join(jobDir(jobId), "drafts");
+}
+
+function lessonDraftFile(jobId: string, lessonId: number) {
+  if (!Number.isInteger(lessonId) || lessonId < 1 || lessonId > 10000) {
+    throw new Error("lessonId không hợp lệ.");
+  }
+
+  return path.join(
+    draftsDir(jobId),
+    "lesson-" + String(lessonId).padStart(5, "0") + ".json",
+  );
 }
 
 function pageFile(jobId: string, page: Pick<ImportJobPage, "documentId" | "pageNumber">) {
@@ -283,6 +304,230 @@ export async function requeueImportJob(jobId: string) {
   return queued;
 }
 
+
+
+type StoredLessonDraft = {
+  version: 1;
+  lessonId: number;
+  savedAt: string;
+  lesson: LessonContent;
+  questions: StudyQuestion[];
+};
+
+async function readLessonDrafts(jobId: string): Promise<StoredLessonDraft[]> {
+  await mkdir(draftsDir(jobId), { recursive: true });
+  const files = (await readdir(draftsDir(jobId)))
+    .filter((name) => /^lesson-\d{5}\.json$/.test(name))
+    .sort();
+
+  const drafts: StoredLessonDraft[] = [];
+  for (const file of files) {
+    drafts.push(
+      await readJson<StoredLessonDraft>(path.join(draftsDir(jobId), file)),
+    );
+  }
+
+  return drafts;
+}
+
+function normalizeDraft(
+  job: ImportJob,
+  lesson: LessonContent,
+  questions: StudyQuestion[],
+) {
+  const parsed = parseCourseBundle(
+    JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT,
+      version: COURSE_BUNDLE_VERSION,
+      language: job.language,
+      sourceManifest: job.sourceManifest,
+      course: {
+        title: job.courseHint.title,
+        level: job.courseHint.level,
+        edition: job.courseHint.edition,
+        lessons: [lesson],
+        questions,
+      },
+    }),
+  );
+
+  const normalizedLesson = parsed.course.lessons[0];
+  if (!normalizedLesson) {
+    throw new Error("Lesson draft không hợp lệ.");
+  }
+
+  if (
+    parsed.course.questions.some(
+      (question) => question.lessonId !== normalizedLesson.id,
+    )
+  ) {
+    throw new Error(
+      "Mọi question trong lesson draft phải có lessonId trùng với lesson.",
+    );
+  }
+
+  const questionIds = new Set<string>();
+  for (const question of parsed.course.questions) {
+    if (questionIds.has(question.id)) {
+      throw new Error("Lesson draft có question id trùng: " + question.id);
+    }
+    questionIds.add(question.id);
+  }
+
+  return {
+    lesson: normalizedLesson,
+    questions: parsed.course.questions,
+  };
+}
+
+export async function saveLessonDraft(
+  jobId: string,
+  lesson: LessonContent,
+  questions: StudyQuestion[] = [],
+) {
+  const job = await requireImportJob(jobId);
+
+  if (job.status === "ready" || job.status === "consumed") {
+    throw new Error(
+      "Job đã hoàn tất. Không thể ghi lesson draft vào course đã khóa.",
+    );
+  }
+
+  const normalized = normalizeDraft(job, lesson, questions);
+  const draft: StoredLessonDraft = {
+    version: 1,
+    lessonId: normalized.lesson.id,
+    savedAt: new Date().toISOString(),
+    lesson: normalized.lesson,
+    questions: normalized.questions,
+  };
+
+  await writeJsonAtomic(
+    lessonDraftFile(jobId, normalized.lesson.id),
+    draft,
+  );
+
+  return draft;
+}
+
+export async function getCompilationProgress(jobId: string) {
+  const job = await requireImportJob(jobId);
+  const drafts = await readLessonDrafts(jobId);
+  const completedLessonIds = drafts
+    .map((draft) => draft.lessonId)
+    .sort((a, b) => a - b);
+  const completed = new Set(completedLessonIds);
+
+  const detectedCandidates = job.detectedMaps.flatMap((map) =>
+    map.starts.map((start) => ({
+      fileName: map.fileName,
+      lessonId: start.lessonId,
+      pageNumber: start.pageNumber,
+      titleHint: start.titleHint,
+    })),
+  );
+
+  const detectedLessonIds = Array.from(
+    new Set(detectedCandidates.map((item) => item.lessonId)),
+  ).sort((a, b) => a - b);
+
+  const pendingDetectedLessonIds = detectedLessonIds.filter(
+    (lessonId) => !completed.has(lessonId),
+  );
+
+  return {
+    jobId: job.id,
+    status: job.status,
+    language: job.language,
+    courseHint: job.courseHint,
+    totalPages: job.totalPages,
+    completedLessonIds,
+    completedLessons: drafts.map((draft) => ({
+      lessonId: draft.lessonId,
+      title: draft.lesson.title,
+      learnerTitle: draft.lesson.vi,
+      savedAt: draft.savedAt,
+      questionCount: draft.questions.length,
+      coverageScore: draft.lesson.quality?.coverageScore,
+      groundingScore: draft.lesson.quality?.groundingScore,
+      issues: draft.lesson.quality?.issues ?? [],
+    })),
+    detectedCandidates,
+    pendingDetectedLessonIds,
+    nextDetectedLessonId: pendingDetectedLessonIds[0] ?? null,
+    note:
+      "Detected lesson candidates are hints, not ground truth. Ignore false positives and finalize only lessonIds verified from the textbook.",
+  };
+}
+
+export async function finalizeCourseFromDrafts(
+  jobId: string,
+  input?: {
+    lessonIds?: number[];
+    title?: string;
+    level?: string;
+    edition?: string;
+  },
+) {
+  const job = await requireImportJob(jobId);
+
+  if (job.status === "ready" || job.status === "consumed") {
+    if (job.resultBundle) return job;
+    throw new Error("Job đã hoàn tất nhưng không còn result bundle.");
+  }
+
+  const drafts = await readLessonDrafts(jobId);
+  if (!drafts.length) {
+    throw new Error("Chưa có lesson draft nào để finalize.");
+  }
+
+  const byId = new Map(drafts.map((draft) => [draft.lessonId, draft]));
+  const requestedIds = input?.lessonIds?.length
+    ? Array.from(new Set(input.lessonIds))
+    : drafts.map((draft) => draft.lessonId).sort((a, b) => a - b);
+
+  const selected = requestedIds.map((lessonId) => {
+    const draft = byId.get(lessonId);
+    if (!draft) {
+      throw new Error(
+        "Thiếu lesson draft đã xác minh cho lessonId " + lessonId + ".",
+      );
+    }
+    return draft;
+  });
+
+  const allQuestions = selected.flatMap((draft) => draft.questions);
+  const globalQuestionIds = new Set<string>();
+  for (const question of allQuestions) {
+    if (globalQuestionIds.has(question.id)) {
+      throw new Error(
+        "Question id trùng giữa các lesson draft: " + question.id,
+      );
+    }
+    globalQuestionIds.add(question.id);
+  }
+
+  const bundle = parseCourseBundle(
+    JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT,
+      version: COURSE_BUNDLE_VERSION,
+      generatedAt: new Date().toISOString(),
+      language: job.language,
+      sourceFiles: job.documents.map((document) => document.fileName),
+      sourceManifest: job.sourceManifest,
+      course: {
+        title: input?.title?.trim() || job.courseHint.title,
+        level: input?.level?.trim() || job.courseHint.level,
+        edition:
+          input?.edition?.trim() || job.courseHint.edition || undefined,
+        lessons: selected.map((draft) => draft.lesson),
+        questions: allQuestions,
+      },
+    }),
+  );
+
+  return submitImportBundle(jobId, bundle);
+}
 
 export async function submitImportBundle(
   jobId: string,
