@@ -4869,3 +4869,53 @@ a:focus-visible {
   gap: 9px;
   margin-top: 12px;
 }
+
+
+.assisted-import-card {
+  border-color: #d8d4f4;
+  background:
+    radial-gradient(circle at 86% 15%, rgba(102, 88, 232, 0.09), transparent 28%),
+    #fff;
+}
+
+.local-mode-note {
+  display: grid;
+  gap: 4px;
+  max-width: 680px;
+  margin-top: 13px;
+  padding: 12px 14px;
+  border: 1px solid #e1def8;
+  border-radius: 14px;
+  background: #f8f7ff;
+}
+
+.local-mode-note strong {
+  color: var(--primary);
+  font-size: 9px;
+}
+
+.local-mode-note span {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.bundle-file-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.bundle-file-button.disabled {
+  pointer-events: none;
+  opacity: 0.48;
+}
+
+.bundle-file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
