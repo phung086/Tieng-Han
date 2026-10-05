@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useMessages } from "@/i18n/messages";
 
 export default function ErrorPage({
   error,
@@ -9,6 +10,8 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const messages = useMessages();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -16,9 +19,11 @@ export default function ErrorPage({
   return (
     <div className="system-state">
       <div className="brand-mark">ㅎ</div>
-      <strong>Có lỗi khi mở nội dung</strong>
-      <span>Dữ liệu local của bạn vẫn được giữ. Hãy thử tải lại phần này.</span>
-      <button className="primary-button" onClick={reset}>Thử lại</button>
+      <strong>{messages.system.error}</strong>
+      <span>{messages.system.errorBody}</span>
+      <button className="primary-button" onClick={reset}>
+        {messages.system.retry}
+      </button>
     </div>
   );
 }
