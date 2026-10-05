@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Brain, CheckCircle2, Clock3 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
+import { useMessages } from "@/i18n/messages";
 
 type ReviewCatalogItem = {
   id: string;
@@ -31,13 +32,14 @@ function uniqueCatalog(items: ReviewCatalogItem[]) {
 export default function ReviewPage() {
   const { state } = useLearning();
   const { course } = useContent();
+  const messages = useMessages();
   const today = todayKey();
 
   const textbookCatalog = course.lessons.flatMap((lesson): ReviewCatalogItem[] => {
     const vocabulary = lesson.vocabulary.map((item) => ({
       id: item.id,
       title: item.ko,
-      subtitle: "Từ vựng · " + item.vi,
+      subtitle: messages.review.labels.vocabulary + " · " + item.vi,
       lessonId: lesson.id,
       href: "/vocabulary?lesson=" + lesson.id,
     }));
@@ -45,7 +47,7 @@ export default function ReviewPage() {
     const listening = lesson.listening.map((item) => ({
       id: item.id,
       title: item.text,
-      subtitle: "Nghe · " + item.meaning,
+      subtitle: messages.review.labels.listening + " · " + item.meaning,
       lessonId: lesson.id,
       href: "/listening?lesson=" + lesson.id,
     }));
@@ -53,7 +55,7 @@ export default function ReviewPage() {
     const speaking = lesson.speaking.map((sentence, index) => ({
       id: "speak-" + lesson.id + "-" + index,
       title: sentence,
-      subtitle: "Nói · Shadowing",
+      subtitle: messages.review.labels.speaking + " · " + messages.review.labels.shadowing,
       lessonId: lesson.id,
       href: "/speaking?lesson=" + lesson.id,
     }));
@@ -62,7 +64,7 @@ export default function ReviewPage() {
       lesson.reading?.questions.map((item) => ({
         id: item.id,
         title: item.q,
-        subtitle: "Đọc hiểu",
+        subtitle: messages.review.labels.reading,
         lessonId: lesson.id,
         href: "/reading?lesson=" + lesson.id,
       })) ?? [];
@@ -71,7 +73,7 @@ export default function ReviewPage() {
       ? [{
           id: "writing-" + lesson.id,
           title: lesson.writing.prompt,
-          subtitle: "Viết",
+          subtitle: messages.review.labels.writing,
           lessonId: lesson.id,
           href: "/writing?lesson=" + lesson.id,
         }]
@@ -85,16 +87,16 @@ export default function ReviewPage() {
     title: item.prompt,
     subtitle:
       item.skill === "grammar"
-        ? "Ngữ pháp"
+        ? messages.review.labels.grammar
         : item.skill === "reading"
-          ? "Đọc"
+          ? messages.review.labels.reading
           : item.skill === "writing"
-            ? "Viết"
+            ? messages.review.labels.writing
             : item.skill === "listening"
-              ? "Nghe"
+              ? messages.review.labels.listening
               : item.skill === "speaking"
-                ? "Nói"
-                : "Từ vựng",
+                ? messages.review.labels.speaking
+                : messages.review.labels.vocabulary,
     lessonId: item.lessonId,
     href: "/practice/quiz?lesson=" + item.lessonId,
   }));
@@ -128,12 +130,9 @@ export default function ReviewPage() {
     <div className="page">
       <header className="page-header compact">
         <div>
-          <span className="kicker">ÔN TẬP · 복습</span>
-          <h1>Ôn đúng thứ sắp quên</h1>
-          <p>
-            Từ vựng, Nghe, Nói, Đọc, Viết và Quiz đều dùng chung mastery.
-            Sai ở kỹ năng nào sẽ quay lại đúng màn luyện của kỹ năng đó.
-          </p>
+          <span className="kicker">{messages.review.kicker}</span>
+          <h1>{messages.review.title}</h1>
+          <p>{messages.review.intro}</p>
         </div>
       </header>
 
@@ -143,26 +142,26 @@ export default function ReviewPage() {
         </div>
         <div>
           <span className="eyebrow">
-            {queue.length ? "ĐẾN HẠN HÔM NAY" : "HÀNG ĐỢI SẠCH"}
+            {queue.length ? messages.review.dueToday : messages.review.queueClean}
           </span>
           <h2>
             {queue.length
-              ? queue.length + " mục cần ôn"
-              : "Không có mục nào quá hạn"}
+              ? queue.length + " " + messages.review.dueSuffix
+              : messages.review.noOverdue}
           </h2>
           <p>
             {queue.length
-              ? "Bắt đầu từ mục yếu nhất trước."
+              ? messages.review.weakFirst
               : mastered.length
-                ? "Các mục đã học đang chờ đúng ngày để quay lại."
-                : "Học một phiên để hệ thống bắt đầu xây lịch ôn."}
+                ? messages.review.waiting
+                : messages.review.firstSession}
           </p>
         </div>
         <Link
           className="primary-button"
           href={queue[0]?.href ?? weak[0]?.href ?? "/practice"}
         >
-          {queue.length ? "Bắt đầu ôn" : "Luyện tự do"} <ArrowRight size={18} />
+          {queue.length ? messages.review.start : messages.review.freePractice} <ArrowRight size={18} />
         </Link>
       </section>
 
@@ -170,12 +169,10 @@ export default function ReviewPage() {
         <div className="section-title-row">
           <div>
             <span className="eyebrow">
-              {queue.length ? "Đến hạn" : "Điểm yếu gần đây"}
+              {queue.length ? messages.review.due : messages.review.recentWeak}
             </span>
             <h2>
-              {queue.length
-                ? "Ưu tiên theo độ nhớ"
-                : "Theo dõi để ôn đúng lúc"}
+              {queue.length ? messages.review.priority : messages.review.watch}
             </h2>
           </div>
         </div>
@@ -196,11 +193,11 @@ export default function ReviewPage() {
                   <div className="memory-track">
                     <span style={{ width: item.strength + "%" }} />
                   </div>
-                  <span>{item.strength}% nhớ</span>
+                  <span>{item.strength}% {messages.review.memory}</span>
                 </div>
                 <div className="due-cell">
                   <Clock3 size={15} />
-                  {item.dueAt <= today ? "Đến hạn" : item.dueAt}
+                  {item.dueAt <= today ? messages.review.due : item.dueAt}
                 </div>
               </Link>
             ))}
@@ -209,11 +206,8 @@ export default function ReviewPage() {
           <div className="review-empty">
             <CheckCircle2 size={24} />
             <div>
-              <strong>Chưa có dữ liệu ôn tập.</strong>
-              <p>
-                Học Flashcard, Nghe, Nói, Đọc, Viết hoặc Quiz một lần,
-                hệ thống sẽ bắt đầu xây hàng đợi cho bạn.
-              </p>
+              <strong>{messages.review.emptyTitle}</strong>
+              <p>{messages.review.emptyBody}</p>
             </div>
           </div>
         )}
