@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { BookOpenText, Check, Eye, EyeOff, X } from "lucide-react";
-import { getLesson } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
 export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
+  const { getLesson } = useContent();
   const lesson = getLesson(lessonId);
   const content = lesson?.reading;
   const [showTranslation, setShowTranslation] = useState(false);
