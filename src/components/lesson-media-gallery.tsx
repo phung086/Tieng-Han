@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { LessonMedia } from "@/data/content";
 import { useMessages } from "@/i18n/messages";
+import { ingestionConfig } from "@/config/ingestion";
 
 function youtubeEmbedUrl(url: string) {
   try {
@@ -65,6 +66,7 @@ export function LessonMediaGallery({
   media: LessonMedia[];
 }) {
   const [activeImage, setActiveImage] = useState<LessonMedia | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const messages = useMessages();
 
   const ordered = useMemo(
@@ -85,6 +87,12 @@ export function LessonMediaGallery({
 
   if (!ordered.length) return null;
 
+  const visibleMedia = expanded
+    ? ordered
+    : ordered.slice(0, ingestionConfig.lesson.initialVisibleMediaItems);
+  const hasMore =
+    ordered.length > ingestionConfig.lesson.initialVisibleMediaItems;
+
   return (
     <>
       <section className="lesson-media-section">
@@ -97,7 +105,7 @@ export function LessonMediaGallery({
         </div>
 
         <div className="lesson-media-grid">
-          {ordered.map((item) => {
+          {visibleMedia.map((item) => {
             if (item.type === "image") {
               return (
                 <article className="lesson-media-card image-card" key={item.id}>
@@ -189,6 +197,16 @@ export function LessonMediaGallery({
             );
           })}
         </div>
+
+        {hasMore ? (
+          <button
+            className="lesson-media-expand"
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? messages.media.showLess : messages.media.showAll}
+          </button>
+        ) : null}
       </section>
 
       {activeImage ? (
