@@ -224,7 +224,7 @@ export function IngestionStudio() {
   const [courseTitle, setCourseTitle] = useState<string>(copy.defaultCourseTitle);
   const [level, setLevel] = useState<string>(copy.defaultLevel);
   const [edition, setEdition] = useState("");
-  const [targetLanguageCode, setTargetLanguageCode] = useState(
+  const [targetLanguageCode, setTargetLanguageCode] = useState<string>(
     ingestionConfig.autoImport.targetLanguage,
   );
   const [aiStatus, setAiStatus] = useState<{
