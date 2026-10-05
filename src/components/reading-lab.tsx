@@ -5,10 +5,12 @@ import { BookOpenText, Check, Eye, EyeOff, X } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
+import { useMessages } from "@/i18n/messages";
 
 export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { getLesson } = useContent();
+  const messages = useMessages();
   const lesson = getLesson(lessonId);
   const content = lesson?.reading;
   const [showTranslation, setShowTranslation] = useState(false);
@@ -16,7 +18,12 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const [checked, setChecked] = useState(false);
 
   if (!lesson || !content) {
-    return <EmptySkillState lessonId={lessonId} skill="Đọc" />;
+    return (
+      <EmptySkillState
+        lessonId={lessonId}
+        skill={messages.lesson.reading}
+      />
+    );
   }
 
   const reading = content;
@@ -40,9 +47,11 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   return (
     <div className="skill-lab reading-lab">
       <header className="skill-lab-header">
-        <span className="eyebrow">읽기 · BÀI {lessonId}</span>
-        <h1>Đọc để hiểu ý, không dịch từng từ</h1>
-        <p>Ẩn nghĩa tiếng Việt mặc định để giữ sự tập trung vào ngữ cảnh tiếng Hàn.</p>
+        <span className="eyebrow">
+          {messages.skills.reading.ko} · {messages.common.lesson.toUpperCase()} {lessonId}
+        </span>
+        <h1>{messages.reading.title}</h1>
+        <p>{messages.reading.intro}</p>
       </header>
 
       <section className="reading-workspace">
@@ -50,18 +59,22 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
           <div className="reading-passage-top">
             <div>
               <BookOpenText size={20} />
-              <span>Bài {lessonId} · {reading.title}</span>
+              <span>{messages.common.lesson} {lessonId} · {reading.title}</span>
             </div>
+
             <button
               className="text-button"
               onClick={() => setShowTranslation((value) => !value)}
             >
               {showTranslation ? <EyeOff size={16} /> : <Eye size={16} />}
-              {showTranslation ? "Ẩn nghĩa" : "Xem nghĩa"}
+              {showTranslation
+                ? messages.reading.hide
+                : messages.reading.show}
             </button>
           </div>
 
           <p className="korean-text">{reading.text}</p>
+
           {showTranslation ? (
             <div className="translation-box">{reading.translation}</div>
           ) : null}
@@ -70,7 +83,7 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
         <article className="reading-questions">
           {reading.questions.map((item, index) => (
             <div className="reading-question" key={item.id}>
-              <span>Câu {index + 1}</span>
+              <span>{messages.reading.question} {index + 1}</span>
               <h3 className="korean-text">{item.q}</h3>
 
               <div className="reading-choice-row">
@@ -99,8 +112,12 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
                       }
                     >
                       {choice}
-                      {checked && choice === item.answer ? <Check size={15} /> : null}
-                      {checked && selected && choice !== item.answer ? <X size={15} /> : null}
+                      {checked && choice === item.answer ? (
+                        <Check size={15} />
+                      ) : null}
+                      {checked && selected && choice !== item.answer ? (
+                        <X size={15} />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -110,11 +127,13 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
 
           {checked ? (
             <div className="reading-result">
-              <strong>{correct}/{reading.questions.length} câu đúng</strong>
+              <strong>
+                {correct}/{reading.questions.length} {messages.reading.correctSuffix}
+              </strong>
               <span>
                 {correct === reading.questions.length
-                  ? "Bạn đã nắm đúng ý chính."
-                  : "Xem lại đoạn văn rồi thử lại nếu cần."}
+                  ? messages.reading.allCorrect
+                  : messages.reading.retryNote}
               </span>
             </div>
           ) : null}
@@ -124,7 +143,7 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
             disabled={Object.keys(answers).length < reading.questions.length}
             onClick={checked ? reset : submit}
           >
-            {checked ? "Làm lại" : "Kiểm tra đọc hiểu"}
+            {checked ? messages.reading.retry : messages.reading.check}
           </button>
         </article>
       </section>
