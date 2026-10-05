@@ -7,6 +7,11 @@ import {
   type LessonContent,
   type StudyQuestion,
 } from "@/data/content";
+import {
+  clearStoredCourse,
+  readStoredCourse,
+  writeStoredCourse,
+} from "@/lib/content-db";
 
 export type RuntimeCourse = {
   id: string;
@@ -31,7 +36,9 @@ type ContentContextValue = {
   resetCourse: () => void;
 };
 
-const STORAGE_KEY = "haneul-course-v2";
+const LEGACY_STORAGE_KEY = "haneul-course-v2";
+const FALLBACK_STORAGE_KEY = "haneul-course-fallback-v1";
+
 const demoRuntimeCourse: RuntimeCourse = {
   ...demoCourse,
   questions: studyQuestions,
@@ -42,6 +49,7 @@ const ContentContext = createContext<ContentContextValue | null>(null);
 function isRuntimeCourse(value: unknown): value is RuntimeCourse {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
+
   return (
     typeof record.id === "string" &&
     typeof record.title === "string" &&
@@ -51,34 +59,76 @@ function isRuntimeCourse(value: unknown): value is RuntimeCourse {
   );
 }
 
+function readLocalFallback() {
+  for (const key of [FALLBACK_STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed: unknown = JSON.parse(raw);
+      if (isRuntimeCourse(parsed)) return parsed;
+    } catch {
+      // Try the next storage source.
+    }
+  }
+
+  return null;
+}
+
+async function restoreCourse() {
+  try {
+    const stored = await readStoredCourse();
+    if (isRuntimeCourse(stored)) return stored;
+  } catch {
+    // IndexedDB can be unavailable in restricted browser modes.
+  }
+
+  const fallback = readLocalFallback();
+
+  if (fallback) {
+    try {
+      await writeStoredCourse(fallback);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      // Keep using the localStorage fallback.
+    }
+  }
+
+  return fallback;
+}
+
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [course, setCourse] = useState<RuntimeCourse>(demoRuntimeCourse);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    let savedCourse: RuntimeCourse | null = null;
+    let cancelled = false;
 
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (isRuntimeCourse(parsed)) savedCourse = parsed;
-      }
-    } catch {
-      // Keep the bundled demo course if local content cannot be restored.
-    }
+    void restoreCourse()
+      .then((savedCourse) => {
+        if (cancelled) return;
+        if (savedCourse) setCourse(savedCourse);
+        setHydrated(true);
+      })
+      .catch(() => {
+        if (!cancelled) setHydrated(true);
+      });
 
-    const timer = window.setTimeout(() => {
-      if (savedCourse) setCourse(savedCourse);
-      setHydrated(true);
-    }, 0);
-
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(course));
+
+    void writeStoredCourse(course).catch(() => {
+      try {
+        window.localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify(course));
+      } catch {
+        // The UI remains usable even when browser persistence is unavailable.
+      }
+    });
   }, [course, hydrated]);
 
   const value = useMemo<ContentContextValue>(() => ({
@@ -92,7 +142,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     },
     resetCourse() {
       setCourse(demoRuntimeCourse);
-      window.localStorage.removeItem(STORAGE_KEY);
+      void clearStoredCourse().catch(() => undefined);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
     },
   }), [course, hydrated]);
 
