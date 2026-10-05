@@ -26,7 +26,7 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-Điền API key vào `.env.local`:
+API key là **tùy chọn**. Nếu chưa có key, cứ chạy app bình thường và dùng luồng **ChatGPT-assisted** ở trang Import. Khi muốn bật chế độ tự động qua API, điền:
 
 ```env
 OPENAI_API_KEY=...
