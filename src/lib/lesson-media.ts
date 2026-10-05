@@ -1,4 +1,3 @@
-import { ingestionConfig } from "@/config/ingestion";
 import type { LessonMedia } from "@/data/content";
 import type { ExtractedPage } from "@/lib/pdf-extractor";
 
@@ -48,7 +47,7 @@ export function buildLessonMedia(pages: ExtractedPage[]): LessonMedia[] {
       });
     });
 
-    if (!page.embeddedImages.length && page.previewImageDataUrl) {
+    if (page.previewImageDataUrl) {
       media.push({
         id: "pdf-page-" + baseId,
         type: "image",
@@ -85,7 +84,5 @@ export function buildLessonMedia(pages: ExtractedPage[]): LessonMedia[] {
     return 4;
   };
 
-  return media
-    .sort((a, b) => priority(a) - priority(b))
-    .slice(0, ingestionConfig.lesson.maxMediaItems);
+  return media.sort((a, b) => priority(a) - priority(b));
 }
