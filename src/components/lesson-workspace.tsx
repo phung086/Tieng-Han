@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
+import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 
 type LessonTab = "Tổng quan" | "Từ vựng" | "Ngữ pháp" | "Đọc" | "Bổ sung";
 const tabs: LessonTab[] = ["Tổng quan", "Từ vựng", "Ngữ pháp", "Đọc", "Bổ sung"];
@@ -41,8 +42,13 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const pronunciation = lesson.pronunciation ?? [];
   const culture = lesson.culture ?? [];
   const extraSections = lesson.extraSections ?? [];
+  const media = lesson.media ?? [];
   const supplementalCount =
-    dialogues.length + pronunciation.length + culture.length + extraSections.length;
+    dialogues.length +
+    pronunciation.length +
+    culture.length +
+    extraSections.length +
+    media.length;
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
@@ -206,6 +212,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
       {tab === "Bổ sung" ? (
         <section className="supplement-stack">
+          <LessonMediaGallery media={media} />
           {!supplementalCount ? (
             <div className="inline-empty-state">Không có mục bổ sung riêng trong nguồn của bài này.</div>
           ) : null}
