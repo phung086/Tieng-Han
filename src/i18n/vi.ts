@@ -422,6 +422,7 @@ export const viMessages = {
     mcpJobFailed: "MCP import job thất bại.",
     mcpPollingError: "Mất kết nối khi chờ kết quả MCP.",
     mcpImported: "MCP đã hoàn tất. Course bundle được xác minh và nhập tự động vào Haneul.",
+    mcpAutoRequeued: "Job xử lý bị gián đoạn quá lâu nên Haneul đã tự đưa về hàng đợi để ChatGPT tiếp tục từ checkpoint gần nhất.",
     bundleMismatch: "Course bundle không khớp fingerprint của bộ PDF đang mở.",
     bundleSourceVerified: "Đã xác minh bundle đúng bộ PDF.",
     bundleSourceUnverified: "Bundle không có fingerprint; app vẫn cho nhập nhưng không thể xác minh tuyệt đối đúng bản PDF.",
