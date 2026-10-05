@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, ChevronRight, Clock3, Headphones, Sparkles } from "lucide-react";
 import { ProgressRing } from "@/components/progress-ring";
 import { DashboardLiveStats } from "@/components/dashboard-live-stats";
-import { course } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { accuracy, todayKey, useLearning, type SkillKey } from "@/lib/learning-state";
 
 const skillMeta: Record<SkillKey, { name: string; korean: string; tone: string }> = {
@@ -25,6 +25,7 @@ function skillNote(value: number, total: number) {
 
 export default function DashboardPage() {
   const { state } = useLearning();
+  const { course } = useContent();
   const today = todayKey();
   const todayStat = state.dailyStats[today] ?? { attempts: 0, correct: 0, xp: 0 };
   const current =
