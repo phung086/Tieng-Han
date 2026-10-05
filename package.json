@@ -22,7 +22,8 @@
     "react-dom": "^19.2.0",
     "pdfjs-dist": "^6.3.289",
     "@modelcontextprotocol/server": "^2.3.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "standardwebhooks": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
