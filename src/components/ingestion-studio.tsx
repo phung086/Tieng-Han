@@ -7,6 +7,8 @@ import {
   BookOpenCheck,
   CheckCircle2,
   FileText,
+  Copy,
+  Download,
   LoaderCircle,
   Sparkles,
   UploadCloud,
@@ -27,6 +29,12 @@ import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
 import { parseCourseBundle } from "@/lib/course-bundle";
+import {
+  buildHandoffPackage,
+  downloadJsonFile,
+  fingerprintFile,
+  type SourceFingerprint,
+} from "@/lib/chatgpt-handoff";
 
 type ImportCopy = UiMessages["import"];
 
@@ -191,6 +199,8 @@ export function IngestionStudio() {
   const [error, setError] = useState("");
   const [ocrUsed, setOcrUsed] = useState(false);
   const [ocrSkipped, setOcrSkipped] = useState(false);
+  const [sourceManifest, setSourceManifest] = useState<SourceFingerprint[]>([]);
+  const [handoffNote, setHandoffNote] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -324,8 +334,18 @@ export function IngestionStudio() {
         throw new Error(copy.noLessonMap);
       }
 
+      const fingerprints = await Promise.all(
+        files.map((file) => {
+          const document = nextDocuments.find(
+            (item) => item.fileName === file.name,
+          );
+          return fingerprintFile(file, document?.pageCount ?? 0);
+        }),
+      );
+
       setDocuments(nextDocuments);
       setMaps(nextMaps);
+      setSourceManifest(fingerprints);
       setProgress(100);
       setMessage(
         nextMaps[0]?.starts.length
@@ -341,6 +361,42 @@ export function IngestionStudio() {
       setStatus("idle");
       setError(reason instanceof Error ? reason.message : copy.analyzeError);
     }
+  }
+
+  async function exportChatGptHandoff() {
+    if (!files.length || !documents.length) return;
+
+    const handoff = await buildHandoffPackage({
+      files,
+      documents,
+      maps,
+      courseHint: {
+        title: courseTitle,
+        level,
+        edition: edition || undefined,
+      },
+    });
+
+    downloadJsonFile("haneul-chatgpt-handoff.json", handoff);
+    setHandoffNote(copy.handoffReady);
+  }
+
+  async function copyChatGptPrompt() {
+    const prompt = [
+      "Tôi đang dùng dự án Haneul học tiếng Hàn.",
+      "Hãy đọc toàn bộ PDF giáo trình/workbook tôi tải lên cùng file haneul-chatgpt-handoff.json.",
+      "Biên nội dung bám sát sách thành Haneul Course Bundle v1.",
+      "Yêu cầu:",
+      "- Không thêm curriculum ngoài sách.",
+      "- Bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa, nghe, nói, đọc, viết và bài tập nếu có.",
+      "- Mỗi nội dung quan trọng giữ sourceRef theo file/trang.",
+      "- Bài luyện derived chỉ dùng kiến thức đã xuất hiện trong nguồn.",
+      "- Sao chép nguyên sourceManifest từ handoff sang bundle để app xác minh đúng PDF.",
+      "- Xuất một file JSON duy nhất đúng format haneul-course-bundle version 1 để tôi import vào app.",
+    ].join("\n");
+
+    await navigator.clipboard.writeText(prompt);
+    setHandoffNote(copy.promptCopied);
   }
 
   function pageNumbersFromLesson(lesson: LessonContent) {
@@ -394,6 +450,28 @@ export function IngestionStudio() {
 
     try {
       const bundle = parseCourseBundle(await file.text());
+
+      if (bundle.sourceManifest?.length && sourceManifest.length) {
+        const expected = new Map(
+          sourceManifest.map((item) => [item.name, item.sha256]),
+        );
+        const mismatch = bundle.sourceManifest.some(
+          (item) =>
+            !expected.has(item.name) ||
+            expected.get(item.name) !== item.sha256,
+        );
+
+        if (
+          mismatch ||
+          bundle.sourceManifest.length !== sourceManifest.length
+        ) {
+          throw new Error(copy.bundleMismatch);
+        }
+
+        setHandoffNote(copy.bundleSourceVerified);
+      } else {
+        setHandoffNote(copy.bundleSourceUnverified);
+      }
 
       const lessons = bundle.course.lessons
         .map((lesson) => {
@@ -815,6 +893,31 @@ export function IngestionStudio() {
               <strong>{copy.localMode}</strong>
               <span>{copy.chatUploadHint}</span>
             </div>
+          ) : null}
+
+          {documents.length ? (
+            <div className="handoff-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void exportChatGptHandoff()}
+              >
+                <Download size={16} />
+                {copy.exportHandoff}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void copyChatGptPrompt()}
+              >
+                <Copy size={16} />
+                {copy.copyPrompt}
+              </button>
+            </div>
+          ) : null}
+
+          {handoffNote ? (
+            <div className="handoff-note">{handoffNote}</div>
           ) : null}
         </div>
 
