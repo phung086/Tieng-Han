@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         "Bạn là QA validator cho dữ liệu học tiếng Hàn sinh từ giáo trình.",
         "So sánh GENERATED với SOURCE, không bổ sung kiến thức mới.",
         "Đánh giá hai tiêu chí 0-100:",
-        "- coverageScore: dữ liệu đã bao phủ các từ vựng, ngữ pháp, bài đọc/viết và hoạt động quan trọng của nguồn đến đâu.",
+        "- coverageScore: dữ liệu đã bao phủ từ vựng, ngữ pháp, nghe/nói, đọc/viết, hội thoại, phát âm, văn hóa và các mục/hoạt động quan trọng của nguồn đến đâu.",
         "- groundingScore: các nội dung generated có thực sự được hỗ trợ bởi nguồn hay có hallucination.",
         "Câu hỏi luyện tập mới được phép paraphrase/tạo distractor, nhưng đáp án/kiến thức phải bám nguồn.",
         "Trả JSON duy nhất:",
