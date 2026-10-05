@@ -1,13 +1,14 @@
 import { StatsClient } from "@/components/stats-client";
+import { viMessages } from "@/i18n/messages";
 
 export default function StatsPage() {
   return (
     <div className="page">
       <header className="page-header compact">
         <div>
-          <span className="kicker">TIẾN ĐỘ · 학습 기록</span>
-          <h1>Nhìn tiến bộ, không nhìn áp lực</h1>
-          <p>Độ chính xác theo kỹ năng cập nhật ngay sau các phiên luyện trên thiết bị này.</p>
+          <span className="kicker">{viMessages.statsPage.kicker}</span>
+          <h1>{viMessages.statsPage.title}</h1>
+          <p>{viMessages.statsPage.intro}</p>
         </div>
       </header>
       <StatsClient />
