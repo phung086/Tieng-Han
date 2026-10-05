@@ -15,6 +15,21 @@ Haneul được xây theo hướng **local-first** và **textbook-first**:
 
 Không cần sửa component hoặc viết code riêng cho từng cuốn sách.
 
+## MCP Bridge
+
+Haneul có sẵn MCP endpoint tại `/mcp`. Sau khi PDF được phân tích local, app tự tạo một **import job** gồm text, page preview, lesson map và SHA-256. Khi ChatGPT/MCP connector được bật, AI có thể đọc job trực tiếp, biên course bundle và gửi kết quả trở lại app; browser tự poll và import kết quả.
+
+```text
+PDF → local extraction → MCP import job → ChatGPT
+                                  ↓
+Learning Path ← verified bundle ← MCP
+```
+
+Manual handoff vẫn được giữ làm fallback khi connector chưa kết nối.
+
+MCP layer dùng language profile, không hardcode tiếng Hàn, nên cùng kiến trúc có thể mở rộng sang **tiếng Anh, tiếng Trung và ngôn ngữ khác**. Xem `docs/MCP_BRIDGE.md`.
+
+
 ## Chạy local
 
 Yêu cầu Node.js 22+.
