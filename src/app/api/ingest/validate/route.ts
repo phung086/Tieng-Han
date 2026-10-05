@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callContentModel } from "@/lib/content-ai";
+import { callContentModel, callVisionContentModel, type InputContent } from "@/lib/content-ai";
+import { ingestionConfig } from "@/config/ingestion";
 
 export const maxDuration = 120;
 
@@ -7,6 +8,7 @@ type SourcePage = {
   fileName: string;
   pageNumber: number;
   text: string;
+  imageDataUrl?: string;
 };
 
 export async function POST(request: Request) {
@@ -29,28 +31,78 @@ export async function POST(request: Request) {
       source += next;
     }
 
-    const result = await callContentModel(
-      [
-        "Bạn là QA validator cho dữ liệu học tiếng Hàn sinh từ giáo trình.",
-        "So sánh GENERATED với SOURCE, không bổ sung kiến thức mới.",
-        "Đánh giá hai tiêu chí 0-100:",
-        "- coverageScore: dữ liệu đã bao phủ từ vựng, ngữ pháp, nghe/nói, đọc/viết, hội thoại, phát âm, văn hóa và các mục/hoạt động quan trọng của nguồn đến đâu.",
-        "- groundingScore: các nội dung generated có thực sự được hỗ trợ bởi nguồn hay có hallucination.",
-        "Câu hỏi luyện tập mới được phép paraphrase/tạo distractor, nhưng đáp án/kiến thức phải bám nguồn.",
-        "Kiểm tra thêm tính sẵn sàng học: lesson cần có vocabulary/grammar theo nguồn và practice đủ Nghe, Nói, Đọc, Viết. Phần Đọc/Viết được phép derived từ chính nội dung nguồn nếu sách không có section riêng, nhưng không được thêm curriculum mới.",
-        "Trả JSON duy nhất:",
-        '{"coverageScore":0,"groundingScore":0,"issues":["..."],"missingTopics":["..."],"pass":true}',
-        "pass chỉ true khi coverageScore >= 82 và groundingScore >= 90 và không có lỗi nghiêm trọng.",
-      ].join("\n"),
-      `SOURCE:\n${source}\n\nGENERATED LESSON:\n${JSON.stringify(body.lesson)}\n\nGENERATED QUESTIONS:\n${JSON.stringify(body.questions ?? [])}`,
-    );
+    const instructions = [
+      "Bạn là QA validator cho dữ liệu học tiếng Hàn sinh từ giáo trình.",
+      "So sánh GENERATED với SOURCE, không bổ sung kiến thức mới.",
+      "Nếu có SOURCE PAGE IMAGE, phải dùng cả hình ảnh để kiểm tra nội dung thị giác, bảng, tranh minh họa và chữ mà text extraction có thể bỏ sót.",
+      "Đánh giá hai tiêu chí 0-100:",
+      "- coverageScore: dữ liệu đã bao phủ từ vựng, ngữ pháp, nghe/nói, đọc/viết, hội thoại, phát âm, văn hóa và các mục/hoạt động quan trọng của nguồn đến đâu.",
+      "- groundingScore: các nội dung generated có thực sự được hỗ trợ bởi nguồn hay có hallucination.",
+      "Câu hỏi luyện tập mới được phép paraphrase/tạo distractor, nhưng đáp án/kiến thức phải bám nguồn.",
+      "Kiểm tra thêm tính sẵn sàng học: lesson cần có vocabulary/grammar theo nguồn và practice đủ Nghe, Nói, Đọc, Viết. Phần Đọc/Viết được phép derived từ chính nội dung nguồn nếu sách không có section riêng, nhưng không được thêm curriculum mới.",
+      "Trả JSON duy nhất:",
+      '{"coverageScore":0,"groundingScore":0,"issues":["..."],"missingTopics":["..."],"pass":true}',
+      "pass chỉ true khi coverageScore >= " +
+        ingestionConfig.validation.passCoverage +
+        " và groundingScore >= " +
+        ingestionConfig.validation.passGrounding +
+        " và không có lỗi nghiêm trọng.",
+    ].join("\n");
+
+    const generatedText =
+      "SOURCE:\n" +
+      source +
+      "\n\nGENERATED LESSON:\n" +
+      JSON.stringify(body.lesson) +
+      "\n\nGENERATED QUESTIONS:\n" +
+      JSON.stringify(body.questions ?? []);
+
+    const visualPages = pages
+      .filter((page) => Boolean(page.imageDataUrl))
+      .slice(0, ingestionConfig.lesson.maxVisionPagesPerLesson);
+
+    let result: unknown;
+
+    if (visualPages.length) {
+      const multimodal: InputContent[] = [
+        {
+          type: "input_text",
+          text: generatedText,
+        },
+      ];
+
+      for (const page of visualPages) {
+        multimodal.push(
+          {
+            type: "input_text",
+            text:
+              "SOURCE PAGE IMAGE: " +
+              page.fileName +
+              " · p." +
+              page.pageNumber,
+          },
+          {
+            type: "input_image",
+            image_url: page.imageDataUrl,
+            detail: "high",
+          },
+        );
+      }
+
+      result = await callVisionContentModel(instructions, multimodal);
+    } else {
+      result = await callContentModel(instructions, generatedText);
+    }
 
     const raw = result as Record<string, unknown>;
     const coverageScore = Math.max(0, Math.min(100, Number(raw.coverageScore) || 0));
     const groundingScore = Math.max(0, Math.min(100, Number(raw.groundingScore) || 0));
     const issues = Array.isArray(raw.issues) ? raw.issues.map(String).slice(0, 20) : [];
     const missingTopics = Array.isArray(raw.missingTopics) ? raw.missingTopics.map(String).slice(0, 20) : [];
-    const pass = Boolean(raw.pass) && coverageScore >= 82 && groundingScore >= 90;
+    const pass =
+      Boolean(raw.pass) &&
+      coverageScore >= ingestionConfig.validation.passCoverage &&
+      groundingScore >= ingestionConfig.validation.passGrounding;
 
     return NextResponse.json({
       coverageScore,
