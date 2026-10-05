@@ -61,6 +61,10 @@ function isRuntimeCourse(value: unknown): value is RuntimeCourse {
   );
 }
 
+function isPersistableCourse(value: unknown): value is RuntimeCourse {
+  return isRuntimeCourse(value) && value.id !== "beginner-1";
+}
+
 function readLocalFallback() {
   for (const key of [FALLBACK_STORAGE_KEY, LEGACY_STORAGE_KEY]) {
     try {
@@ -68,7 +72,7 @@ function readLocalFallback() {
       if (!raw) continue;
 
       const parsed: unknown = JSON.parse(raw);
-      if (isRuntimeCourse(parsed)) return parsed;
+      if (isPersistableCourse(parsed)) return parsed;
     } catch {
       // Try the next storage source.
     }
@@ -80,7 +84,7 @@ function readLocalFallback() {
 async function restoreCourse() {
   try {
     const stored = await readStoredCourse();
-    if (isRuntimeCourse(stored)) return stored;
+    if (isPersistableCourse(stored)) return stored;
   } catch {
     // IndexedDB can be unavailable in restricted browser modes.
   }
