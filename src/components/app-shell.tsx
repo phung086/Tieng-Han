@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, BookOpenText, Flame, Home, RotateCcw, Settings, Sparkles, Target } from "lucide-react";
 import { LearningProvider, useLearning } from "@/lib/learning-state";
+import { ContentProvider } from "@/lib/content-store";
 
 const navigation = [
   { href: "/", label: "Hôm nay", icon: Home },
@@ -64,5 +65,5 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  return <LearningProvider><ShellContent>{children}</ShellContent></LearningProvider>;
+  return <ContentProvider><LearningProvider><ShellContent>{children}</ShellContent></LearningProvider></ContentProvider>;
 }
