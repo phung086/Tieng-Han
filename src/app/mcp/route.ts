@@ -541,6 +541,114 @@ function buildMcpServer() {
             "repeat only for unfinished lessons",
             "finalize_course_bundle",
           ],
+          runtimeSchema: {
+            course: {
+              title: "string",
+              level: "string",
+              edition: "string optional",
+              lessons: "LessonContent[]",
+              questions: "StudyQuestion[]",
+            },
+            LessonContent: {
+              id: "number",
+              targetTitle: "string preferred",
+              learnerTitle: "string preferred",
+              title: "string legacy alias accepted",
+              vi: "string legacy alias accepted",
+              objective: "string",
+              vocabulary: [
+                {
+                  id: "string",
+                  targetText: "string preferred",
+                  learnerMeaning: "string preferred",
+                  ko: "string legacy alias accepted",
+                  vi: "string legacy alias accepted",
+                  example: "string",
+                  sourceRef: "string optional",
+                },
+              ],
+              grammar: [
+                {
+                  id: "string",
+                  pattern: "string",
+                  meaning: "string",
+                  explanation: "string",
+                  examples: "string[]",
+                  sourceRef: "string optional",
+                },
+              ],
+              listening: [
+                {
+                  id: "string",
+                  text: "string",
+                  meaning: "string",
+                  choices: "string[]",
+                  answer: "string",
+                  sourceRef: "string optional",
+                },
+              ],
+              speaking: "string[]",
+              reading: {
+                title: "string",
+                text: "string",
+                translation: "string",
+                questions:
+                  "{id:string,q:string,choices:string[],answer:string,sourceRef?:string}[]",
+                sourceRef: "string optional",
+              },
+              writing: {
+                prompt: "string",
+                hint: "string",
+                targetWords: "string[]",
+                sourceRef: "string optional",
+              },
+              dialogues:
+                "{id:string,title?:string,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string}[],sourceRef?:string}[] optional",
+              pronunciation:
+                "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string}[] optional",
+              culture:
+                "{id:string,title:string,text:string,sourceRef?:string}[] optional",
+              extraSections:
+                "{id:string,kind:string,title:string,content:string[],sourceRef?:string}[] optional",
+              media: "LessonMedia[] optional",
+              sourceRef: "string optional",
+              quality:
+                "{coverageScore:number,groundingScore:number,issues:string[],missingTopics:string[]} optional",
+            },
+            StudyQuestion: {
+              id: "string",
+              lessonId: "number",
+              skill:
+                "vocabulary|grammar|listening|speaking|reading|writing",
+              type: "choice|input|reorder",
+              title: "string",
+              prompt: "string",
+              translation: "string optional",
+              choices: "string[] optional",
+              tokens: "string[] optional",
+              answer: "string",
+              explanation: "string",
+              sourceRef: "string optional",
+            },
+            requiredLessonFields: [
+              "id",
+              "objective",
+              "vocabulary",
+              "grammar",
+              "listening",
+              "speaking",
+            ],
+            titleRule:
+              "Each lesson must provide targetTitle+learnerTitle or legacy title+vi.",
+            requiredQuestionFields: [
+              "id",
+              "lessonId",
+              "skill",
+              "type",
+              "prompt",
+              "answer",
+            ],
+          },
           runtimeCompatibility: {
             note:
               "Runtime v1 still exposes legacy aliases such as vocabulary.ko and vocabulary.vi to older UI components. Bundle parsing now normalizes canonical targetText/learnerMeaning and targetTitle/learnerTitle into those aliases, so new language profiles do not require changing the MCP protocol.",
