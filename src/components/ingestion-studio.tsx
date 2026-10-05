@@ -619,6 +619,19 @@ export function IngestionStudio() {
     }
   }
 
+  async function copyBridgeSetupPrompt() {
+    const prompt = [
+      "Trong ChatGPT Work với Haneul Learning Bridge, hãy đăng ký event import_job.queued cho tất cả giáo trình.",
+      "Mỗi khi nhận event, lấy jobId và gọi prepare_import_job(jobId).",
+      "Sau đó làm đúng workflow/checkpoint trong contract trả về cho tới finalize_course_bundle.",
+      "Đọc page image khi text extraction không đủ. Giáo trình là source of truth; không bịa curriculum.",
+      "Nếu nguồn hỏng thật sự thì fail_import_job. Giữ automation này cho các PDF nhập sau.",
+    ].join("\n");
+
+    await navigator.clipboard.writeText(prompt);
+    setHandoffNote(copy.bridgeSetupCopied);
+  }
+
   async function exportChatGptHandoff() {
     const handoff = await createCurrentHandoff();
     if (!handoff) return;
@@ -1242,6 +1255,14 @@ export function IngestionStudio() {
             <div className="ingest-warning">
               <strong>{copy.bridgeNeedsSetup}</strong>
               <span>{copy.bridgeSetupOnce}</span>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void copyBridgeSetupPrompt()}
+              >
+                <Copy size={16} />
+                {copy.copyBridgeSetup}
+              </button>
             </div>
           ) : null}
 
