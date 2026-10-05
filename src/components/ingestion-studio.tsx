@@ -30,12 +30,12 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
 import { parseCourseBundle } from "@/lib/course-bundle";
 import {
-  buildChatGptCompilationPrompt,
+  buildChatGptPrompt,
   buildHandoffPackage,
   downloadJsonFile,
   fingerprintFile,
-  handoffPackageFile,
-  type SourceFingerprint,
+  handoffFileName,
+  verifyBundleSource
 } from "@/lib/chatgpt-handoff";
 
 type ImportCopy = UiMessages["import"];
@@ -201,7 +201,6 @@ export function IngestionStudio() {
   const [error, setError] = useState("");
   const [ocrUsed, setOcrUsed] = useState(false);
   const [ocrSkipped, setOcrSkipped] = useState(false);
-  const [sourceManifest, setSourceManifest] = useState<SourceFingerprint[]>([]);
   const [handoffNote, setHandoffNote] = useState("");
 
   useEffect(() => {
@@ -336,7 +335,7 @@ export function IngestionStudio() {
         throw new Error(copy.noLessonMap);
       }
 
-      const fingerprints = await Promise.all(
+      await Promise.all(
         files.map((file) => {
           const document = nextDocuments.find(
             (item) => item.fileName === file.name,
@@ -347,7 +346,6 @@ export function IngestionStudio() {
 
       setDocuments(nextDocuments);
       setMaps(nextMaps);
-      setSourceManifest(fingerprints);
       setProgress(100);
       setMessage(
         nextMaps[0]?.starts.length
@@ -384,13 +382,16 @@ export function IngestionStudio() {
     const handoff = await createCurrentHandoff();
     if (!handoff) return;
 
-    downloadJsonFile("haneul-chatgpt-handoff.json", handoff);
+    downloadJsonFile(handoffFileName(courseTitle), handoff);
     setHandoffNote(copy.handoffReady);
   }
 
   async function copyChatGptPrompt() {
+    const handoff = await createCurrentHandoff();
+    if (!handoff) return;
+
     await navigator.clipboard.writeText(
-      buildChatGptCompilationPrompt(),
+      buildChatGptPrompt(handoff),
     );
     setHandoffNote(copy.promptCopied);
   }
@@ -399,10 +400,15 @@ export function IngestionStudio() {
     const handoff = await createCurrentHandoff();
     if (!handoff) return;
 
-    const shareFiles = [...files, handoffPackageFile(handoff)];
+    const handoffFile = new File(
+      [JSON.stringify(handoff, null, 2)],
+      handoffFileName(courseTitle),
+      { type: "application/json" },
+    );
+    const shareFiles = [...files, handoffFile];
     const shareData = {
       title: "Haneul ChatGPT Handoff",
-      text: buildChatGptCompilationPrompt(),
+      text: buildChatGptPrompt(handoff),
       files: shareFiles,
     };
 
@@ -482,27 +488,22 @@ export function IngestionStudio() {
     try {
       const bundle = parseCourseBundle(await file.text());
 
-      if (bundle.sourceManifest?.length && sourceManifest.length) {
-        const expected = new Map(
-          sourceManifest.map((item) => [item.name, item.sha256]),
-        );
-        const mismatch = bundle.sourceManifest.some(
-          (item) =>
-            !expected.has(item.name) ||
-            expected.get(item.name) !== item.sha256,
-        );
-
-        if (
-          mismatch ||
-          bundle.sourceManifest.length !== sourceManifest.length
-        ) {
-          throw new Error(copy.bundleMismatch);
-        }
-
-        setHandoffNote(copy.bundleSourceVerified);
-      } else {
-        setHandoffNote(copy.bundleSourceUnverified);
+      const handoff = await createCurrentHandoff();
+      if (!handoff) {
+        throw new Error(copy.bundleRequiresPdf);
       }
+
+      const verification = verifyBundleSource(bundle, handoff);
+
+      if (verification.status === "mismatch") {
+        throw new Error(copy.bundleMismatch);
+      }
+
+      setHandoffNote(
+        verification.status === "verified"
+          ? copy.bundleSourceVerified
+          : copy.bundleSourceUnverified,
+      );
 
       const lessons = bundle.course.lessons
         .map((lesson) => {
