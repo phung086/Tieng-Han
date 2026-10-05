@@ -3,6 +3,10 @@ import {
   COURSE_BUNDLE_VERSION,
   type CompiledCourseBundle,
 } from "@/lib/course-bundle";
+import {
+  defaultLanguageProfile,
+  type LanguageProfile,
+} from "@/lib/language-profile";
 
 export const CHATGPT_HANDOFF_FORMAT = "haneul-chatgpt-handoff";
 export const CHATGPT_HANDOFF_VERSION = 1;
@@ -35,6 +39,7 @@ export type ChatGptHandoffPackage = {
     level: string;
     edition?: string;
   };
+  language: LanguageProfile;
   expectedOutput: {
     format: typeof COURSE_BUNDLE_FORMAT;
     version: typeof COURSE_BUNDLE_VERSION;
@@ -101,6 +106,7 @@ export async function buildHandoffPackage(input: {
     level: string;
     edition?: string;
   };
+  language?: LanguageProfile;
 }): Promise<ChatGptHandoffPackage> {
   const sourceFiles = await Promise.all(
     input.files.map((file) => {
@@ -126,6 +132,7 @@ export async function buildHandoffPackage(input: {
       })),
     })),
     courseHint: input.courseHint,
+    language: input.language ?? defaultLanguageProfile,
     expectedOutput: {
       format: COURSE_BUNDLE_FORMAT,
       version: COURSE_BUNDLE_VERSION,
@@ -170,7 +177,9 @@ export function buildChatGptPrompt(handoff: ChatGptHandoffPackage) {
     .join("\n");
 
   return [
-    "Hãy biên bộ PDF tôi đính kèm thành Haneul Course Bundle cho ứng dụng học tiếng Hàn.",
+    "Hãy biên bộ PDF tôi đính kèm thành Haneul Course Bundle cho ứng dụng học " +
+      handoff.language.targetName +
+      ".",
     "Tôi cũng đính kèm file haneul-chatgpt-handoff. Hãy coi file đó là manifest nguồn và lesson-map gợi ý, nhưng vẫn đọc trực tiếp toàn bộ PDF để xác minh nội dung.",
     "",
     "Ràng buộc bắt buộc:",
@@ -184,6 +193,11 @@ export function buildChatGptPrompt(handoff: ChatGptHandoffPackage) {
     "8. Output phải là đúng Haneul Course Bundle format/version trong handoff. Trả về một file JSON hoàn chỉnh, không chỉ ví dụ rút gọn.",
     "9. Không nhúng base64 ảnh lớn vào JSON; app sẽ tự ghép ảnh/media từ PDF local dựa trên lesson map và sourceRef.",
     "10. Nếu một trang khó đọc, đánh dấu chất lượng/sourceRef rõ ràng thay vì bịa nội dung.",
+    "",
+    "Language profile:",
+    "- target: " + handoff.language.target + " · " + handoff.language.targetName,
+    "- learner: " + handoff.language.learner + " · " + handoff.language.learnerName,
+    "- speech locale: " + handoff.language.locale,
     "",
     "Course hint:",
     "- title: " + handoff.courseHint.title,
@@ -216,6 +230,7 @@ export function buildChatGptCompilationPrompt(
     "Flow học phải đủ 6 kỹ năng: Từ vựng, Ngữ pháp, Nghe, Nói, Đọc, Viết. Nội dung derived chỉ được dùng kiến thức thật sự có trong đúng bài nguồn.",
     "Không nhúng base64 ảnh lớn; app sẽ ghép media local từ PDF.",
     "Trong output, sourceManifest phải copy chính xác sourceFiles từ handoff để Haneul xác minh đúng bộ PDF.",
+    "Trong output, language phải giữ đúng language profile trong handoff. Không hardcode tiếng Hàn; cùng protocol này phải dùng được cho tiếng Anh và tiếng Trung.",
     "Trả về một file JSON theo đúng expectedOutput trong handoff, không chỉ đưa ví dụ rút gọn.",
   ].join("\n");
 }
