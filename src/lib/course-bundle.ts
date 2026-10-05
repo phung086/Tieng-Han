@@ -91,7 +91,7 @@ function normalizeDialogue(value: unknown): DialogueItem {
   };
 }
 
-function normalizeLesson(value: unknown): LessonContent {
+export function normalizeLessonContent(value: unknown): LessonContent {
   const row = (value ?? {}) as Record<string, unknown>;
   const targetTitle =
     stringValue(row.targetTitle) || stringValue(row.title);
@@ -284,7 +284,7 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
       level: course.level,
       edition:
         typeof course.edition === "string" ? course.edition : undefined,
-      lessons: course.lessons.map(normalizeLesson),
+      lessons: course.lessons.map(normalizeLessonContent),
       questions: course.questions as StudyQuestion[],
     },
   };
