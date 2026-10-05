@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Brain, CheckCircle2, Clock3 } from "lucide-react";
-import { course, studyQuestions } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 
 type ReviewDisplay = {
@@ -17,6 +17,7 @@ type ReviewDisplay = {
 
 export default function ReviewPage() {
   const { state } = useLearning();
+  const { course } = useContent();
   const today = todayKey();
 
   const vocabCatalog = course.lessons.flatMap((lesson) =>
@@ -29,7 +30,7 @@ export default function ReviewPage() {
     })),
   );
 
-  const questionCatalog = studyQuestions.map((item) => ({
+  const questionCatalog = course.questions.map((item) => ({
     id: item.id,
     title: item.prompt,
     subtitle: item.skill === "grammar" ? "Ngữ pháp" : item.skill === "reading" ? "Đọc" : item.skill === "writing" ? "Viết" : "Từ vựng",
