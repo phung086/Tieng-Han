@@ -175,8 +175,8 @@ export function IngestionStudio() {
   const [files, setFiles] = useState<File[]>([]);
   const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
   const [maps, setMaps] = useState<DocumentMap[]>([]);
-  const [courseTitle, setCourseTitle] = useState(copy.defaultCourseTitle);
-  const [level, setLevel] = useState(copy.defaultLevel);
+  const [courseTitle, setCourseTitle] = useState<string>(copy.defaultCourseTitle);
+  const [level, setLevel] = useState<string>(copy.defaultLevel);
   const [edition, setEdition] = useState("");
   const [aiStatus, setAiStatus] = useState<{
     configured: boolean;
