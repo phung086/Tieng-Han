@@ -1,4 +1,11 @@
 export const ingestionConfig = {
+  autoImport: {
+    enabled: true,
+    targetLanguage: "ko",
+    learnerLanguage: "vi",
+    autoStartOnFileSelection: true,
+    staleJobMinutes: 20,
+  },
   pdf: {
     lowTextCharacters: 80,
     ocrTriggerRatio: 0.35,
