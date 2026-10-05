@@ -31,7 +31,11 @@ export async function GET(request: Request) {
     const jobs = await listImportJobs(status);
 
     return NextResponse.json({
-      jobs: jobs.map(({ resultBundle: _resultBundle, ...job }) => job),
+      jobs: jobs.map((job) => {
+        const summary: Partial<typeof job> = { ...job };
+        delete summary.resultBundle;
+        return summary;
+      }),
     });
   } catch (error) {
     return NextResponse.json(
