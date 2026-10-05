@@ -1,8 +1,7 @@
 "use client";
 
 import { CalendarDays, Clock3, Flame, TrendingUp } from "lucide-react";
-import { weekly } from "@/data/demo";
-import { accuracy, useLearning, type SkillKey } from "@/lib/learning-state";
+import { accuracy, lastNDays, useLearning, type SkillKey } from "@/lib/learning-state";
 
 const labels: Record<SkillKey, [string, string]> = {
   vocabulary: ["Từ vựng", "어휘"],
@@ -13,12 +12,19 @@ const labels: Record<SkillKey, [string, string]> = {
   writing: ["Viết", "쓰기"],
 };
 
+const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
 export function StatsClient() {
   const { state } = useLearning();
-  const max = Math.max(...weekly.map((item) => item.minutes));
   const total = Object.values(state.skills).reduce((sum, item) => sum + item.total, 0);
   const correct = Object.values(state.skills).reduce((sum, item) => sum + item.correct, 0);
   const overall = total ? Math.round((correct / total) * 100) : 0;
+  const days = lastNDays(7).map((key) => {
+    const stat = state.dailyStats[key] ?? { attempts: 0, correct: 0, xp: 0 };
+    const date = new Date(key + "T12:00:00");
+    return { key, label: weekdays[date.getDay()], ...stat };
+  });
+  const maxAttempts = Math.max(1, ...days.map((item) => item.attempts));
 
   return (
     <>
@@ -31,8 +37,15 @@ export function StatsClient() {
 
       <section className="stats-grid">
         <article className="chart-card">
-          <div className="card-heading"><div><span className="eyebrow">7 ngày gần nhất</span><h3>Thời gian học demo</h3></div><strong>2h 50m</strong></div>
-          <div className="bar-chart">{weekly.map((item) => <div className="bar-column" key={item.day}><div className="bar-value" style={{ height: `${Math.max(12, (item.minutes / max) * 100)}%` }}><span>{item.minutes}m</span></div><small>{item.day}</small></div>)}</div>
+          <div className="card-heading"><div><span className="eyebrow">7 ngày gần nhất</span><h3>Lượt luyện thực tế</h3></div><strong>{days.reduce((sum, item) => sum + item.attempts, 0)} lượt</strong></div>
+          <div className="bar-chart">
+            {days.map((item) => (
+              <div className="bar-column" key={item.key}>
+                <div className="bar-value" style={{ height: Math.max(8, (item.attempts / maxAttempts) * 100) + "%" }}><span>{item.attempts}</span></div>
+                <small>{item.label}</small>
+              </div>
+            ))}
+          </div>
         </article>
 
         <article className="skill-detail-card">
@@ -40,7 +53,7 @@ export function StatsClient() {
           <div className="skill-detail-list">
             {(Object.keys(labels) as SkillKey[]).map((key) => {
               const value = accuracy(state.skills[key]);
-              return <div className="skill-detail-row" key={key}><div><strong>{labels[key][0]}</strong><span>{labels[key][1]}</span></div><div className="detail-track"><span style={{ width: `${value}%` }} /></div><strong>{value}%</strong></div>;
+              return <div className="skill-detail-row" key={key}><div><strong>{labels[key][0]}</strong><span>{labels[key][1]}</span></div><div className="detail-track"><span style={{ width: value + "%" }} /></div><strong>{value}%</strong></div>;
             })}
           </div>
         </article>
