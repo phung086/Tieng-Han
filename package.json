@@ -1,0 +1,19 @@
+{
+  "name": "tieng-han",
+  "private": true,
+  "packageManager": "pnpm@12.9.1",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @tieng-han/database generate",
+    "db:migrate": "pnpm --filter @tieng-han/database migrate",
+    "db:studio": "pnpm --filter @tieng-han/database studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3"
+  }
+}
