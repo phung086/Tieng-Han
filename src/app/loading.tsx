@@ -1,4 +1,4 @@
-import { viMessages } from "@/i18n/messages";
+import { viMessages } from "@/i18n/vi";
 
 export default function Loading() {
   return (
