@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, RotateCcw, Trophy, X } from "lucide-react";
 import Link from "next/link";
-import { studyQuestions } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
@@ -11,7 +11,8 @@ const normalize = (value: string) => value.trim().replace(/[.!?。！？]/g, "")
 
 export function StudySession({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
-  const questions = useMemo(() => studyQuestions.filter((item) => item.lessonId === lessonId), [lessonId]);
+  const { course } = useContent();
+  const questions = useMemo(() => course.questions.filter((item) => item.lessonId === lessonId), [course.questions, lessonId]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [tokens, setTokens] = useState<string[]>([]);
