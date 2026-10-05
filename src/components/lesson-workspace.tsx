@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BookOpen, Headphones, Mic2, PenLine, Play, Volume2 } from "lucide-react";
-import { getLesson } from "@/data/content";
+import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 
 const tabs = ["Tổng quan", "Từ vựng", "Ngữ pháp", "Đọc"] as const;
@@ -11,6 +11,7 @@ const tabs = ["Tổng quan", "Từ vựng", "Ngữ pháp", "Đọc"] as const;
 export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Tổng quan");
   const { state } = useLearning();
+  const { getLesson, course } = useContent();
   const lesson = getLesson(lessonId);
   const progress = state.lessonProgress[String(lessonId)] ?? 0;
 
@@ -38,7 +39,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     <div className="lesson-workspace">
       <header className="lesson-workspace-header">
         <div>
-          <span className="kicker">SƠ CẤP 1 · BÀI {lessonId}</span>
+          <span className="kicker">{course.level} · BÀI {lessonId}</span>
           <h1 className="korean-text">{lesson.title}</h1>
           <p>{lesson.vi} · {lesson.objective}</p>
         </div>
