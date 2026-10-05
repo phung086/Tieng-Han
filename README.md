@@ -27,6 +27,20 @@ Learning Path ← verified bundle ← MCP
 
 Manual handoff vẫn được giữ làm fallback khi connector chưa kết nối.
 
+### Resumable compilation
+
+ChatGPT lưu kết quả theo từng lesson bằng checkpoint:
+
+```text
+get_compilation_progress
+→ read_import_pages
+→ save_lesson_draft
+→ ...
+→ finalize_course_bundle
+```
+
+Nếu phiên AI bị ngắt, lần sau tiếp tục từ lesson chưa hoàn thành thay vì biên lại từ đầu. MCP contract dùng language profile và canonical fields `targetText / learnerMeaning`, nên có thể mở rộng sang ngôn ngữ khác mà không thay protocol.
+
 MCP layer dùng language profile, không hardcode tiếng Hàn, nên cùng kiến trúc có thể mở rộng sang **tiếng Anh, tiếng Trung và ngôn ngữ khác**. Xem `docs/MCP_BRIDGE.md`.
 
 
