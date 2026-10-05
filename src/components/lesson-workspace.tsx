@@ -3,27 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BookOpen, Headphones, Mic2, PenLine, Play, Volume2 } from "lucide-react";
-import { lessonContent } from "@/data/content";
+import { getLesson } from "@/data/content";
+import { useLearning } from "@/lib/learning-state";
 
-type LessonThree = typeof lessonContent[3];
 const tabs = ["Tổng quan", "Từ vựng", "Ngữ pháp", "Đọc"] as const;
 
 export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Tổng quan");
-  const lesson = lessonContent[lessonId as keyof typeof lessonContent];
+  const { state } = useLearning();
+  const lesson = getLesson(lessonId);
+  const progress = state.lessonProgress[String(lessonId)] ?? 0;
 
-  if (!lesson || lessonId !== 3) {
+  if (!lesson) {
     return (
       <div className="empty-lesson">
-        <span className="eyebrow">DEMO CONTENT</span>
-        <h1>{lesson?.title ?? `Bài ${lessonId}`}</h1>
-        <p>Giao diện lesson đã sẵn sàng. Nội dung chi tiết demo hiện được hoàn thiện ở Bài 3 để mô phỏng dữ liệu sách thật.</p>
-        <Link className="primary-button" href="/learn/3">Mở Bài 3 demo</Link>
+        <span className="eyebrow">KHÔNG TÌM THẤY BÀI HỌC</span>
+        <h1>Bài {lessonId}</h1>
+        <p>Bài học này chưa tồn tại trong dữ liệu giáo trình hiện tại.</p>
+        <Link className="primary-button" href="/learn">Quay lại giáo trình</Link>
       </div>
     );
   }
-
-  const detail = lesson as LessonThree;
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
@@ -39,10 +39,13 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       <header className="lesson-workspace-header">
         <div>
           <span className="kicker">SƠ CẤP 1 · BÀI {lessonId}</span>
-          <h1 className="korean-text">{detail.title}</h1>
-          <p>{detail.vi} · {detail.objective}</p>
+          <h1 className="korean-text">{lesson.title}</h1>
+          <p>{lesson.vi} · {lesson.objective}</p>
         </div>
-        <Link className="primary-button" href="/practice/quiz"><Play size={17} /> Luyện bài này</Link>
+        <div className="lesson-header-actions">
+          <span className="lesson-progress-pill">{progress}% hoàn thành</span>
+          <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId}><Play size={17} /> Luyện bài này</Link>
+        </div>
       </header>
 
       <nav className="lesson-tabs" aria-label="Nội dung bài học">
@@ -53,15 +56,15 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         <section className="lesson-overview-grid">
           <article className="lesson-main-card">
             <span className="eyebrow">MỤC TIÊU BÀI HỌC</span>
-            <h2>Nói được mình đi đâu và làm gì ở một địa điểm.</h2>
-            <p>Luồng học đi từ nhận biết → hiểu → sử dụng → sản sinh, thay vì làm quiz ngẫu nhiên.</p>
+            <h2>{lesson.objective}</h2>
+            <p>Mỗi kỹ năng được hoàn thành độc lập; tiến độ của bài được tính từ 6 phần Từ vựng, Ngữ pháp, Nghe, Nói, Đọc và Viết.</p>
             <div className="lesson-step-list">
-              <button onClick={() => setTab("Từ vựng")}><span>01</span><div><strong>어휘 · Từ vựng</strong><small>6 từ địa điểm</small></div></button>
-              <button onClick={() => setTab("Ngữ pháp")}><span>02</span><div><strong>문법 · Ngữ pháp</strong><small>에 / 에서</small></div></button>
-              <Link href="/listening"><span>03</span><div><strong>듣기 · Nghe</strong><small>3 câu nghe hiểu</small></div></Link>
-              <Link href="/speaking"><span>04</span><div><strong>말하기 · Nói</strong><small>Shadowing + nhận dạng</small></div></Link>
-              <button onClick={() => setTab("Đọc")}><span>05</span><div><strong>읽기 · Đọc</strong><small>1 đoạn đọc hiểu</small></div></button>
-              <Link href="/writing"><span>06</span><div><strong>쓰기 · Viết</strong><small>Viết 3–5 câu</small></div></Link>
+              <button onClick={() => setTab("Từ vựng")}><span>01</span><div><strong>어휘 · Từ vựng</strong><small>{lesson.vocabulary.length} mục</small></div></button>
+              <button onClick={() => setTab("Ngữ pháp")}><span>02</span><div><strong>문법 · Ngữ pháp</strong><small>{lesson.grammar.length} điểm</small></div></button>
+              <Link href={"/listening?lesson=" + lessonId}><span>03</span><div><strong>듣기 · Nghe</strong><small>{lesson.listening.length} bài</small></div></Link>
+              <Link href={"/speaking?lesson=" + lessonId}><span>04</span><div><strong>말하기 · Nói</strong><small>{lesson.speaking.length} câu luyện</small></div></Link>
+              <button onClick={() => setTab("Đọc")}><span>05</span><div><strong>읽기 · Đọc</strong><small>{lesson.reading ? "1 bài đọc" : "Chưa nhập"}</small></div></button>
+              <Link href={"/writing?lesson=" + lessonId}><span>06</span><div><strong>쓰기 · Viết</strong><small>{lesson.writing ? "1 bài viết" : "Chưa nhập"}</small></div></Link>
             </div>
           </article>
 
@@ -78,52 +81,48 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
       {tab === "Từ vựng" ? (
         <section className="lesson-content-card">
-          <div className="content-heading"><div><span className="eyebrow">어휘</span><h2>Từ vựng địa điểm</h2></div><Link className="secondary-button" href="/vocabulary">Mở Flashcard</Link></div>
-          <div className="lesson-vocab-grid">
-            {detail.vocabulary.map((word) => (
-              <article key={word.ko}>
-                <button onClick={() => speak(word.ko)} aria-label={`Nghe ${word.ko}`}><Volume2 size={16} /></button>
-                <strong className="korean-text">{word.ko}</strong>
-                <span>{word.vi}</span>
-                <p className="korean-text">{word.example}</p>
-              </article>
-            ))}
-          </div>
+          <div className="content-heading"><div><span className="eyebrow">어휘</span><h2>Từ vựng của bài</h2></div><Link className="secondary-button" href={"/vocabulary?lesson=" + lessonId}>Mở Flashcard</Link></div>
+          {lesson.vocabulary.length ? (
+            <div className="lesson-vocab-grid">
+              {lesson.vocabulary.map((word) => (
+                <article key={word.id}>
+                  <button onClick={() => speak(word.ko)} aria-label={"Nghe " + word.ko}><Volume2 size={16} /></button>
+                  <strong className="korean-text">{word.ko}</strong><span>{word.vi}</span><p className="korean-text">{word.example}</p>
+                </article>
+              ))}
+            </div>
+          ) : <div className="inline-empty-state">Nội dung từ vựng sẽ xuất hiện sau khi nhập giáo trình.</div>}
         </section>
       ) : null}
 
       {tab === "Ngữ pháp" ? (
         <section className="grammar-stack">
-          {detail.grammar.map((grammar, index) => (
-            <article className="grammar-card" key={grammar.pattern}>
+          {lesson.grammar.length ? lesson.grammar.map((grammar, index) => (
+            <article className="grammar-card" key={grammar.id}>
               <div className="grammar-number">0{index + 1}</div>
               <div>
-                <span className="eyebrow">문법</span>
-                <h2>{grammar.pattern}</h2>
-                <strong>{grammar.meaning}</strong>
-                <p>{grammar.explanation}</p>
-                <div className="grammar-examples">
-                  {grammar.examples.map((example) => <button className="korean-text" onClick={() => speak(example)} key={example}><Volume2 size={15} /> {example}</button>)}
-                </div>
+                <span className="eyebrow">문법</span><h2>{grammar.pattern}</h2><strong>{grammar.meaning}</strong><p>{grammar.explanation}</p>
+                <div className="grammar-examples">{grammar.examples.map((example) => <button className="korean-text" onClick={() => speak(example)} key={example}><Volume2 size={15} /> {example}</button>)}</div>
               </div>
             </article>
-          ))}
+          )) : <div className="inline-empty-state">Nội dung ngữ pháp sẽ xuất hiện sau khi nhập giáo trình.</div>}
         </section>
       ) : null}
 
       {tab === "Đọc" ? (
-        <section className="reading-card">
-          <div className="reading-label"><BookOpen size={19} /><span>읽기</span></div>
-          <h2>{detail.reading.title}</h2>
-          <p className="reading-korean korean-text">{detail.reading.text}</p>
-          <details><summary>Xem nghĩa tiếng Việt</summary><p>{detail.reading.translation}</p></details>
-          <div className="reading-actions">
-            <Link className="secondary-button" href="/reading"><BookOpen size={16} /> Làm đọc hiểu</Link>
-            <Link className="secondary-button" href="/listening"><Headphones size={16} /> Nghe thêm</Link>
-            <Link className="secondary-button" href="/speaking"><Mic2 size={16} /> Luyện nói</Link>
-            <Link className="secondary-button" href="/writing"><PenLine size={16} /> Luyện viết</Link>
-          </div>
-        </section>
+        lesson.reading ? (
+          <section className="reading-card">
+            <div className="reading-label"><BookOpen size={19} /><span>읽기</span></div>
+            <h2>{lesson.reading.title}</h2><p className="reading-korean korean-text">{lesson.reading.text}</p>
+            <details><summary>Xem nghĩa tiếng Việt</summary><p>{lesson.reading.translation}</p></details>
+            <div className="reading-actions">
+              <Link className="secondary-button" href={"/reading?lesson=" + lessonId}><BookOpen size={16} /> Làm đọc hiểu</Link>
+              <Link className="secondary-button" href={"/listening?lesson=" + lessonId}><Headphones size={16} /> Luyện nghe</Link>
+              <Link className="secondary-button" href={"/speaking?lesson=" + lessonId}><Mic2 size={16} /> Luyện nói</Link>
+              <Link className="secondary-button" href={"/writing?lesson=" + lessonId}><PenLine size={16} /> Luyện viết</Link>
+            </div>
+          </section>
+        ) : <div className="inline-empty-state">Bài đọc sẽ xuất hiện sau khi nhập giáo trình.</div>
       ) : null}
     </div>
   );
