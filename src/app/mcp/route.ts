@@ -24,6 +24,7 @@ import type {
   ImportJobStatus,
 } from "@/lib/import-jobs";
 import { handleMcpEventRpc } from "@/lib/mcp-events";
+import type { LessonContent, StudyQuestion } from "@/data/content";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -345,8 +346,8 @@ function buildMcpServer() {
       try {
         const draft = await saveLessonDraft(
           jobId,
-          lesson as never,
-          questions as never,
+          lesson as unknown as LessonContent,
+          questions as unknown as StudyQuestion[],
         );
 
         return {
