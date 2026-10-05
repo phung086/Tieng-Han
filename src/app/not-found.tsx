@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { viMessages } from "@/i18n/messages";
+import { viMessages } from "@/i18n/vi";
 
 export default function NotFound() {
   return (
