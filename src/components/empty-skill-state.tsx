@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { BookOpenText } from "lucide-react";
+import { useMessages } from "@/i18n/messages";
 
 export function EmptySkillState({
   lessonId,
@@ -8,13 +11,17 @@ export function EmptySkillState({
   lessonId: number;
   skill: string;
 }) {
+  const messages = useMessages();
+
   return (
     <div className="empty-skill-state">
       <div className="empty-skill-icon"><BookOpenText size={28} /></div>
-      <span className="eyebrow">CHƯA CÓ DỮ LIỆU</span>
-      <h1>{skill} · Bài {lessonId}</h1>
-      <p>Workflow của phần này đã sẵn sàng. Khi nhập giáo trình, nội dung của bài sẽ xuất hiện tại đây mà không cần đổi giao diện.</p>
-      <Link className="secondary-button" href={"/learn/" + lessonId}>Quay lại bài học</Link>
+      <span className="eyebrow">{messages.emptySkill.eyebrow}</span>
+      <h1>{skill} · {messages.common.lesson} {lessonId}</h1>
+      <p>{messages.emptySkill.body}</p>
+      <Link className="secondary-button" href={"/learn/" + lessonId}>
+        {messages.emptySkill.back}
+      </Link>
     </div>
   );
 }
