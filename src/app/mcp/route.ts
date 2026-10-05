@@ -342,7 +342,25 @@ function buildMcpServer() {
           );
         }
 
-        const saved = await submitImportBundle(jobId, parsed);
+        if (
+          parsed.language &&
+          (parsed.language.target !== job.language.target ||
+            parsed.language.learner !== job.language.learner)
+        ) {
+          throw new Error(
+            "Language profile của bundle không khớp import job.",
+          );
+        }
+
+        const normalizedBundle: CompiledCourseBundle = {
+          ...parsed,
+          language: parsed.language ?? job.language,
+        };
+
+        const saved = await submitImportBundle(
+          jobId,
+          normalizedBundle,
+        );
 
         return {
           content: [
