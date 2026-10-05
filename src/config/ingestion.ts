@@ -6,10 +6,10 @@ export const ingestionConfig = {
     previewJpegQuality: 0.72,
     maxPreviewWidth: 1100,
     minEmbeddedImagePixels: 40_000,
-    maxEmbeddedImagesPerPage: 4,
+    maxEmbeddedImagesPerPage: 12,
   },
   lesson: {
-    maxMediaItems: 12,
+    initialVisibleMediaItems: 6,
   },
   validation: {
     minimumCoverage: 75,
