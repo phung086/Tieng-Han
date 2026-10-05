@@ -1,243 +1,199 @@
-# Haneul - Quy trình nhập sách tự động
+# Haneul — One-drop PDF import với ChatGPT
 
-Tài liệu vận hành cuối cùng cho luồng:
-PDF trong Haneul -> MCP -> ChatGPT Work -> checkpoint -> Course Bundle -> Haneul.
+Mục tiêu vận hành của Haneul là:
 
-## 1. Mục tiêu
+```text
+Chọn PDF
+  ↓
+Haneul tự đọc và chuẩn hóa nguồn
+  ↓
+import_job.queued
+  ↓
+Haneul Learning Bridge
+  ↓
+ChatGPT tự biên bài học + bài luyện
+  ↓
+Haneul xác minh nguồn và nhập khóa học
+  ↓
+Học + ôn theo lịch
+```
 
-Sau khi cấu hình một lần, mỗi lần nhập sách bạn chỉ cần:
+Sau khi cấu hình một lần, người dùng không cần copy prompt, tải handoff, gọi từng MCP tool hay nhập lại metadata cho từng sách.
 
-1. Mở Haneul.
-2. Chọn ngôn ngữ đích.
-3. Chọn PDF.
-4. Bấm Phân tích cấu trúc sách.
-5. Chờ Haneul và ChatGPT hoàn tất.
+## 1. Cấu hình một lần
 
-Không cần gửi PDF lại trong chat. Không cần tự chạy từng MCP tool. Không cần biên lại các bài đã hoàn thành khi phiên AI bị gián đoạn.
-
-## 2. Kiến trúc hiện tại
-
-Haneul xử lý PDF tại máy:
-
-- trích text;
-- tạo page preview;
-- lập lesson map;
-- tính SHA-256;
-- tạo import job.
-
-Khi job chuyển sang queued, Haneul phát event:
-
-`import_job.queued`
-
-ChatGPT Work nhận event và xử lý theo checkpoint:
-
-`get_compilation_progress`
--> đọc phần nguồn chưa hoàn thành
--> `save_work_checkpoint`
--> biên và QA bài
--> `save_lesson_draft`
--> lặp với bài tiếp theo
--> `finalize_course_bundle`
-
-Haneul nhận kết quả, kiểm fingerprint nguồn, ghép media local và lưu khóa học.
-
-## 3. Các MCP tool quan trọng
-
-- `list_import_jobs`: xem hàng đợi.
-- `get_import_job`: xem metadata và source manifest.
-- `claim_import_job`: chuyển queued sang processing.
-- `requeue_import_job`: đưa job bị gián đoạn trở lại queued.
-- `read_import_pages`: đọc trang nguồn bằng fileName hoặc documentId.
-- `get_compilation_progress`: xem lesson đã xong và work checkpoint đang dở.
-- `save_work_checkpoint`: lưu tiến độ giữa bài.
-- `save_lesson_draft`: lưu bài đã biên và QA xong.
-- `get_compilation_contract`: đọc quy tắc grounding và schema.
-- `finalize_course_bundle`: ghép các lesson draft thành course hoàn chỉnh.
-- `submit_course_bundle`: tương thích với workflow cũ.
-- `fail_import_job`: đánh dấu lỗi nguồn thật sự.
-
-## 4. Cấu hình một lần trên máy
-
-### 4.1 Đồng bộ mã nguồn
-
-Mở PowerShell:
+### 1.1 Chạy Haneul
 
 ```powershell
 cd D:\Tieng-Han\Tieng-Han
 git switch main
 git pull
 pnpm install
-```
-
-Chạy kiểm tra:
-
-```powershell
-pnpm typecheck
-```
-
-Nếu Next.js còn cache cũ:
-
-```powershell
-Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
-```
-
-### 4.2 Chạy Haneul
-
-```powershell
 pnpm dev
 ```
 
 Mở:
 
-`http://localhost:3000/import`
-
-Giữ terminal này chạy trong thời gian import.
-
-### 4.3 Chạy HTTPS tunnel trong giai đoạn development
-
-Mở PowerShell thứ hai:
-
-```powershell
-ngrok http 3000
+```text
+http://localhost:3000/import
 ```
 
-Lấy URL HTTPS mà ngrok cung cấp, sau đó thêm `/mcp`.
+### 1.2 Dùng một URL MCP ổn định
 
-Ví dụ:
+ChatGPT cần truy cập được endpoint:
 
-`https://your-domain.ngrok-free.dev/mcp`
+```text
+https://<stable-host>/mcp
+```
 
-Nếu domain ngrok thay đổi, cập nhật URL server của Haneul Learning Bridge trong ChatGPT.
+Đối với dự án cá nhân chạy tại máy, nên dùng tunnel có hostname cố định hoặc một host riêng. Tránh URL tunnel thay đổi mỗi lần chạy vì khi URL đổi phải reconnect plugin.
 
-## 5. Cấu hình Haneul Learning Bridge trong ChatGPT
+Development local có thể không cần token. Nếu public endpoint được dùng lâu dài, cấu hình:
 
-Plugin cần trỏ tới:
+```env
+HANEUL_MCP_TOKEN=<long-random-secret>
+```
 
-`https://your-domain.ngrok-free.dev/mcp`
+Không cần `OPENAI_API_KEY` để dùng luồng ChatGPT plugin.
 
-Trong môi trường development hiện tại:
+### 1.3 Kết nối Haneul Learning Bridge trong ChatGPT
 
-- Transport: Streamable HTTP.
-- Authentication: Không xác thực.
-- Chỉ dùng URL tunnel mà bạn kiểm soát.
-- Không công khai URL tunnel.
+Kết nối plugin một lần tới:
 
-Sau khi server MCP thay đổi tool hoặc event, refresh/reconnect plugin để ChatGPT quét lại capability.
+```text
+https://<stable-host>/mcp
+```
 
-## 6. Cấu hình tự động bằng ChatGPT Work
+Sau khi server thay đổi tool lớn, refresh plugin một lần để ChatGPT đọc lại capabilities.
 
-Tạo một Work chat dùng Haneul Learning Bridge.
+### 1.4 Tạo auto-compile subscription một lần
 
-Thiết lập một lần instruction theo ý sau:
+Trong ChatGPT Work dùng Haneul Learning Bridge, tạo event task cho:
 
-Khi Haneul phát event `import_job.queued`:
+```text
+import_job.queued
+```
 
-1. Lấy đúng `jobId` từ event.
-2. Gọi `get_import_job`.
-3. Gọi `get_compilation_contract`.
-4. Gọi `get_compilation_progress`.
-5. Nếu job queued thì claim.
-6. Nếu có `activeWork`, tiếp tục đúng phase và sourceCursor.
-7. Bỏ qua mọi `completedLessonIds`.
-8. Đọc source theo từng chunk.
-9. Sau mỗi chunk quan trọng, gọi `save_work_checkpoint`.
-10. Sau khi một bài hoàn chỉnh và QA đạt, gọi `save_lesson_draft`.
-11. Lặp tới hết các bài thật của giáo trình.
-12. Không tin tuyệt đối lesson detector; bỏ false-positive nếu source không xác nhận.
-13. Khi mọi bài thật đã có draft, gọi `finalize_course_bundle`.
-14. Nếu nguồn hỏng thật sự, gọi `fail_import_job`, không bịa nội dung.
+Instruction tối giản:
 
-Quy tắc nội dung:
+```text
+Khi Haneul phát import_job.queued, hãy biên import job đó đến khi hoàn tất.
+Dùng Haneul Learning Bridge, gọi get_compilation_contract và tuân theo
+workflow/checkpoint trong contract. Chỉ dùng nội dung có nguồn từ PDF,
+không bịa nội dung, và finalize course khi tất cả bài thật đã hoàn thành.
+```
 
-- Giáo trình là source of truth.
-- Không thêm curriculum ngoài nguồn.
-- Mỗi knowledge item phải có sourceRef.
-- Derived practice chỉ dùng kiến thức trong đúng bài nguồn.
-- Bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa, ghi chú và phần đặc biệt nếu sách có.
-- Tạo flow Từ vựng, Ngữ pháp, Nghe, Nói, Đọc, Viết và quiz.
-- Dùng language profile của job, không giả định tiếng Hàn.
+Các quy tắc chi tiết về grounding, lesson structure, lượng bài luyện, checkpoint và QA đã nằm trong `get_compilation_contract`, vì vậy không cần lặp lại một prompt dài cho mỗi sách.
 
-## 7. Quy trình nhập sách hằng ngày
+Subscription mặc định được tạo với thời hạn dài hơn và Haneul có endpoint trạng thái để giao diện biết auto-compile đã sẵn sàng hay chưa.
 
-### Bước 1 - Mở dịch vụ
+## 2. Quy trình dùng hằng ngày
 
-Đảm bảo hai terminal đang chạy:
+Sau khi phần trên đã setup xong:
 
-`pnpm dev`
+1. Mở Haneul.
+2. Vào `/import`.
+3. Chọn một hoặc nhiều PDF.
+4. Chờ.
+5. Mở giáo trình khi trạng thái hoàn tất.
 
-và:
+Không còn nút bắt buộc "Phân tích cấu trúc sách".
 
-`ngrok http 3000`
+Ngay khi chọn file, Haneul tự:
 
-### Bước 2 - Mở Import Studio
+- trích text;
+- tạo page preview;
+- tính SHA-256;
+- nhận diện lesson map khi có thể;
+- dùng mặc định Tiếng Hàn → Tiếng Việt;
+- tạo import job;
+- upload page snapshots;
+- queue job sang MCP;
+- chờ ChatGPT compile;
+- consume course bundle;
+- reset progress cũ cho course mới;
+- đưa course vào learning path.
 
-`http://localhost:3000/import`
+Các trường ngôn ngữ, tên sách, cấp độ và edition nằm trong mục **Tùy chọn nâng cao** và chỉ cần sửa khi auto-detect không đúng.
 
-### Bước 3 - Chọn ngôn ngữ đích
+## 3. ChatGPT sẽ biên như thế nào
 
-Nhập mã ngôn ngữ.
+ChatGPT lấy chính PDF làm source of truth.
 
-Ví dụ:
+Mỗi bài ưu tiên flow:
 
-- `ko`: tiếng Hàn
-- `en`: tiếng Anh
-- `zh`: tiếng Trung
-- `ja`: tiếng Nhật
-- ngôn ngữ mới: dùng mã phù hợp
+```text
+Nhận diện kiến thức
+→ hiểu từ vựng/ngữ pháp
+→ luyện có kiểm soát
+→ nghe/đọc theo ngữ cảnh
+→ nói/viết chủ động
+→ quiz
+→ đưa điểm yếu vào lịch ôn
+```
 
-Kiến trúc không khóa target language vào ko/en/zh.
+Policy trong compilation contract yêu cầu:
 
-### Bước 4 - Chọn PDF
+- giữ thứ tự bài của sách;
+- giữ `sourceRef`;
+- không thêm curriculum ngoài sách;
+- bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa và phần đặc biệt khi nguồn có;
+- tạo bài luyện 6 kỹ năng;
+- khoảng 12–20 câu luyện cho một bài bình thường, tự điều chỉnh theo độ dày nội dung;
+- không cố đủ số lượng nếu nguồn không hỗ trợ;
+- distractor không được đưa kiến thức ngoài bài;
+- lưu checkpoint khi sách dài;
+- hoàn thành bài nào lưu draft bài đó để không phải biên lại từ đầu.
 
-Thứ tự khuyến nghị:
+## 4. Ôn tập sau khi học
 
-1. Giáo trình chính.
-2. Workbook.
-3. Sách luyện dịch.
-4. Tài liệu ngữ pháp hoặc tài liệu bổ sung.
+Haneul dùng mastery theo từng activity.
 
-Không trộn nhiều cấp độ không liên quan vào cùng một import job.
+Lịch ôn mới giãn theo mức nhớ:
 
-### Bước 5 - Phân tích
+```text
+Sai        → ôn lại hôm nay
+Mới đúng   → +1 ngày
+Ổn hơn     → +3 ngày
+Khá chắc   → +7 ngày
+Rất chắc   → +14 ngày
+Thành thạo → +30 ngày
+```
 
-Bấm:
+Sai câu nào thì strength giảm và nội dung quay lại hàng đợi sớm hơn.
 
-`Phân tích cấu trúc sách`
+Vì vậy user không cần tự tạo bộ ôn riêng sau khi import sách.
 
-Haneul sẽ tự tạo import job và queue sang MCP.
+## 5. Trạng thái import
 
-### Bước 6 - Chờ tự động
+Luồng chuẩn:
 
-Trạng thái chuẩn:
-
-`uploading -> queued -> processing -> ready -> consumed`
+```text
+uploading
+→ queued
+→ processing
+→ ready
+→ consumed
+```
 
 Ý nghĩa:
 
-- uploading: đang lưu page snapshot.
-- queued: đã sẵn sàng cho ChatGPT.
-- processing: ChatGPT đang xử lý.
-- ready: course bundle đã hoàn tất.
-- consumed: Haneul đã nhập course vào app.
-- failed: có lỗi nguồn hoặc compilation thật sự.
+- `uploading`: đang snapshot nguồn;
+- `queued`: chờ ChatGPT nhận event;
+- `processing`: ChatGPT đang biên;
+- `ready`: course bundle hoàn thành;
+- `consumed`: app đã nhập course;
+- `failed`: có lỗi nguồn/compilation cần xử lý.
 
-### Bước 7 - Mở khóa học
+Nếu job `processing` không cập nhật trong thời gian cấu hình, Haneul tự requeue để task khác tiếp tục từ checkpoint.
 
-Sau khi consumed:
+## 6. Khả năng resume
 
-- vào Giáo trình;
-- kiểm tra Bài 1;
-- kiểm tra một bài giữa;
-- kiểm tra bài cuối;
-- xác nhận sourceRef và nội dung 6 kỹ năng.
+Haneul lưu hai lớp checkpoint:
 
-## 8. Cơ chế không phải làm lại từ đầu
+### Work checkpoint
 
-Haneul có hai tầng checkpoint.
-
-### Work checkpoint giữa bài
-
-`save_work_checkpoint` lưu:
+Lưu giữa một bài:
 
 - lessonId;
 - phase;
@@ -246,43 +202,60 @@ Haneul có hai tầng checkpoint.
 - partial lesson;
 - partial questions.
 
-Nếu phiên AI dừng giữa Bài 12 ở trang 187, phiên sau có thể tiếp tục từ checkpoint đó.
-
 ### Lesson draft
 
-`save_lesson_draft` lưu bài đã hoàn thành.
+Lưu bài đã compile và QA xong.
 
-Ví dụ:
+Ví dụ ChatGPT dừng ở Bài 12:
 
-- Bài 1-11 đã lưu.
-- Bài 12 đang dở.
-- ChatGPT bị ngắt.
+```text
+Bài 1–11 = hoàn tất
+Bài 12   = đang dở ở source cursor gần nhất
+```
 
-Lần chạy sau:
+Lần chạy tiếp theo chỉ tiếp tục Bài 12 trở đi.
 
-- Bài 1-11 bị bỏ qua.
-- Bài 12 tiếp tục từ work checkpoint.
-- Không biên lại từ Bài 1.
+## 7. Khi plugin chưa sẵn sàng
 
-## 9. Tự khôi phục job bị kẹt
+Trang Import hiển thị trạng thái của MCP event subscription.
 
-Nếu job ở `processing` nhưng không cập nhật quá 20 phút khi trang Import vẫn mở, Haneul tự đưa job về `queued` và phát lại event.
+Nếu thấy:
 
-Mỗi work checkpoint hoặc lesson draft cập nhật thời gian hoạt động, vì vậy task đang chạy bình thường sẽ không bị requeue nếu checkpoint đều đặn.
+```text
+Chưa bật auto-compile của ChatGPT
+```
 
-Fallback thủ công:
+thì PDF vẫn có thể được chuẩn bị và queue, nhưng ChatGPT sẽ chưa tự nhận job.
 
-`requeue_import_job`
+Trong **Tùy chọn nâng cao**, Haneul vẫn giữ:
 
-Sau requeue, checkpoint cũ vẫn còn và được dùng để resume.
+- xuất handoff;
+- copy prompt;
+- share PDF;
+- import Course Bundle thủ công;
+- direct API generation nếu máy có `OPENAI_API_KEY`.
 
-## 10. Không được xóa khi muốn tiếp tục
+Đây chỉ là fallback/debug, không phải workflow mặc định.
 
-Không xóa thư mục:
+## 8. PDF scan
 
-`.haneul`
+Nếu PDF có text layer yếu:
 
-nếu bạn muốn giữ:
+- Haneul dùng OCR local nếu API local được cấu hình;
+- nếu không, page preview vẫn được lưu trong import job;
+- ChatGPT có thể gọi `read_import_pages(includeImages=true)` để đọc trang scan/visual.
+
+Vì vậy không bắt buộc phải cấu hình OpenAI API trong app chỉ để dùng plugin workflow.
+
+## 9. Dữ liệu local
+
+Không xóa:
+
+```text
+.haneul
+```
+
+nếu muốn giữ:
 
 - import jobs;
 - page snapshots;
@@ -290,103 +263,17 @@ nếu bạn muốn giữ:
 - work checkpoints;
 - MCP event subscriptions.
 
-Chỉ xóa `.next` khi cần làm sạch cache Next.js.
+Xóa `.next` khi cần làm sạch cache không ảnh hưởng checkpoint.
 
-## 11. Khi nào cần reset hoàn toàn
+## 10. Mục tiêu UX cuối
 
-Chỉ reset nếu muốn bỏ toàn bộ dữ liệu import cũ.
+Sau setup chuẩn, quy trình người dùng chỉ còn:
 
-Dừng app, sau đó:
-
-```powershell
-Remove-Item -Recurse -Force .haneul
+```text
+Mở Haneul
+→ chọn PDF
+→ chờ
+→ học
 ```
 
-Sau đó trong Chrome:
-
-DevTools -> Application -> Storage -> Clear site data.
-
-Lưu ý: thao tác này xóa checkpoint và subscription local.
-
-## 12. Mở rộng sang ngôn ngữ khác
-
-LanguageProfile hiện dùng:
-
-- target
-- learner
-- targetName
-- learnerName
-- locale
-- script
-
-Content canonical fields:
-
-- targetTitle
-- learnerTitle
-- targetText
-- learnerMeaning
-
-Các alias cũ như ko/vi vẫn được normalize để UI hiện tại tiếp tục hoạt động.
-
-Vì vậy khi thêm ngôn ngữ mới, không cần tạo MCP server mới và không cần thay checkpoint protocol.
-
-## 13. Kiểm tra MCP khi có lỗi
-
-Chỉ dùng MCP Inspector khi debug.
-
-Local:
-
-`http://localhost:3000/mcp`
-
-Remote:
-
-`https://your-domain.ngrok-free.dev/mcp`
-
-Nguyên tắc debug:
-
-1. Local hỏng -> xem terminal `pnpm dev`.
-2. Local tốt, remote hỏng -> kiểm tra ngrok.
-3. Local và remote tốt, ChatGPT không thấy tool mới -> reconnect plugin.
-4. Job processing bị ngắt -> xem `get_compilation_progress`, sau đó requeue nếu cần.
-
-## 14. Cập nhật project sau này
-
-Quy trình an toàn:
-
-```powershell
-cd D:\Tieng-Han\Tieng-Han
-git switch main
-git pull
-pnpm install
-pnpm typecheck
-Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
-pnpm dev
-```
-
-Không xóa `.haneul` trong quá trình update thông thường.
-
-## 15. Checklist ngắn trước khi nhập sách
-
-- Haneul đang chạy.
-- Tunnel đang chạy.
-- Haneul Learning Bridge đang connected.
-- Work automation đã subscribe event.
-- Đúng ngôn ngữ đích.
-- PDF giáo trình chính đứng đầu.
-- Không xóa `.haneul`.
-
-Sau đó chỉ cần:
-
-Chọn PDF -> Phân tích cấu trúc sách -> Chờ -> Học.
-
-## 16. Ghi chú production
-
-Ngrok no-auth phù hợp cho development.
-
-Khi dùng lâu dài nên chuyển sang endpoint/tunnel ổn định và có authentication phù hợp. Việc đổi transport không làm thay đổi:
-
-- import job protocol;
-- checkpoint protocol;
-- language profile;
-- course bundle;
-- learning UI.
+Mọi chi tiết MCP, checkpoint, grounding, QA và cấu trúc bài luyện nằm phía sau giao diện.

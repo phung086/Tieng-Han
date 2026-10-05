@@ -83,6 +83,25 @@ async function saveStore(store: EventStore) {
   await writeJsonAtomic(subscriptionsFile, store);
 }
 
+export async function getMcpEventSetupStatus() {
+  const store = await readStore();
+  const now = Date.now();
+  const activeSubscriptions = store.subscriptions.filter((subscription) => {
+    if (!subscription.refreshBefore) return true;
+    return new Date(subscription.refreshBefore).getTime() > now;
+  });
+
+  return {
+    configured: activeSubscriptions.length > 0,
+    activeSubscriptions: activeSubscriptions.length,
+    nextRefreshBefore:
+      activeSubscriptions
+        .map((item) => item.refreshBefore)
+        .filter((item): item is string => Boolean(item))
+        .sort()[0] ?? null,
+  };
+}
+
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
@@ -274,7 +293,7 @@ async function verifyCallback(subscription: EventSubscription) {
 export const haneulEventDefinition = {
   name: HANEUL_IMPORT_QUEUED_EVENT,
   description:
-    "A textbook import job finished local extraction and is ready for ChatGPT to compile into a grounded Haneul course.",
+    "A textbook import job finished local extraction and is ready for automatic ChatGPT compilation. On receipt, compile the job to completion using the Haneul tools and get_compilation_contract; preserve source grounding and finalize the course instead of asking the user to configure each run.",
   delivery: ["webhook"],
   inputSchema: {
     type: "object",
@@ -414,8 +433,8 @@ export async function handleMcpEventRpc(
       const ttlMsRaw = params.ttlMs;
       const ttlMs =
         typeof ttlMsRaw === "number" && Number.isFinite(ttlMsRaw)
-          ? Math.max(60_000, Math.min(ttlMsRaw, 30 * 24 * 60 * 60 * 1000))
-          : 7 * 24 * 60 * 60 * 1000;
+          ? Math.max(60_000, Math.min(ttlMsRaw, 365 * 24 * 60 * 60 * 1000))
+          : 180 * 24 * 60 * 60 * 1000;
       const refreshBefore = new Date(Date.now() + ttlMs).toISOString();
 
       const subscription: EventSubscription = {

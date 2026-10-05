@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { nextReviewIntervalDays } from "@/lib/review-schedule";
 
 export type SkillKey = "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
 type SkillStat = { correct: number; total: number };
@@ -149,7 +150,7 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
           const strength = correct
             ? Math.min(100, previous.strength + 15)
             : Math.max(0, previous.strength - 20);
-          const interval = correct ? (strength >= 85 ? 7 : strength >= 65 ? 3 : 1) : 0;
+          const interval = nextReviewIntervalDays(strength, correct);
           mastery = {
             ...base.mastery,
             [activityId]: {
