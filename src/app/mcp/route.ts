@@ -118,7 +118,7 @@ function toolFailure(error: unknown) {
 function buildMcpServer() {
   const server = new McpServer({
     name: "haneul-learning-bridge",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   server.registerTool(
