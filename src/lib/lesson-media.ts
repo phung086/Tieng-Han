@@ -31,15 +31,32 @@ export function buildLessonMedia(pages: ExtractedPage[]): LessonMedia[] {
   const media: LessonMedia[] = [];
 
   for (const page of pages) {
-    if (page.previewImageDataUrl) {
+    const baseId = safePageId(page.fileName, page.pageNumber);
+    const sourceRef = page.fileName + " · p." + page.pageNumber;
+
+    page.embeddedImages.forEach((image, index) => {
       media.push({
-        id: "pdf-visual-" + safePageId(page.fileName, page.pageNumber),
+        id: "pdf-image-" + baseId + "-" + index,
         type: "image",
-        role: page.hasVisual ? "illustration" : "source-page",
+        role: "illustration",
+        src: image.dataUrl,
+        alt: page.fileName + " · hình minh họa · trang " + page.pageNumber,
+        caption: page.text.slice(0, 180) || undefined,
+        sourceRef,
+        fileName: page.fileName,
+        pageNumber: page.pageNumber,
+      });
+    });
+
+    if (!page.embeddedImages.length && page.previewImageDataUrl) {
+      media.push({
+        id: "pdf-page-" + baseId,
+        type: "image",
+        role: "source-page",
         src: page.previewImageDataUrl,
         alt: page.fileName + " · trang " + page.pageNumber,
         caption: page.text.slice(0, 180) || undefined,
-        sourceRef: page.fileName + " · p." + page.pageNumber,
+        sourceRef,
         fileName: page.fileName,
         pageNumber: page.pageNumber,
       });
@@ -48,16 +65,12 @@ export function buildLessonMedia(pages: ExtractedPage[]): LessonMedia[] {
     page.externalLinks.forEach((url, index) => {
       const type = mediaTypeFromUrl(url);
       media.push({
-        id:
-          "pdf-link-" +
-          safePageId(page.fileName, page.pageNumber) +
-          "-" +
-          index,
+        id: "pdf-link-" + baseId + "-" + index,
         type,
         role: "external",
         src: url,
         alt: page.fileName + " · media link · trang " + page.pageNumber,
-        sourceRef: page.fileName + " · p." + page.pageNumber,
+        sourceRef,
         fileName: page.fileName,
         pageNumber: page.pageNumber,
       });
@@ -68,7 +81,7 @@ export function buildLessonMedia(pages: ExtractedPage[]): LessonMedia[] {
     if (item.type === "video") return 0;
     if (item.type === "audio") return 1;
     if (item.role === "illustration") return 2;
-    if (item.type === "image") return 3;
+    if (item.role === "source-page") return 3;
     return 4;
   };
 
