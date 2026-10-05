@@ -368,6 +368,7 @@ export const viMessages = {
     pdf: "PDF",
     pages: "trang",
     lessons: "bài",
+    lessonLabel: "Bài",
     charsPerPage: "ký tự/trang",
     mapPlaceholder: "Bản đồ bài học sẽ xuất hiện sau khi phân tích PDF.",
     lesson: "Bài",
