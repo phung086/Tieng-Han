@@ -25,6 +25,8 @@ export async function POST(request: Request) {
         "Bạn là bộ máy lập bản đồ giáo trình tiếng Hàn.",
         "Chỉ xác định nơi BÀI/LESSON bắt đầu từ văn bản được cung cấp.",
         "Không bịa bài không xuất hiện trong nguồn.",
+        "BẮT BUỘC bỏ qua 목차 / table of contents / index / trang chỉ liệt kê nhiều bài.",
+        "Chỉ trả actual lesson opening page, nơi nội dung của bài thực sự bắt đầu.",
         "Nhận diện các dạng tiêu đề như 제1과, 1과, Bài 1, Lesson 1, Unit 1.",
         "Trả về JSON duy nhất theo dạng:",
         '{"starts":[{"lessonId":1,"pageNumber":12,"titleHint":"..."}]}',
