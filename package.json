@@ -1,19 +1,31 @@
 {
   "name": "tieng-han",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@12.9.1",
-  "engines": { "node": ">=22.18.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "typecheck": "turbo typecheck",
-    "db:generate": "pnpm --filter @tieng-han/database generate",
-    "db:migrate": "pnpm --filter @tieng-han/database migrate",
-    "db:studio": "pnpm --filter @tieng-han/database studio"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm lint && pnpm typecheck && pnpm build"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "16.3.8",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "turbo": "^2.5.8",
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.37.0",
+    "eslint-config-next": "16.3.8",
     "typescript": "^5.9.3"
   }
 }
