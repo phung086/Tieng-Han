@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "ingestion": [
+    "upload",
+    "identify-source",
+    "extract-pages",
+    "classify-sections",
+    "build-source-map",
+    "map-prerequisites",
+    "generate-lesson-data",
+    "validate-against-source",
+    "publish"
+  ],
+  "reviewModes": {
+    "lessonReview": "Chỉ kiến thức bài vừa học",
+    "checkpointReview": "Khoảng 3 bài gần nhất",
+    "spacedReview": "Kéo lại từ/ngữ pháp từng sai nhưng chỉ trong phạm vi đã mở khóa"
+  },
+  "questionRules": [
+    "Mỗi câu hỏi bắt buộc có sourceEvidence.",
+    "Không dùng kiến thức chưa học làm đáp án nhiễu.",
+    "AI được thay đổi hình thức luyện tập nhưng không mở rộng syllabus ngoài nguồn.",
+    "Bài dịch từ ngân hàng 1000 câu chỉ mở khi cấu trúc tương ứng đã học.",
+    "Nếu thiếu nguồn cho một điểm kiến thức, không publish câu hỏi."
+  ],
+  "lessonFlow": [
+    "Mục tiêu",
+    "Từ vựng",
+    "Ngữ pháp",
+    "Luyện có kiểm soát",
+    "Nói",
+    "Nghe",
+    "Đọc",
+    "Viết",
+    "Phát âm",
+    "Văn hóa",
+    "Ôn tập",
+    "Mastery Test"
+  ],
+  "progression": {
+    "vocabularyGrammarMastery": 0.8,
+    "checkpointScore": 0.75,
+    "onFail": "Tạo remedial session từ reference/practice sources",
+    "onPass": "Mở bài tiếp theo"
+  }
+}
