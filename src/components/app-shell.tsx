@@ -6,6 +6,7 @@ import { BarChart3, BookOpenText, Flame, Home, RotateCcw, Settings, Sparkles, Ta
 import { LearningProvider, useLearning } from "@/lib/learning-state";
 import { ContentProvider } from "@/lib/content-store";
 import { I18nProvider, useMessages } from "@/i18n/messages";
+import { productConfig } from "@/config/product";
 
 const navigation = [
   { href: "/", key: "today", icon: Home },
@@ -23,9 +24,9 @@ function ShellContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="Haneul home">
-          <span className="brand-mark">ㅎ</span>
-          <span><strong>Haneul</strong><small>한국어 연습</small></span>
+        <Link className="brand" href="/" aria-label={productConfig.name}>
+          <span className="brand-mark">{productConfig.mark}</span>
+          <span><strong>{productConfig.name}</strong><small>{productConfig.koreanSubtitle}</small></span>
         </Link>
 
         <nav className="side-nav" aria-label={messages.navigation.textbook}>
@@ -39,12 +40,12 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
         <div className="streak-card">
           <div className="streak-icon"><Flame size={19} /></div>
-          <div><strong>{state.streak} ngày</strong><span>{messages.navigation.streak}</span></div>
+          <div><strong>{state.streak} {messages.dashboard.days}</strong><span>{messages.navigation.streak}</span></div>
         </div>
 
         <Link className="profile-chip" href="/settings">
           <div className="avatar">H</div>
-          <div><strong>Hưng</strong><span>{messages.navigation.beginner} · {state.xp} XP</span></div>
+          <div><strong>{productConfig.defaultLearnerName}</strong><span>{messages.navigation.beginner} · {state.xp} XP</span></div>
           <Settings size={17} />
         </Link>
       </aside>
@@ -59,7 +60,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="mobile-topbar">
-        <Link className="mobile-brand" href="/"><span className="brand-mark">ㅎ</span><strong>Haneul</strong></Link>
+        <Link className="mobile-brand" href="/"><span className="brand-mark">{productConfig.mark}</span><strong>{productConfig.name}</strong></Link>
         <Link className="mobile-library" href="/settings" aria-label={messages.navigation.settingsAria}><Sparkles size={20} /></Link>
       </div>
     </div>
