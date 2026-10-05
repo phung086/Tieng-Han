@@ -21,6 +21,14 @@ export const viMessages = {
     open: "Mở",
     close: "Đóng",
   },
+  skills: {
+    vocabulary: { vi: "Từ vựng", ko: "어휘" },
+    grammar: { vi: "Ngữ pháp", ko: "문법" },
+    listening: { vi: "Nghe", ko: "듣기" },
+    speaking: { vi: "Nói", ko: "말하기" },
+    reading: { vi: "Đọc", ko: "읽기" },
+    writing: { vi: "Viết", ko: "쓰기" },
+  },
   navigation: {
     today: "Hôm nay",
     textbook: "Giáo trình",
@@ -242,6 +250,7 @@ export const viMessages = {
     rememberedSession: "từ đã nhớ trong phiên này",
     remaining: "lượt còn lại",
     reviewAgain: "Ôn lại",
+    flashcard: "FLASHCARD",
   },
   listening: {
     eyebrow: "듣기 · NGHE",
