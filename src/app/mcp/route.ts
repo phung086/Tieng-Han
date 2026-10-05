@@ -33,7 +33,8 @@ const jobStatusSchema = z.enum([
 ]);
 
 function withoutResult(job: ImportJob) {
-  const { resultBundle: _resultBundle, ...summary } = job;
+  const summary: Partial<ImportJob> = { ...job };
+  delete summary.resultBundle;
   return summary;
 }
 
