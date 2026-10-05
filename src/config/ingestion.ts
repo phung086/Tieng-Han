@@ -5,6 +5,8 @@ export const ingestionConfig = {
     previewScale: 0.9,
     previewJpegQuality: 0.72,
     maxPreviewWidth: 1100,
+    minEmbeddedImagePixels: 40_000,
+    maxEmbeddedImagesPerPage: 4,
   },
   lesson: {
     maxMediaItems: 12,
