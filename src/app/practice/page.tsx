@@ -5,6 +5,7 @@ import { ArrowRight, BookOpenText, Brain, Headphones, Layers3, Mic2, PenLine, Sp
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import { EmptyCourseState } from "@/components/empty-course-state";
 
 const modeKeys = [
   { path: "/practice/quiz", key: "mixed", icon: Sparkles, tone: "violet" },
@@ -19,6 +20,14 @@ export default function PracticePage() {
   const { state } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
+  if (!course.lessons.length) {
+    return (
+      <div className="page">
+        <EmptyCourseState compact />
+      </div>
+    );
+  }
+
   const current =
     course.lessons.find((lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100) ??
     course.lessons[course.lessons.length - 1];
