@@ -225,7 +225,9 @@ export function IngestionStudio() {
   const [courseTitle, setCourseTitle] = useState<string>(copy.defaultCourseTitle);
   const [level, setLevel] = useState<string>(copy.defaultLevel);
   const [edition, setEdition] = useState("");
-  const [targetLanguageCode, setTargetLanguageCode] = useState("ko");
+  const [targetLanguageCode, setTargetLanguageCode] = useState(
+    ingestionConfig.autoImport.targetLanguage,
+  );
   const [aiStatus, setAiStatus] = useState<{
     configured: boolean;
     contentModel: string;
@@ -243,6 +245,11 @@ export function IngestionStudio() {
     ImportJobStatus | "idle" | "syncing"
   >("idle");
   const [mcpSyncProgress, setMcpSyncProgress] = useState(0);
+  const [bridgeSetup, setBridgeSetup] = useState<{
+    configured: boolean;
+    activeSubscriptions: number;
+    nextRefreshBefore: string | null;
+  } | null>(null);
   const mcpRunRef = useRef(0);
 
   useEffect(() => {
@@ -255,6 +262,21 @@ export function IngestionStudio() {
       })
       .catch(() => {
         if (!cancelled) setAiStatus({ configured: false, contentModel: "", ocrModel: "" });
+      });
+
+    void fetch("/api/mcp-bridge/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setBridgeSetup(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBridgeSetup({
+            configured: false,
+            activeSubscriptions: 0,
+            nextRefreshBefore: null,
+          });
+        }
       });
 
     void fetch("/api/import-jobs")
@@ -290,18 +312,29 @@ export function IngestionStudio() {
     totalPages && averageCharacters < ingestionConfig.pdf.lowTextCharacters,
   );
 
-  async function analyzeFiles() {
-    if (!files.length) return;
+  async function analyzeFiles(sourceFiles: File[] = files) {
+    if (!sourceFiles.length) return;
 
     const runId = mcpRunRef.current + 1;
     mcpRunRef.current = runId;
+    setFiles(sourceFiles);
     setMcpJobId("");
     setMcpStatus("idle");
     setMcpSyncProgress(0);
+    setHandoffNote("");
     setError("");
     setStatus("extracting");
     setProgress(0);
     setMessage(copy.extracting);
+
+    const language = getLanguageProfile(
+      targetLanguageCode || ingestionConfig.autoImport.targetLanguage,
+      ingestionConfig.autoImport.learnerLanguage,
+    );
+    let nextCourseTitle =
+      sourceFiles[0]?.name.replace(/\.pdf$/i, "") || copy.genericCourseTitle;
+    let nextLevel = level.trim() || language.targetName;
+    let nextEdition = edition.trim();
 
     try {
       const nextDocuments: ExtractedDocument[] = [];
@@ -310,20 +343,22 @@ export function IngestionStudio() {
       setOcrUsed(false);
       setOcrSkipped(false);
 
-      for (let index = 0; index < files.length; index += 1) {
-        let document = await extractPdf(files[index], index);
+      for (let index = 0; index < sourceFiles.length; index += 1) {
+        let document = await extractPdf(sourceFiles[index], index);
 
         if (lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
           if (aiStatus?.configured) {
             setOcrUsed(true);
-            setMessage(copy.ocrPrefix + " " + fileLabel(files[index].name) + "…");
+            setMessage(
+              copy.ocrPrefix + " " + fileLabel(sourceFiles[index].name) + "…",
+            );
 
             document = await ocrLowTextPages(
-              files[index],
+              sourceFiles[index],
               document,
               (completed, total) => {
-                const fileBase = index / files.length;
-                const fileShare = 1 / files.length;
+                const fileBase = index / sourceFiles.length;
+                const fileShare = 1 / sourceFiles.length;
                 const ocrShare = total ? completed / total : 0;
                 setProgress(
                   Math.round((fileBase + fileShare * ocrShare * 0.4) * 55),
@@ -337,18 +372,18 @@ export function IngestionStudio() {
 
         nextDocuments.push(document);
 
-        setProgress(Math.round(((index + 0.45) / files.length) * 45));
-        setMessage(copy.mappingPrefix + " " + fileLabel(files[index].name) + "…");
+        setProgress(
+          Math.round(((index + 0.45) / sourceFiles.length) * 45),
+        );
+        setMessage(
+          copy.mappingPrefix + " " + fileLabel(sourceFiles[index].name) + "…",
+        );
 
         const localStarts = localLessonStarts(document);
         const aiStarts =
           aiStatus?.configured &&
           document.pages.some((page) => page.text.length > 30)
-            ? await aiMapDocument(
-                document,
-                copy,
-                getLanguageProfile(targetLanguageCode || "ko"),
-              )
+            ? await aiMapDocument(document, copy, language)
             : [];
         const starts = aiStarts.length ? aiStarts : localStarts;
 
@@ -370,9 +405,7 @@ export function IngestionStudio() {
                   pageNumber: page.pageNumber,
                   text: page.text,
                 })),
-                language: getLanguageProfile(
-                  targetLanguageCode || "ko",
-                ),
+                language,
               }),
             });
 
@@ -383,43 +416,36 @@ export function IngestionStudio() {
             };
 
             if (metadataResponse.ok) {
-              if (metadata.title) setCourseTitle(metadata.title);
-              if (metadata.level) setLevel(metadata.level);
-              if (metadata.edition) setEdition(metadata.edition);
+              if (metadata.title?.trim()) nextCourseTitle = metadata.title.trim();
+              if (metadata.level?.trim()) nextLevel = metadata.level.trim();
+              if (metadata.edition?.trim()) nextEdition = metadata.edition.trim();
             }
-          } else {
-            setCourseTitle(
-              fileLabel(files[index].name.replace(/\.pdf$/i, "")),
-            );
           }
+
+          setCourseTitle(nextCourseTitle);
+          setLevel(nextLevel);
+          setEdition(nextEdition);
         }
 
-        setProgress(Math.round(((index + 1) / files.length) * 55));
-      }
-
-      if (!nextMaps[0]?.starts.length && aiStatus?.configured) {
-        throw new Error(copy.noLessonMap);
+        setProgress(Math.round(((index + 1) / sourceFiles.length) * 55));
       }
 
       setDocuments(nextDocuments);
       setMaps(nextMaps);
-      setProgress(100);
-      setMessage(
-        nextMaps[0]?.starts.length
-          ? copy.mapCompletePrefix +
-              " " +
-              nextMaps[0].starts.length +
-              " " +
-              copy.mapCompleteSuffix
-          : copy.localMapComplete,
-      );
+      setProgress(60);
+      setMessage(copy.autoQueued);
       setStatus("mapped");
 
-      void syncImportToMcp(
+      await syncImportToMcp(
         nextDocuments,
         nextMaps,
-        [...files],
+        sourceFiles,
         runId,
+        {
+          title: nextCourseTitle,
+          level: nextLevel,
+          edition: nextEdition || undefined,
+        },
       );
     } catch (reason) {
       setStatus("idle");
@@ -456,6 +482,11 @@ export function IngestionStudio() {
     sourceMaps: DocumentMap[],
     sourceFiles: File[],
     runId: number,
+    courseHint: {
+      title: string;
+      level: string;
+      edition?: string;
+    },
   ) {
     setMcpStatus("syncing");
     setMcpSyncProgress(0);
@@ -465,17 +496,11 @@ export function IngestionStudio() {
         files: sourceFiles,
         documents: sourceDocuments,
         maps: sourceMaps,
-        courseHint: {
-          title:
-            courseTitle.trim() ||
-            sourceFiles[0]?.name.replace(/\.pdf$/i, "") ||
-            copy.genericCourseTitle,
-          level:
-            level.trim() ||
-            getLanguageProfile(targetLanguageCode || "ko").targetName,
-          edition: edition.trim() || undefined,
-        },
-        language: getLanguageProfile(targetLanguageCode || "ko"),
+        courseHint,
+        language: getLanguageProfile(
+          targetLanguageCode || ingestionConfig.autoImport.targetLanguage,
+          ingestionConfig.autoImport.learnerLanguage,
+        ),
         onProgress(uploaded, total) {
           if (mcpRunRef.current !== runId) return;
           setMcpSyncProgress(
@@ -528,7 +553,7 @@ export function IngestionStudio() {
         if (
           job.status === "processing" &&
           Date.now() - new Date(job.updatedAt).getTime() >
-            20 * 60 * 1000
+            ingestionConfig.autoImport.staleJobMinutes * 60 * 1000
         ) {
           job = await requeueMcpImportJob(jobId);
           setHandoffNote(copy.mcpAutoRequeued);
@@ -547,6 +572,7 @@ export function IngestionStudio() {
         if (job.status === "ready" && job.resultBundle) {
           const consumeResult = await consumeMcpImportJob(jobId);
           if (consumeResult.course) {
+            resetForCourse();
             replaceCourse(consumeResult.course);
           } else {
             const bundleFile = new File(
@@ -559,6 +585,9 @@ export function IngestionStudio() {
 
           if (mcpRunRef.current === runId) {
             setMcpStatus("consumed");
+            setStatus("done");
+            setProgress(100);
+            setMessage(copy.autoComplete);
             setHandoffNote(copy.mcpImported);
           }
           return;
