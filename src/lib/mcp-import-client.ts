@@ -130,3 +130,15 @@ export async function consumeMcpImportJob(jobId: string) {
   );
   return (await jsonResponse<{ job: ImportJob }>(response)).job;
 }
+
+export async function requeueMcpImportJob(jobId: string) {
+  const response = await fetch(
+    "/api/import-jobs/" + encodeURIComponent(jobId),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "requeue" }),
+    },
+  );
+  return (await jsonResponse<{ job: ImportJob }>(response)).job;
+}
