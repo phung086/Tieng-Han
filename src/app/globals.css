@@ -4972,3 +4972,148 @@ a:focus-visible {
     width: 100%;
   }
 }
+
+
+/* One-drop textbook import */
+
+.assisted-import-card {
+  grid-template-columns: 1fr;
+}
+
+.assisted-import-card .ingest-run-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.auto-import-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auto-import-step {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fafafd;
+  opacity: .62;
+}
+
+.auto-import-step > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #86899a;
+  background: #ececf2;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.auto-import-step strong,
+.auto-import-step small {
+  display: block;
+}
+
+.auto-import-step strong {
+  font-size: 9px;
+}
+
+.auto-import-step small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.auto-import-step.active,
+.auto-import-step.done {
+  opacity: 1;
+}
+
+.auto-import-step.active {
+  border-color: #cfc9ff;
+  background: #f7f5ff;
+}
+
+.auto-import-step.active > span {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.auto-import-step.done {
+  border-color: #d0e9df;
+  background: #f2faf7;
+}
+
+.auto-import-step.done > span {
+  color: #2f8069;
+  background: #dff4ec;
+}
+
+.ingest-warning {
+  display: grid;
+  gap: 3px;
+}
+
+.ingest-warning strong,
+.ingest-warning span {
+  display: block;
+}
+
+.ingest-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ingest-advanced {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+}
+
+.ingest-advanced > summary {
+  padding: 15px 18px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.ingest-advanced[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.ingest-advanced > .ingest-grid {
+  padding: 18px;
+}
+
+@media (max-width: 900px) {
+  .auto-import-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .auto-import-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .ingest-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ingest-advanced > .ingest-grid {
+    padding: 12px;
+  }
+}
