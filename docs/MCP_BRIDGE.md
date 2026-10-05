@@ -225,3 +225,80 @@ Chọn PDF → Phân tích → chờ → học
 ```
 
 Không cần quay lại thiết kế importer.
+
+
+## Automatic import with MCP Events
+
+Haneul now advertises an MCP event:
+
+```text
+import_job.queued
+```
+
+When PDF extraction finishes and the import job enters `queued`, Haneul can notify a subscribed ChatGPT Work task through the MCP Events webhook protocol.
+
+Required MCP Events protocol version:
+
+```text
+2026-07-28
+```
+
+The MCP endpoint implements:
+
+```text
+server/discover
+events/list
+events/subscribe
+events/unsubscribe
+```
+
+Subscriptions are persisted under:
+
+```text
+.haneul/mcp-events/subscriptions.json
+```
+
+The server verifies ChatGPT's callback URL, performs the signed verification challenge, stores the `whsec_` signing secret supplied by ChatGPT, and signs queued-import events with Standard Webhooks.
+
+The event payload intentionally contains only a summary:
+
+```text
+jobId
+courseTitle
+level
+targetLanguage
+learnerLanguage
+totalPages
+sourceFiles
+status
+```
+
+The task must use MCP tools such as `get_import_job`, `read_import_pages`, and `get_compilation_contract` to retrieve the actual textbook content.
+
+### One-time ChatGPT setup
+
+In a Work chat with the Haneul plugin enabled, create an event-triggered task similar to:
+
+```text
+When Haneul emits import_job.queued, claim that job, read the compilation
+contract and all source pages needed for every lesson, compile a grounded
+Haneul Course Bundle, validate source references and coverage, and submit the
+completed bundle back with submit_course_bundle. If source quality is
+insufficient, call fail_import_job instead of inventing content.
+```
+
+After that subscription exists, the intended user workflow is:
+
+```text
+Upload PDF in Haneul
+→ click Analyze
+→ import_job.queued event
+→ ChatGPT Work task starts
+→ ChatGPT compiles course
+→ submit_course_bundle
+→ Haneul imports result automatically
+```
+
+No repeated prompt is required for each textbook.
+
+For development through ngrok, keep the Haneul dev server and ngrok session running. A stable deployment or reserved tunnel URL is recommended for long-lived event subscriptions because changing the MCP URL requires refreshing the plugin connection and subscription.
