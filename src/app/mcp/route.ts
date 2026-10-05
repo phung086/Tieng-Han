@@ -28,6 +28,7 @@ import type {
 } from "@/lib/import-jobs";
 import { handleMcpEventRpc } from "@/lib/mcp-events";
 import type { LessonContent, StudyQuestion } from "@/data/content";
+import { prepareImportCompilation } from "@/lib/import-compiler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,7 +118,7 @@ function toolFailure(error: unknown) {
 function buildMcpServer() {
   const server = new McpServer({
     name: "haneul-learning-bridge",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   server.registerTool(
@@ -144,6 +145,32 @@ function buildMcpServer() {
                 null,
                 2,
               ),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "prepare_import_job",
+    {
+      description:
+        "One-call bootstrap for automatic textbook compilation. Reads the import job, claims it if queued, and returns the compilation contract plus resumable progress so ChatGPT can start or resume without separate setup calls.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+      }),
+    },
+    async ({ jobId }) => {
+      try {
+        const prepared = await prepareImportCompilation(jobId);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(prepared, null, 2),
             },
           ],
         };

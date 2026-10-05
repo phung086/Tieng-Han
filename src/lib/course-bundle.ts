@@ -667,6 +667,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>.",
       "Do not invent unreadable source content; record uncertainty instead.",
       "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
+      "Treat job.courseHint as a hint only. Infer the actual course title, level and edition from the textbook source when the source supports them, and pass those values to finalize_course_bundle instead of preserving a guessed/default level.",
       "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
       "During long lessons, call save_work_checkpoint after meaningful source-reading chunks and before long drafting or QA work so the exact page cursor and partial state survive interruption.",
       "After finishing and checking each lesson, call save_lesson_draft immediately. Saving the lesson clears its mid-lesson work checkpoint.",

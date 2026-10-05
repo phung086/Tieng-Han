@@ -34,11 +34,12 @@ export function buildRuntimeCourseFromBundle(
   coverImageDataUrl?: string,
 ): RuntimeCourse {
   const sourceFiles = bundle.sourceFiles ?? [];
+  const language = bundle.language ?? defaultLanguageProfile;
   return {
     id: "course-" + jobId,
-    title: bundle.course.title.trim() || "Tiếng Hàn Sơ cấp 1",
-    level: bundle.course.level.trim() || "초급 1",
-    language: bundle.language ?? defaultLanguageProfile,
+    title: bundle.course.title.trim() || language.targetName,
+    level: bundle.course.level.trim() || "General",
+    language,
     source: {
       fileName: sourceFiles[0],
       fileNames: sourceFiles,

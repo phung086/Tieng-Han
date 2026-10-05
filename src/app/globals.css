@@ -4179,6 +4179,19 @@ a:focus-visible {
   background: #fff7e6;
 }
 
+.ingest-warning > strong,
+.ingest-warning > span {
+  display: block;
+}
+
+.ingest-warning > span {
+  margin-top: 3px;
+}
+
+.ingest-warning .secondary-button {
+  margin-top: 10px;
+}
+
 .ingest-error {
   color: #a64d52;
   background: #fff0f1;

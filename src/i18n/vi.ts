@@ -360,6 +360,8 @@ export const viMessages = {
     bridgeNeedsSetup: "Chưa bật auto-compile của ChatGPT",
     bridgeChecking: "Đang kiểm tra Haneul Learning Bridge…",
     bridgeSetupOnce: "Chỉ cần cấu hình subscription Haneul Learning Bridge một lần. Sau đó mỗi sách mới chỉ việc chọn PDF; không cần copy prompt, gửi lại file hay bấm từng MCP tool.",
+    copyBridgeSetup: "Sao chép lệnh setup 1 lần",
+    bridgeSetupCopied: "Đã sao chép lệnh setup auto-compile. Dán một lần vào ChatGPT Work có Haneul Learning Bridge.",
     autoStep: "ONE-DROP IMPORT",
     autoDropHint: "PDF đầu tiên là giáo trình chính; có thể chọn thêm workbook hoặc tài liệu bổ sung cùng lúc. Chọn xong hệ thống tự bắt đầu, không cần bấm Phân tích.",
     replacePdf: "Chọn bộ PDF khác",
