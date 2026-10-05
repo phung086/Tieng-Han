@@ -2,7 +2,13 @@ import type { SkillKey } from "@/lib/learning-state";
 
 export type VocabularyItem = {
   id: string;
+  /** Canonical language-neutral field. */
+  targetText?: string;
+  /** Canonical learner-language meaning. */
+  learnerMeaning?: string;
+  /** Legacy runtime alias for targetText. */
   ko: string;
+  /** Legacy runtime alias for learnerMeaning. */
   vi: string;
   example: string;
   sourceRef?: string;
@@ -58,7 +64,11 @@ export type DialogueItem = {
   title?: string;
   lines: Array<{
     speaker?: string;
+    targetText?: string;
+    learnerMeaning?: string;
+    /** Legacy runtime alias for targetText. */
     ko: string;
+    /** Legacy runtime alias for learnerMeaning. */
     vi?: string;
   }>;
   sourceRef?: string;
@@ -89,7 +99,13 @@ export type ExtraSection = {
 
 export type LessonContent = {
   id: number;
+  /** Canonical target-language lesson title. */
+  targetTitle?: string;
+  /** Canonical learner-language lesson title. */
+  learnerTitle?: string;
+  /** Legacy runtime alias for targetTitle. */
   title: string;
+  /** Legacy runtime alias for learnerTitle. */
   vi: string;
   objective: string;
   vocabulary: VocabularyItem[];
