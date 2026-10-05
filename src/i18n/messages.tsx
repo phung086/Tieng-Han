@@ -39,6 +39,13 @@ export const viMessages = {
     beginner: "Sơ cấp 1",
     settingsAria: "Mở cài đặt",
   },
+  onboarding: {
+    eyebrow: "BẮT ĐẦU · 시작",
+    title: "Chưa có giáo trình nào được nhập",
+    body: "Tải PDF giáo trình lên để Haneul tự tạo lộ trình, nội dung học, media và bài luyện từ chính cuốn sách của bạn.",
+    action: "Nhập giáo trình PDF",
+    secondary: "Mở cài đặt",
+  },
   dashboard: {
     kicker: "오늘의 학습 · HÔM NAY",
     greeting: "좋은 하루예요, Hưng 👋",
