@@ -5,6 +5,7 @@ import { ArrowRight, BookMarked, Check, LockKeyhole, Play } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import { EmptyCourseState } from "@/components/empty-course-state";
 
 const chipKeys: SkillKey[] = [
   "vocabulary",
@@ -19,6 +20,14 @@ export default function LearnPage() {
   const { state } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
+  if (!course.lessons.length) {
+    return (
+      <div className="page">
+        <EmptyCourseState />
+      </div>
+    );
+  }
+
   const courseProgress = Math.round(
     course.lessons.reduce((sum, lesson) => sum + (state.lessonProgress[String(lesson.id)] ?? 0), 0) /
       Math.max(1, course.lessons.length),
