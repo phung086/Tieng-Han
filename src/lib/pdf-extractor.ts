@@ -2,6 +2,13 @@
 
 import { ingestionConfig } from "@/config/ingestion";
 
+export type EmbeddedPdfImage = {
+  id: string;
+  width: number;
+  height: number;
+  dataUrl: string;
+};
+
 export type ExtractedPage = {
   documentId: string;
   fileName: string;
@@ -9,6 +16,7 @@ export type ExtractedPage = {
   text: string;
   hasVisual: boolean;
   previewImageDataUrl?: string;
+  embeddedImages: EmbeddedPdfImage[];
   externalLinks: string[];
 };
 
@@ -22,6 +30,13 @@ export type ExtractedDocument = {
 type OcrResponse = {
   pages?: Array<{ pageNumber: number; text: string }>;
   error?: string;
+};
+
+type PdfImageLike = {
+  width?: number;
+  height?: number;
+  data?: Uint8Array | Uint8ClampedArray;
+  bitmap?: ImageBitmap;
 };
 
 function cleanPageText(text: string) {
@@ -47,8 +62,12 @@ async function loadPdf(file: File) {
   };
 }
 
+type LoadedPdf = Awaited<ReturnType<typeof loadPdf>>;
+type PdfPage = Awaited<ReturnType<LoadedPdf["pdf"]["getPage"]>>;
+type PdfOperatorList = Awaited<ReturnType<PdfPage["getOperatorList"]>>;
+
 async function renderPagePreview(
-  page: Awaited<ReturnType<Awaited<ReturnType<typeof loadPdf>>["pdf"]["getPage"]>>,
+  page: PdfPage,
   scale = ingestionConfig.pdf.previewScale,
 ) {
   const baseViewport = page.getViewport({ scale });
@@ -78,13 +97,169 @@ async function renderPagePreview(
   );
 }
 
-function extractAnnotationLinks(annotations: Awaited<ReturnType<Awaited<ReturnType<Awaited<ReturnType<typeof loadPdf>>["pdf"]["getPage"]>>["getAnnotations"]>>) {
+function rawPixelsToDataUrl(image: PdfImageLike) {
+  const width = Number(image.width);
+  const height = Number(image.height);
+  const data = image.data;
+
+  if (!width || !height || !data) return null;
+
+  const pixelCount = width * height;
+  if (pixelCount < ingestionConfig.pdf.minEmbeddedImagePixels) return null;
+
+  let rgba: Uint8ClampedArray;
+
+  if (data.length === pixelCount * 4) {
+    rgba = new Uint8ClampedArray(data);
+  } else if (data.length === pixelCount * 3) {
+    rgba = new Uint8ClampedArray(pixelCount * 4);
+    for (let source = 0, target = 0; source < data.length; source += 3, target += 4) {
+      rgba[target] = data[source];
+      rgba[target + 1] = data[source + 1];
+      rgba[target + 2] = data[source + 2];
+      rgba[target + 3] = 255;
+    }
+  } else {
+    return null;
+  }
+
+  const canvas = window.document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  context.putImageData(new ImageData(rgba, width, height), 0, 0);
+
+  return {
+    width,
+    height,
+    dataUrl: canvas.toDataURL(
+      "image/jpeg",
+      ingestionConfig.pdf.previewJpegQuality,
+    ),
+  };
+}
+
+function drawableToDataUrl(value: unknown) {
+  if (typeof window === "undefined") return null;
+
+  if (
+    (typeof ImageBitmap !== "undefined" && value instanceof ImageBitmap) ||
+    value instanceof HTMLCanvasElement ||
+    value instanceof HTMLImageElement
+  ) {
+    const drawable = value as CanvasImageSource & {
+      width: number;
+      height: number;
+    };
+    const width = Number(drawable.width);
+    const height = Number(drawable.height);
+
+    if (
+      !width ||
+      !height ||
+      width * height < ingestionConfig.pdf.minEmbeddedImagePixels
+    ) {
+      return null;
+    }
+
+    const canvas = window.document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+
+    context.drawImage(drawable, 0, 0);
+
+    return {
+      width,
+      height,
+      dataUrl: canvas.toDataURL(
+        "image/jpeg",
+        ingestionConfig.pdf.previewJpegQuality,
+      ),
+    };
+  }
+
+  if (value && typeof value === "object") {
+    const image = value as PdfImageLike;
+
+    if (image.bitmap && typeof ImageBitmap !== "undefined") {
+      return drawableToDataUrl(image.bitmap);
+    }
+
+    return rawPixelsToDataUrl(image);
+  }
+
+  return null;
+}
+
+function readPdfObject(page: PdfPage, objectId: string) {
+  const objects = page.objs as unknown as {
+    get: (id: string) => unknown;
+  };
+
+  try {
+    return objects.get(objectId);
+  } catch {
+    return null;
+  }
+}
+
+function extractEmbeddedImages(
+  page: PdfPage,
+  operatorList: PdfOperatorList,
+  imageOps: Set<number>,
+) {
+  const items: EmbeddedPdfImage[] = [];
+  const seen = new Set<string>();
+
+  for (let index = 0; index < operatorList.fnArray.length; index += 1) {
+    if (!imageOps.has(operatorList.fnArray[index])) continue;
+
+    const args = operatorList.argsArray[index] as unknown[];
+    const firstArg = args?.[0];
+    let source: unknown = firstArg;
+    let sourceId = "inline-" + index;
+
+    if (typeof firstArg === "string") {
+      sourceId = firstArg;
+      if (seen.has(sourceId)) continue;
+      source = readPdfObject(page, firstArg);
+    }
+
+    const rendered = drawableToDataUrl(source);
+    if (!rendered) continue;
+
+    seen.add(sourceId);
+    items.push({
+      id: sourceId,
+      width: rendered.width,
+      height: rendered.height,
+      dataUrl: rendered.dataUrl,
+    });
+
+    if (items.length >= ingestionConfig.pdf.maxEmbeddedImagesPerPage) {
+      break;
+    }
+  }
+
+  return items;
+}
+
+function extractAnnotationLinks(
+  annotations: Awaited<ReturnType<PdfPage["getAnnotations"]>>,
+) {
   const urls = annotations
     .map((annotation) => {
       if ("url" in annotation && typeof annotation.url === "string") {
         return annotation.url;
       }
-      if ("unsafeUrl" in annotation && typeof annotation.unsafeUrl === "string") {
+      if (
+        "unsafeUrl" in annotation &&
+        typeof annotation.unsafeUrl === "string"
+      ) {
         return annotation.unsafeUrl;
       }
       return "";
@@ -127,14 +302,19 @@ export async function extractPdf(
     );
     const hasVisual =
       hasRasterVisual ||
-      externalLinks.some((url) => /youtube|youtu\.be|vimeo|video|mp4|webm/i.test(url));
+      externalLinks.some((url) =>
+        /youtube|youtu\.be|vimeo|video|mp4|webm/i.test(url),
+      );
 
     let previewImageDataUrl: string | undefined;
+    let embeddedImages: EmbeddedPdfImage[] = [];
+
     if (hasVisual) {
       try {
         previewImageDataUrl = await renderPagePreview(page);
+        embeddedImages = extractEmbeddedImages(page, operatorList, imageOps);
       } catch {
-        // Text ingestion remains usable if a visual preview cannot be rendered.
+        // Text ingestion remains usable if visual extraction is unsupported.
       }
     }
 
@@ -145,6 +325,7 @@ export async function extractPdf(
       text: cleanPageText(lines),
       hasVisual,
       previewImageDataUrl,
+      embeddedImages,
       externalLinks,
     });
   }
@@ -205,7 +386,6 @@ export async function ocrLowTextPages(
       );
       if (storedPage && !storedPage.previewImageDataUrl) {
         storedPage.previewImageDataUrl = imageDataUrl;
-        storedPage.hasVisual = true;
       }
     }
 
