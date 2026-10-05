@@ -3666,3 +3666,152 @@ a:focus-visible {
     justify-self: start;
   }
 }
+
+
+/* Final workflow states */
+.lesson-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.lesson-progress-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.inline-empty-state,
+.empty-skill-state,
+.skill-complete-card,
+.review-empty {
+  border: 1px dashed #d9d9e5;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #fff, #fafafe);
+}
+
+.inline-empty-state {
+  padding: 28px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.empty-skill-state,
+.skill-complete-card {
+  max-width: 680px;
+  margin: 20px auto;
+  padding: 48px 34px;
+  text-align: center;
+}
+
+.empty-skill-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  border-radius: 20px;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.empty-skill-state h1,
+.skill-complete-card h1 {
+  margin: 8px 0 9px;
+  font-size: clamp(27px, 4vw, 38px);
+  letter-spacing: -0.04em;
+}
+
+.empty-skill-state p,
+.skill-complete-card p {
+  max-width: 540px;
+  margin: 0 auto 22px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.skill-complete-card .complete-orb {
+  color: var(--success);
+  background: #eaf8f3;
+}
+
+.writing-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.writing-actions .writing-submit {
+  margin-top: 0;
+}
+
+.writing-back {
+  margin-top: 14px;
+}
+
+.review-link-row {
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.review-link-row:hover {
+  background: #faf9ff;
+  transform: translateX(2px);
+}
+
+.review-empty {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.review-empty svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.review-empty strong {
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.review-empty p {
+  margin: 3px 0 0;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .lesson-workspace-header {
+    align-items: flex-start;
+  }
+
+  .lesson-header-actions {
+    justify-content: flex-start;
+  }
+
+  .empty-skill-state,
+  .skill-complete-card {
+    padding: 36px 20px;
+  }
+
+  .writing-actions {
+    flex-direction: column-reverse;
+  }
+
+  .writing-actions > * {
+    width: 100%;
+  }
+}
