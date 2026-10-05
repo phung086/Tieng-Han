@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, BookOpenText, Flame, Home, RotateCcw, Settings, Sparkles, Target } from "lucide-react";
 import { LearningProvider, useLearning } from "@/lib/learning-state";
-import { ContentProvider } from "@/lib/content-store";
+import { ContentProvider, useContent } from "@/lib/content-store";
 import { I18nProvider, useMessages } from "@/i18n/messages";
 import { productConfig } from "@/config/product";
 
@@ -19,6 +19,7 @@ const navigation = [
 function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { state } = useLearning();
+  const { course } = useContent();
   const messages = useMessages();
 
   return (
@@ -45,7 +46,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
         <Link className="profile-chip" href="/settings">
           <div className="avatar">H</div>
-          <div><strong>{productConfig.defaultLearnerName}</strong><span>{messages.navigation.beginner} · {state.xp} XP</span></div>
+          <div><strong>{productConfig.defaultLearnerName}</strong><span>{course.level || messages.common.noData} · {state.xp} XP</span></div>
           <Settings size={17} />
         </Link>
       </aside>
