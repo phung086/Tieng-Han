@@ -33,7 +33,6 @@ import {
   buildChatGptPrompt,
   buildHandoffPackage,
   downloadJsonFile,
-  fingerprintFile,
   handoffFileName,
   verifyBundleSource
 } from "@/lib/chatgpt-handoff";
@@ -334,15 +333,6 @@ export function IngestionStudio() {
       if (!nextMaps[0]?.starts.length && aiStatus?.configured) {
         throw new Error(copy.noLessonMap);
       }
-
-      await Promise.all(
-        files.map((file) => {
-          const document = nextDocuments.find(
-            (item) => item.fileName === file.name,
-          );
-          return fingerprintFile(file, document?.pageCount ?? 0);
-        }),
-      );
 
       setDocuments(nextDocuments);
       setMaps(nextMaps);
