@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { publishImportJobQueued } from "@/lib/mcp-events";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import {
   IMPORT_JOB_FORMAT,
@@ -147,27 +148,30 @@ export async function appendImportPages(
 }
 
 export async function queueImportJob(jobId: string) {
-  return updateImportJob(jobId, (job) => {
-    if (job.status !== "uploading" && job.status !== "failed") {
-      return job;
-    }
+  const current = await requireImportJob(jobId);
 
-    if (job.uploadedPages < job.totalPages) {
-      throw new Error(
-        "Chưa upload đủ page snapshot: " +
-          job.uploadedPages +
-          "/" +
-          job.totalPages +
-          ".",
-      );
-    }
+  if (current.status !== "uploading" && current.status !== "failed") {
+    return current;
+  }
 
-    return {
-      ...job,
-      status: "queued",
-      error: undefined,
-    };
-  });
+  if (current.uploadedPages < current.totalPages) {
+    throw new Error(
+      "Chưa upload đủ page snapshot: " +
+        current.uploadedPages +
+        "/" +
+        current.totalPages +
+        ".",
+    );
+  }
+
+  const queued = await updateImportJob(jobId, (job) => ({
+    ...job,
+    status: "queued",
+    error: undefined,
+  }));
+
+  await publishImportJobQueued(queued);
+  return queued;
 }
 
 export async function listImportJobs(
