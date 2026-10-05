@@ -13,6 +13,7 @@ import {
   readImportPages,
   requeueImportJob,
   saveLessonDraft,
+  saveWorkCheckpoint,
   submitImportBundle,
 } from "@/lib/import-job-store";
 import {
@@ -215,18 +216,25 @@ function buildMcpServer() {
     {
       description:
         "Read extracted textbook pages from a Haneul import job. Returns page text and, when requested, full-page preview images for scanned/visual pages. Read the source in chunks and preserve page references.",
-      inputSchema: z.object({
-        jobId: z.string().min(8),
-        fileName: z.string().min(1),
-        startPage: z.number().int().min(1),
-        endPage: z.number().int().min(1).optional(),
-        includeImages: z.boolean().optional().default(false),
-        maxImages: z.number().int().min(1).max(6).optional().default(4),
-      }),
+      inputSchema: z
+        .object({
+          jobId: z.string().min(8),
+          fileName: z.string().min(1).optional(),
+          documentId: z.string().min(1).optional(),
+          startPage: z.number().int().min(1),
+          endPage: z.number().int().min(1).optional(),
+          includeImages: z.boolean().optional().default(false),
+          maxImages: z.number().int().min(1).max(6).optional().default(4),
+        })
+        .refine(
+          (value) => Boolean(value.fileName || value.documentId),
+          "Provide fileName or documentId.",
+        ),
     },
     async ({
       jobId,
       fileName,
+      documentId,
       startPage,
       endPage,
       includeImages,
@@ -240,6 +248,7 @@ function buildMcpServer() {
         const pages = await readImportPages({
           jobId,
           fileName,
+          documentId,
           startPage,
           endPage: safeEnd,
           limit: 20,
@@ -319,6 +328,72 @@ function buildMcpServer() {
             {
               type: "text",
               text: JSON.stringify(progress, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return toolFailure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "save_work_checkpoint",
+    {
+      description:
+        "Persist mid-lesson compiler state so an interrupted ChatGPT run resumes from the exact source cursor and phase instead of restarting that lesson. Save after meaningful source-reading chunks and before long drafting/QA steps.",
+      inputSchema: z.object({
+        jobId: z.string().min(8),
+        lessonId: z.number().int().min(1),
+        phase: z.enum(["source-reading", "drafting", "qa"]),
+        sourceCursor: z
+          .object({
+            documentId: z.string().optional(),
+            fileName: z.string().optional(),
+            pageNumber: z.number().int().min(1).optional(),
+          })
+          .optional(),
+        notes: z.array(z.string()).optional().default([]),
+        partialLesson: z.record(z.string(), z.unknown()).optional(),
+        partialQuestions: z
+          .array(z.record(z.string(), z.unknown()))
+          .optional(),
+      }),
+    },
+    async ({
+      jobId,
+      lessonId,
+      phase,
+      sourceCursor,
+      notes,
+      partialLesson,
+      partialQuestions,
+    }) => {
+      try {
+        const checkpoint = await saveWorkCheckpoint(jobId, {
+          lessonId,
+          phase,
+          sourceCursor,
+          notes,
+          partialLesson,
+          partialQuestions,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  ok: true,
+                  lessonId: checkpoint.lessonId,
+                  phase: checkpoint.phase,
+                  savedAt: checkpoint.savedAt,
+                  sourceCursor: checkpoint.sourceCursor,
+                },
+                null,
+                2,
+              ),
             },
           ],
         };
@@ -451,13 +526,16 @@ function buildMcpServer() {
             "Do not invent unreadable source content; record uncertainty instead.",
             "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
             "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
-            "After finishing and checking each lesson, call save_lesson_draft immediately. Never keep many completed lessons only in chat context.",
-            "Before source reading in any new or resumed run, call get_compilation_progress and skip lessonIds already checkpointed unless they need deliberate correction.",
+            "During long lessons, call save_work_checkpoint after meaningful source-reading chunks and before long drafting or QA work so the exact page cursor and partial state survive interruption.",
+            "After finishing and checking each lesson, call save_lesson_draft immediately. Saving the lesson clears its mid-lesson work checkpoint.",
+            "Before source reading in any new or resumed run, call get_compilation_progress. Resume activeWork from its sourceCursor/phase, skip completedLessonIds, and never restart verified work unless deliberate correction is required.",
             "Use finalize_course_bundle after all real textbook lessons are checkpointed. Detected lesson candidates are hints and may contain false positives.",
           ],
           checkpointWorkflow: [
             "get_compilation_progress",
-            "read_import_pages for one lesson",
+            "resume activeWork if present",
+            "read_import_pages for the unfinished source range",
+            "save_work_checkpoint after meaningful chunks",
             "compile and QA that lesson",
             "save_lesson_draft",
             "repeat only for unfinished lessons",
