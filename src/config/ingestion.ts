@@ -10,6 +10,7 @@ export const ingestionConfig = {
   },
   lesson: {
     initialVisibleMediaItems: 6,
+    maxVisionPagesPerLesson: 8,
   },
   validation: {
     minimumCoverage: 75,
