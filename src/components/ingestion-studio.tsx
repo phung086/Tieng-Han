@@ -42,7 +42,10 @@ import {
   queueMcpImportJob,
 } from "@/lib/mcp-import-client";
 import type { ImportJobStatus } from "@/lib/import-jobs";
-import { defaultLanguageProfile } from "@/lib/language-profile";
+import {
+  defaultLanguageProfile,
+  getLanguageProfile,
+} from "@/lib/language-profile";
 
 type ImportCopy = UiMessages["import"];
 
@@ -196,6 +199,7 @@ export function IngestionStudio() {
   const [courseTitle, setCourseTitle] = useState<string>(copy.defaultCourseTitle);
   const [level, setLevel] = useState<string>(copy.defaultLevel);
   const [edition, setEdition] = useState("");
+  const [targetLanguageCode, setTargetLanguageCode] = useState("ko");
   const [aiStatus, setAiStatus] = useState<{
     configured: boolean;
     contentModel: string;
@@ -398,6 +402,7 @@ export function IngestionStudio() {
         level,
         edition: edition || undefined,
       },
+      language: getLanguageProfile(targetLanguageCode || "ko"),
     });
   }
 
@@ -420,9 +425,12 @@ export function IngestionStudio() {
             courseTitle.trim() ||
             sourceFiles[0]?.name.replace(/\.pdf$/i, "") ||
             copy.genericCourseTitle,
-          level: level.trim() || copy.genericLevel,
+          level:
+            level.trim() ||
+            getLanguageProfile(targetLanguageCode || "ko").targetName,
           edition: edition.trim() || undefined,
         },
+        language: getLanguageProfile(targetLanguageCode || "ko"),
         onProgress(uploaded, total) {
           if (mcpRunRef.current !== runId) return;
           setMcpSyncProgress(
@@ -883,7 +891,7 @@ export function IngestionStudio() {
 
       const runtimeCourse: RuntimeCourse = {
         id: "imported-" + Date.now(),
-        language: defaultLanguageProfile,
+        language: getLanguageProfile(targetLanguageCode || "ko"),
         title: courseTitle.trim() || copy.genericCourseTitle,
         level: level.trim() || copy.genericLevel,
         source: {
@@ -1020,6 +1028,26 @@ export function IngestionStudio() {
           </div>
 
           <div className="ingest-fields">
+            <label>
+              <span>{copy.targetLanguage}</span>
+              <input
+                list="haneul-language-codes"
+                placeholder={copy.targetLanguageHint}
+                value={targetLanguageCode}
+                onChange={(event) =>
+                  setTargetLanguageCode(
+                    event.target.value.trim().toLowerCase(),
+                  )
+                }
+              />
+              <datalist id="haneul-language-codes">
+                <option value="ko">Tiếng Hàn</option>
+                <option value="en">Tiếng Anh</option>
+                <option value="zh">Tiếng Trung</option>
+                <option value="ja">Tiếng Nhật</option>
+                <option value="fr">Tiếng Pháp</option>
+              </datalist>
+            </label>
             <label>
               <span>{copy.courseName}</span>
               <input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} />
