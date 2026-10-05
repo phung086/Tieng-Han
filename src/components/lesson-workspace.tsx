@@ -18,23 +18,23 @@ import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
 
-type LessonTab = "Tổng quan" | "Từ vựng" | "Ngữ pháp" | "Đọc" | "Bổ sung";
+type LessonTabKey = "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
+const tabKeys: LessonTabKey[] = ["overview", "vocabulary", "grammar", "reading", "supplement"];
 
 
 export function LessonWorkspace({ lessonId }: { lessonId: number }) {
-  const [tab, setTab] = useState<LessonTab>("Tổng quan");
+  const [tab, setTab] = useState<LessonTabKey>("overview");
   const { state } = useLearning();
   const messages = useMessages();
   const { getLesson, course } = useContent();
   const lesson = getLesson(lessonId);
   const progress = state.lessonProgress[String(lessonId)] ?? 0;
-  const tabs: LessonTab[] = [messages.lesson.tabs.overview, messages.lesson.tabs.vocabulary, messages.lesson.tabs.grammar, messages.lesson.tabs.reading, messages.lesson.tabs.supplement] as LessonTab[];
 
   if (!lesson) {
     return (
       <div className="empty-lesson">
         <span className="eyebrow">{messages.lesson.notFound}</span>
-        <h1>Bài {lessonId}</h1>
+        <h1>{messages.common.lesson} {lessonId}</h1>
         <p>{messages.lesson.notFoundBody}</p>
         <Link className="primary-button" href="/learn">{messages.lesson.backCourse}</Link>
       </div>
@@ -66,7 +66,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     <div className="lesson-workspace">
       <header className="lesson-workspace-header">
         <div>
-          <span className="kicker">{course.level} · BÀI {lessonId}</span>
+          <span className="kicker">{course.level} · {messages.common.lesson.toUpperCase()} {lessonId}</span>
           <h1 className="korean-text">{lesson.title}</h1>
           <p>{lesson.vi} · {lesson.objective}</p>
           <div className="lesson-source-line">
@@ -87,35 +87,32 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </div>
       </header>
 
-      <nav className="lesson-tabs" aria-label="Nội dung bài học">
-        {tabs.map((item) => (
+      <nav className="lesson-tabs" aria-label={messages.common.textbook}>
+        {tabKeys.map((key) => (
           <button
-            className={tab === item ? "active" : ""}
-            key={item}
-            onClick={() => setTab(item)}
+            className={tab === key ? "active" : ""}
+            key={key}
+            onClick={() => setTab(key)}
           >
-            {item}
-            {item === messages.lesson.tabs.supplement && supplementalCount ? (
+            {messages.lesson.tabs[key]}
+            {key === "supplement" && supplementalCount ? (
               <span className="tab-count">{supplementalCount}</span>
             ) : null}
           </button>
         ))}
       </nav>
 
-      {tab === messages.lesson.tabs.overview ? (
+      {tab === "overview" ? (
         <section className="lesson-overview-grid">
           <article className="lesson-main-card">
             <span className="eyebrow">{messages.lesson.objective}</span>
             <h2>{lesson.objective}</h2>
-            <p>
-              Tiến độ chính tính từ 6 kỹ năng. Hội thoại, phát âm, văn hóa và các mục
-              đặc biệt của sách vẫn được giữ riêng trong tab Bổ sung.
-            </p>
+            <p>{messages.lesson.progressNote}</p>
             <div className="lesson-step-list">
-              <button onClick={() => setTab(messages.lesson.tabs.vocabulary)}>
+              <button onClick={() => setTab("vocabulary")}>
                 <span>01</span><div><strong>어휘 · {messages.lesson.vocabulary}</strong><small>{lesson.vocabulary.length} {messages.lesson.items}</small></div>
               </button>
-              <button onClick={() => setTab(messages.lesson.tabs.grammar)}>
+              <button onClick={() => setTab("grammar")}>
                 <span>02</span><div><strong>문법 · {messages.lesson.grammar}</strong><small>{lesson.grammar.length} {messages.lesson.points}</small></div>
               </button>
               <Link href={"/listening?lesson=" + lessonId}>
@@ -124,14 +121,14 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <Link href={"/speaking?lesson=" + lessonId}>
                 <span>04</span><div><strong>말하기 · {messages.lesson.speaking}</strong><small>{lesson.speaking.length} {messages.lesson.sentences}</small></div>
               </Link>
-              <button onClick={() => setTab(messages.lesson.tabs.reading)}>
+              <button onClick={() => setTab("reading")}>
                 <span>05</span><div><strong>읽기 · {messages.lesson.reading}</strong><small>{lesson.reading ? messages.lesson.oneReading : messages.lesson.none}</small></div>
               </button>
               <Link href={"/writing?lesson=" + lessonId}>
                 <span>06</span><div><strong>쓰기 · {messages.lesson.writing}</strong><small>{lesson.writing ? messages.lesson.oneWriting : messages.lesson.none}</small></div>
               </Link>
               {supplementalCount ? (
-                <button onClick={() => setTab(messages.lesson.tabs.supplement)}>
+                <button onClick={() => setTab("supplement")}>
                   <span>+</span><div><strong>교재 · {messages.lesson.extra}</strong><small>{supplementalCount} {messages.lesson.supplementItems}</small></div>
                 </button>
               ) : null}
@@ -149,7 +146,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </section>
       ) : null}
 
-      {tab === messages.lesson.tabs.vocabulary ? (
+      {tab === "vocabulary" ? (
         <section className="lesson-content-card">
           <div className="content-heading">
             <div><span className="eyebrow">어휘</span><h2>{messages.lesson.vocabTitle}</h2></div>
@@ -159,7 +156,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             <div className="lesson-vocab-grid">
               {lesson.vocabulary.map((word) => (
                 <article key={word.id}>
-                  <button onClick={() => speak(word.ko)} aria-label={"Nghe " + word.ko}><Volume2 size={16} /></button>
+                  <button onClick={() => speak(word.ko)} aria-label={messages.vocabulary.hearPronunciation + " " + word.ko}><Volume2 size={16} /></button>
                   <strong className="korean-text">{word.ko}</strong>
                   <span>{word.vi}</span>
                   <p className="korean-text">{word.example}</p>
@@ -167,11 +164,11 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
                 </article>
               ))}
             </div>
-          ) : <div className="inline-empty-state">Không có mục từ vựng riêng trong nguồn của bài này.</div>}
+          ) : <div className="inline-empty-state">{messages.lesson.noVocabulary}</div>}
         </section>
       ) : null}
 
-      {tab === messages.lesson.tabs.grammar ? (
+      {tab === "grammar" ? (
         <section className="grammar-stack">
           {lesson.grammar.length ? lesson.grammar.map((grammar, index) => (
             <article className="grammar-card" key={grammar.id}>
@@ -191,11 +188,11 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
                 {grammar.sourceRef ? <small className="source-ref">{grammar.sourceRef}</small> : null}
               </div>
             </article>
-          )) : <div className="inline-empty-state">Không có điểm ngữ pháp riêng trong nguồn của bài này.</div>}
+          )) : <div className="inline-empty-state">{messages.lesson.noGrammar}</div>}
         </section>
       ) : null}
 
-      {tab === messages.lesson.tabs.reading ? (
+      {tab === "reading" ? (
         lesson.reading ? (
           <section className="reading-card">
             <div className="reading-label"><BookOpen size={19} /><span>읽기</span></div>
@@ -210,10 +207,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <Link className="secondary-button" href={"/writing?lesson=" + lessonId}><PenLine size={16} /> {messages.lesson.writingPractice}</Link>
             </div>
           </section>
-        ) : <div className="inline-empty-state">Bài này không có bài đọc riêng trong nguồn PDF.</div>
+        ) : <div className="inline-empty-state">{messages.lesson.noReading}</div>
       ) : null}
 
-      {tab === messages.lesson.tabs.supplement ? (
+      {tab === "supplement" ? (
         <section className="supplement-stack">
           <LessonMediaGallery media={media} />
           {!supplementalCount ? (
