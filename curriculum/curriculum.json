@@ -1,0 +1,1026 @@
+{
+  "version": "1.0.0",
+  "language": "ko",
+  "audience": "vi",
+  "policy": {
+    "sourceGrounded": true,
+    "noOutOfSyllabusQuestions": true,
+    "requireSourceEvidence": true,
+    "unlock": {
+      "lessonMastery": 0.8,
+      "checkpoint": 0.75
+    }
+  },
+  "levels": [
+    {
+      "id": "hangul",
+      "title": "Hangeul nhập môn",
+      "order": 0,
+      "stages": [
+        {
+          "id": "hangul-core",
+          "title": "Bảng chữ cái & phát âm nền tảng",
+          "units": [
+            {
+              "id": "hangeul",
+              "ko": "한글",
+              "vi": "Tiếng Hàn và chữ Hangeul",
+              "source": "ko-core-01",
+              "components": [
+                "alphabet",
+                "pronunciation",
+                "reading",
+                "writing"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beginner-1",
+      "title": "Sơ cấp 1",
+      "order": 1,
+      "source": "ko-core-01",
+      "stages": [
+        {
+          "id": "b1-survival",
+          "title": "Survival Korean",
+          "units": [
+            {
+              "id": "beginner-1-01",
+              "order": 1,
+              "ko": "소개",
+              "vi": "Giới thiệu",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-02",
+              "order": 2,
+              "ko": "학교",
+              "vi": "Trường học",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-03",
+              "order": 3,
+              "ko": "일상생활",
+              "vi": "Sinh hoạt hàng ngày",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1-time",
+          "title": "Time & Routine",
+          "units": [
+            {
+              "id": "beginner-1-04",
+              "order": 4,
+              "ko": "날짜와 요일",
+              "vi": "Ngày và thứ",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-05",
+              "order": 5,
+              "ko": "하루 일과",
+              "vi": "Công việc trong ngày",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-06",
+              "order": 6,
+              "ko": "주말",
+              "vi": "Cuối tuần",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1-needs",
+          "title": "Daily Needs",
+          "units": [
+            {
+              "id": "beginner-1-07",
+              "order": 7,
+              "ko": "물건 사기 (1)",
+              "vi": "Mua sắm (1)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-08",
+              "order": 8,
+              "ko": "음식",
+              "vi": "Thức ăn",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-09",
+              "order": 9,
+              "ko": "집",
+              "vi": "Nhà cửa",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1-personal",
+          "title": "Personal Life",
+          "units": [
+            {
+              "id": "beginner-1-10",
+              "order": 10,
+              "ko": "가족",
+              "vi": "Gia đình",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-11",
+              "order": 11,
+              "ko": "날씨",
+              "vi": "Thời tiết",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-12",
+              "order": 12,
+              "ko": "전화 (1)",
+              "vi": "Điện thoại (1)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b1-independent",
+          "title": "Independent Basics",
+          "units": [
+            {
+              "id": "beginner-1-13",
+              "order": 13,
+              "ko": "생일",
+              "vi": "Sinh nhật",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-14",
+              "order": 14,
+              "ko": "취미",
+              "vi": "Sở thích",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-1-15",
+              "order": 15,
+              "ko": "교통 (1)",
+              "vi": "Giao thông (1)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beginner-2",
+      "title": "Sơ cấp 2",
+      "order": 2,
+      "source": "ko-core-02",
+      "supplements": [
+        "ko-practice-s2-workbook-plus",
+        "ko-practice-s2-translation-1000"
+      ],
+      "stages": [
+        {
+          "id": "b2-social",
+          "title": "Social Interaction",
+          "units": [
+            {
+              "id": "beginner-2-01",
+              "order": 1,
+              "ko": "만남",
+              "vi": "Gặp gỡ",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-02",
+              "order": 2,
+              "ko": "약속",
+              "vi": "Hẹn gặp",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-03",
+              "order": 3,
+              "ko": "물건 사기 (2)",
+              "vi": "Mua sắm (2)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2-practical",
+          "title": "Practical Life",
+          "units": [
+            {
+              "id": "beginner-2-04",
+              "order": 4,
+              "ko": "병원",
+              "vi": "Bệnh viện",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-05",
+              "order": 5,
+              "ko": "편지",
+              "vi": "Thư tín",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-06",
+              "order": 6,
+              "ko": "교통 (2)",
+              "vi": "Giao thông (2)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2-media",
+          "title": "Communication & Media",
+          "units": [
+            {
+              "id": "beginner-2-07",
+              "order": 7,
+              "ko": "전화 (2)",
+              "vi": "Điện thoại (2)",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-08",
+              "order": 8,
+              "ko": "영화",
+              "vi": "Phim ảnh",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-09",
+              "order": 9,
+              "ko": "휴일",
+              "vi": "Ngày nghỉ",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2-experience",
+          "title": "Description & Experience",
+          "units": [
+            {
+              "id": "beginner-2-10",
+              "order": 10,
+              "ko": "외모",
+              "vi": "Ngoại hình",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-11",
+              "order": 11,
+              "ko": "여행",
+              "vi": "Du lịch",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-12",
+              "order": 12,
+              "ko": "공공장소",
+              "vi": "Nơi công cộng",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b2-independent",
+          "title": "Independent Korean",
+          "units": [
+            {
+              "id": "beginner-2-13",
+              "order": 13,
+              "ko": "도시",
+              "vi": "Đô thị",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-14",
+              "order": 14,
+              "ko": "계획",
+              "vi": "Kế hoạch",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "beginner-2-15",
+              "order": 15,
+              "ko": "한국 생활",
+              "vi": "Cuộc sống tại Hàn Quốc",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "beginner-mastery",
+      "title": "Sơ cấp Mastery",
+      "order": 3,
+      "kind": "synthetic-review",
+      "sources": [
+        "ko-core-01",
+        "ko-core-02",
+        "ko-ref-grammar-basic",
+        "ko-practice-s2-workbook-plus",
+        "ko-practice-s2-translation-1000"
+      ],
+      "sequence": [
+        "recognition",
+        "recall",
+        "controlled-production",
+        "translation",
+        "free-production"
+      ]
+    },
+    {
+      "id": "intermediate-3",
+      "title": "Trung cấp 3",
+      "order": 4,
+      "source": "ko-core-03",
+      "stages": [
+        {
+          "id": "i3-academic",
+          "title": "Academic & Social",
+          "units": [
+            {
+              "id": "intermediate-3-01",
+              "order": 1,
+              "ko": "학교 생활",
+              "vi": "Đời sống trường học",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-02",
+              "order": 2,
+              "ko": "인간관계",
+              "vi": "Quan hệ con người",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-03",
+              "order": 3,
+              "ko": "건강",
+              "vi": "Sức khỏe",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "i3-problem-solving",
+          "title": "Daily Problem Solving",
+          "units": [
+            {
+              "id": "intermediate-3-04",
+              "order": 4,
+              "ko": "쇼핑",
+              "vi": "Mua sắm",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-05",
+              "order": 5,
+              "ko": "요리",
+              "vi": "Nấu ăn",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-06",
+              "order": 6,
+              "ko": "은행",
+              "vi": "Ngân hàng",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "i3-expression",
+          "title": "Expression & Situations",
+          "units": [
+            {
+              "id": "intermediate-3-07",
+              "order": 7,
+              "ko": "성격",
+              "vi": "Tính cách",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-08",
+              "order": 8,
+              "ko": "실수",
+              "vi": "Sai sót",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-09",
+              "order": 9,
+              "ko": "이사",
+              "vi": "Chuyển nhà",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "i3-info",
+          "title": "Information & Advice",
+          "units": [
+            {
+              "id": "intermediate-3-10",
+              "order": 10,
+              "ko": "여행",
+              "vi": "Du lịch",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-11",
+              "order": 11,
+              "ko": "고민과 상담",
+              "vi": "Nỗi lo và tư vấn",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-12",
+              "order": 12,
+              "ko": "인터넷",
+              "vi": "Internet",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "i3-abstract",
+          "title": "Abstract Communication",
+          "units": [
+            {
+              "id": "intermediate-3-13",
+              "order": 13,
+              "ko": "희망",
+              "vi": "Hy vọng",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-14",
+              "order": 14,
+              "ko": "영화와 드라마",
+              "vi": "Phim và drama",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            },
+            {
+              "id": "intermediate-3-15",
+              "order": 15,
+              "ko": "예절과 규칙",
+              "vi": "Lễ nghi và quy tắc",
+              "components": [
+                "objectives",
+                "vocabulary",
+                "grammar",
+                "speaking",
+                "listening",
+                "reading",
+                "writing",
+                "pronunciation",
+                "culture",
+                "assessment"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Nâng cao",
+      "order": 5,
+      "status": "awaiting-source",
+      "note": "Không tự sinh kiến thức ngoài giáo trình nguồn. Tự mở khi import giáo trình nâng cao/trung cấp tiếp theo."
+    }
+  ],
+  "lessonTemplate": {
+    "flow": [
+      "objectives",
+      "vocabulary",
+      "grammar",
+      "controlled-practice",
+      "speaking",
+      "listening",
+      "reading",
+      "writing",
+      "pronunciation",
+      "culture",
+      "review",
+      "mastery-test"
+    ],
+    "requiredMetadata": [
+      "sourceBook",
+      "sourceChapter",
+      "sourcePage",
+      "sourceSection",
+      "skill",
+      "grammarPoints",
+      "vocabularyIds",
+      "difficulty",
+      "prerequisites",
+      "answer",
+      "explanation",
+      "sourceEvidence"
+    ]
+  }
+}
