@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -168,11 +168,34 @@ export function IngestionStudio() {
   const [maps, setMaps] = useState<DocumentMap[]>([]);
   const [courseTitle, setCourseTitle] = useState("Tiếng Hàn Sơ cấp 1");
   const [level, setLevel] = useState("초급 1");
+  const [edition, setEdition] = useState("");
+  const [aiStatus, setAiStatus] = useState<{
+    configured: boolean;
+    contentModel: string;
+    ocrModel: string;
+  } | null>(null);
   const [status, setStatus] = useState<"idle" | "extracting" | "mapped" | "generating" | "done">("idle");
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [ocrUsed, setOcrUsed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch("/api/ingest/status")
+      .then((response) => response.json())
+      .then((result) => {
+        if (!cancelled) setAiStatus(result);
+      })
+      .catch(() => {
+        if (!cancelled) setAiStatus({ configured: false, contentModel: "", ocrModel: "" });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const primaryMap = maps[0];
   const lessonIds = useMemo(
@@ -190,6 +213,11 @@ export function IngestionStudio() {
 
   async function analyzeFiles() {
     if (!files.length) return;
+
+    if (aiStatus && !aiStatus.configured) {
+      setError("Chưa cấu hình OPENAI_API_KEY trong .env.local. Import tự động cần AI để map và biên nội dung bám sách.");
+      return;
+    }
 
     setError("");
     setStatus("extracting");
@@ -226,17 +254,44 @@ export function IngestionStudio() {
         setProgress(Math.round(((index + 0.45) / files.length) * 45));
         setMessage("Đang nhận diện bài học trong " + fileLabel(files[index].name) + "…");
 
-        let starts = localLessonStarts(document);
-
-        if (starts.length < 2 && document.pages.some((page) => page.text.length > 30)) {
-          starts = await aiMapDocument(document);
-        }
+        const localStarts = localLessonStarts(document);
+        const aiStarts = document.pages.some((page) => page.text.length > 30)
+          ? await aiMapDocument(document)
+          : [];
+        const starts = aiStarts.length ? aiStarts : localStarts;
 
         nextMaps.push({
           documentId: document.id,
           fileName: document.fileName,
           starts: dedupeStarts(starts),
         });
+
+        if (index === 0) {
+          setMessage("Đang nhận diện tên sách và cấp độ…");
+          const metadataResponse = await fetch("/api/ingest/metadata", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pages: document.pages.slice(0, 16).map((page) => ({
+                fileName: page.fileName,
+                pageNumber: page.pageNumber,
+                text: page.text,
+              })),
+            }),
+          });
+
+          const metadata = (await metadataResponse.json()) as {
+            title?: string;
+            level?: string;
+            edition?: string;
+          };
+
+          if (metadataResponse.ok) {
+            if (metadata.title) setCourseTitle(metadata.title);
+            if (metadata.level) setLevel(metadata.level);
+            if (metadata.edition) setEdition(metadata.edition);
+          }
+        }
 
         setProgress(Math.round(((index + 1) / files.length) * 55));
       }
@@ -377,6 +432,7 @@ export function IngestionStudio() {
           fileNames: files.map((file) => file.name),
           importedAt: new Date().toISOString(),
           pageCount: totalPages,
+          edition: edition || undefined,
         },
         lessons: lessons.sort((a, b) => a.id - b.id),
         questions,
@@ -419,7 +475,16 @@ export function IngestionStudio() {
             được yêu cầu giữ nguồn trang để hạn chế sinh nội dung lệch sách.
           </p>
         </div>
-        <div className="ingest-orb"><WandSparkles size={42} /></div>
+        <div className="ingest-hero-side">
+          <div className="ingest-orb"><WandSparkles size={42} /></div>
+          <span className={aiStatus?.configured ? "ai-ready-badge ready" : "ai-ready-badge"}>
+            {aiStatus?.configured
+              ? "AI ready · " + aiStatus.contentModel
+              : aiStatus
+                ? "AI chưa cấu hình"
+                : "Đang kiểm tra AI…"}
+          </span>
+        </div>
       </section>
 
       <section className="ingest-grid">
@@ -486,6 +551,14 @@ export function IngestionStudio() {
             <label>
               <span>Cấp độ</span>
               <input value={level} onChange={(event) => setLevel(event.target.value)} />
+            </label>
+            <label>
+              <span>Edition</span>
+              <input
+                placeholder="Tự nhận diện"
+                value={edition}
+                onChange={(event) => setEdition(event.target.value)}
+              />
             </label>
           </div>
 
