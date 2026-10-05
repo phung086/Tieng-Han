@@ -51,7 +51,7 @@ function similarity(a: string, b: string) {
 
 export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
-  const { getLesson } = useContent();
+  const { getLesson, course } = useContent();
   const messages = useMessages();
   const lesson = getLesson(lessonId);
   const sentences = lesson?.speaking ?? [];
@@ -83,7 +83,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(target);
-    utterance.lang = "ko-KR";
+    utterance.lang = course.language?.locale ?? "ko-KR";
     utterance.rate = rate;
     window.speechSynthesis.speak(utterance);
   }
@@ -104,7 +104,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
     }
 
     const recognition = new Recognition();
-    recognition.lang = "ko-KR";
+    recognition.lang = course.language?.locale ?? "ko-KR";
     recognition.interimResults = false;
     recognition.continuous = false;
     recognition.onresult = (event) => {
