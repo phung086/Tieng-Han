@@ -32,7 +32,18 @@ export default function LearnPage() {
       </header>
 
       <section className="course-hero">
-        <div className="book-cover"><span>{messages.learn.koreanBook}</span><strong>{course.level}</strong><small>{messages.learn.beginnerBook}</small></div>
+        <div className={"book-cover" + (course.source?.coverImageDataUrl ? " actual-cover" : "")}>
+          {course.source?.coverImageDataUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={course.source.coverImageDataUrl} alt={course.title} />
+          ) : (
+            <>
+              <span>{messages.learn.koreanBook}</span>
+              <strong>{course.level}</strong>
+              <small>{messages.learn.beginnerBook}</small>
+            </>
+          )}
+        </div>
         <div className="course-copy">
           <span className="pill pill-soft">{messages.learn.currentCourse}</span><h2>{course.lessons.length} {messages.learn.lessons} · {courseProgress}% {messages.learn.completed}</h2>
           <p>{completed} {messages.learn.completedLessons}. {messages.learn.completionNote}</p>
