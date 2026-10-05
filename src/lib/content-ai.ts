@@ -9,6 +9,13 @@ type ResponsePayload = {
   error?: { message?: string };
 };
 
+type InputContent = {
+  type: "input_text" | "input_image";
+  text?: string;
+  image_url?: string;
+  detail?: "low" | "high" | "auto";
+};
+
 function responseText(payload: ResponsePayload) {
   if (payload.output_text) return payload.output_text;
 
@@ -36,13 +43,20 @@ function parseJsonText(text: string) {
   return JSON.parse(stripped.slice(firstObject, lastObject + 1)) as unknown;
 }
 
-export async function callContentModel(instructions: string, input: string) {
+async function requestResponse(
+  instructions: string,
+  userContent: string | InputContent[],
+  modelOverride?: string,
+) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY chưa được cấu hình trong .env.local.");
   }
 
-  const model = process.env.OPENAI_CONTENT_MODEL || "gpt-6-luna";
+  const model =
+    modelOverride ||
+    process.env.OPENAI_CONTENT_MODEL ||
+    "gpt-6-luna";
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -54,7 +68,7 @@ export async function callContentModel(instructions: string, input: string) {
       model,
       input: [
         { role: "system", content: instructions },
-        { role: "user", content: input },
+        { role: "user", content: userContent },
       ],
     }),
     cache: "no-store",
@@ -67,4 +81,19 @@ export async function callContentModel(instructions: string, input: string) {
   }
 
   return parseJsonText(responseText(payload));
+}
+
+export async function callContentModel(instructions: string, input: string) {
+  return requestResponse(instructions, input);
+}
+
+export async function callVisionContentModel(
+  instructions: string,
+  content: InputContent[],
+) {
+  return requestResponse(
+    instructions,
+    content,
+    process.env.OPENAI_OCR_MODEL || process.env.OPENAI_CONTENT_MODEL || "gpt-6-luna",
+  );
 }
