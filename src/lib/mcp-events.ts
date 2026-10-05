@@ -433,8 +433,8 @@ export async function handleMcpEventRpc(
       const ttlMsRaw = params.ttlMs;
       const ttlMs =
         typeof ttlMsRaw === "number" && Number.isFinite(ttlMsRaw)
-          ? Math.max(60_000, Math.min(ttlMsRaw, 30 * 24 * 60 * 60 * 1000))
-          : 30 * 24 * 60 * 60 * 1000;
+          ? Math.max(60_000, Math.min(ttlMsRaw, 365 * 24 * 60 * 60 * 1000))
+          : 180 * 24 * 60 * 60 * 1000;
       const refreshBefore = new Date(Date.now() + ttlMs).toISOString();
 
       const subscription: EventSubscription = {
