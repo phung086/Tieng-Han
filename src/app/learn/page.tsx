@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BookMarked, Check, LockKeyhole, Play } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
+import { useMessages } from "@/i18n/messages";
 
 const chips: { key: SkillKey; label: string }[] = [
   { key: "vocabulary", label: "Từ vựng" },
@@ -17,6 +18,7 @@ const chips: { key: SkillKey; label: string }[] = [
 export default function LearnPage() {
   const { state } = useLearning();
   const { course } = useContent();
+  const messages = useMessages();
   const courseProgress = Math.round(
     course.lessons.reduce((sum, lesson) => sum + (state.lessonProgress[String(lesson.id)] ?? 0), 0) /
       Math.max(1, course.lessons.length),
@@ -26,16 +28,16 @@ export default function LearnPage() {
   return (
     <div className="page">
       <header className="page-header compact">
-        <div><span className="kicker">GIÁO TRÌNH · {course.level}</span><h1>{course.title}</h1><p>Mỗi bài đi theo cùng một workflow; khi nhập sách thật, lộ trình tự mở khóa theo tiến độ học của bạn.</p></div>
+        <div><span className="kicker">{messages.learn.kicker} · {course.level}</span><h1>{course.title}</h1><p>{messages.learn.intro}</p></div>
       </header>
 
       <section className="course-hero">
         <div className="book-cover"><span>한국어</span><strong>{course.level}</strong><small>Korean Beginner</small></div>
         <div className="course-copy">
-          <span className="pill pill-soft">Giáo trình đang học</span><h2>{course.lessons.length} bài · {courseProgress}% hoàn thành</h2>
-          <p>{completed} bài đã hoàn thành. Tiến độ này được tính từ 6 kỹ năng của từng bài.</p>
+          <span className="pill pill-soft">{messages.learn.currentCourse}</span><h2>{course.lessons.length} {messages.learn.lessons} · {courseProgress}% {messages.learn.completed}</h2>
+          <p>{completed} {messages.learn.completedLessons}. {messages.learn.completionNote}</p>
           <div className="course-progress-track"><span style={{ width: courseProgress + "%" }} /></div>
-          <div className="course-meta"><span>{completed} bài hoàn thành</span><span>{course.lessons.length - completed} bài còn lại</span><span>Local progress</span></div>
+          <div className="course-meta"><span>{completed} {messages.learn.completedLessons}</span><span>{course.lessons.length - completed} {messages.learn.remainingLessons}</span><span>{messages.learn.localProgress}</span></div>
         </div>
       </section>
 
@@ -55,8 +57,8 @@ export default function LearnPage() {
               <div className="lesson-card-body">
                 <div className="lesson-card-title">
                   <div><span>Bài {lesson.id}</span><h3>{lesson.title}</h3><p>{lesson.vi}</p></div>
-                  {current ? <span className="pill">Đang học · {progress}%</span> : null}
-                  {done ? <span className="complete-label">Đã xong</span> : null}
+                  {current ? <span className="pill">{messages.learn.current} · {progress}%</span> : null}
+                  {done ? <span className="complete-label">{messages.learn.done}</span> : null}
                 </div>
 
                 <div className="lesson-chips">
@@ -69,10 +71,10 @@ export default function LearnPage() {
                 {unlocked ? (
                   <Link className={current ? "primary-button small" : "secondary-button small"} href={"/learn/" + lesson.id}>
                     {done ? <BookMarked size={17} /> : <Play size={17} />}
-                    {done ? "Ôn lại bài" : progress > 0 ? "Tiếp tục bài" : "Bắt đầu bài"}
+                    {done ? messages.learn.reviewLesson : progress > 0 ? messages.learn.continueLesson : messages.learn.startLesson}
                     <ArrowRight size={16} />
                   </Link>
-                ) : <span className="locked-note">Hoàn thành bài trước để mở khóa</span>}
+                ) : <span className="locked-note">{messages.learn.locked}</span>}
               </div>
             </article>
           );
