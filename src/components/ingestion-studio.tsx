@@ -110,6 +110,7 @@ type SourcePageInput = {
   fileName: string;
   pageNumber: number;
   text: string;
+  imageDataUrl?: string;
 };
 
 type ValidationPayload = {
@@ -355,6 +356,7 @@ export function IngestionStudio() {
           fileName: page.fileName,
           pageNumber: page.pageNumber,
           text: page.text,
+          imageDataUrl: page.previewImageDataUrl,
         }));
 
         const lessonMedia = buildLessonMedia(lessonPages);
@@ -458,6 +460,8 @@ export function IngestionStudio() {
           importedAt: new Date().toISOString(),
           pageCount: totalPages,
           edition: edition || undefined,
+          coverImageDataUrl:
+            documents[0]?.pages[0]?.previewImageDataUrl,
         },
         lessons: lessons.sort((a, b) => a.id - b.id),
         questions,
