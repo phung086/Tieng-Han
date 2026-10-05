@@ -6,13 +6,13 @@ import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 
-const chips: { key: SkillKey; label: string }[] = [
-  { key: "vocabulary", label: "Từ vựng" },
-  { key: "grammar", label: "Ngữ pháp" },
-  { key: "listening", label: "Nghe" },
-  { key: "speaking", label: "Nói" },
-  { key: "reading", label: "Đọc" },
-  { key: "writing", label: "Viết" },
+const chipKeys: SkillKey[] = [
+  "vocabulary",
+  "grammar",
+  "listening",
+  "speaking",
+  "reading",
+  "writing",
 ];
 
 export default function LearnPage() {
@@ -32,7 +32,7 @@ export default function LearnPage() {
       </header>
 
       <section className="course-hero">
-        <div className="book-cover"><span>한국어</span><strong>{course.level}</strong><small>Korean Beginner</small></div>
+        <div className="book-cover"><span>{messages.learn.koreanBook}</span><strong>{course.level}</strong><small>{messages.learn.beginnerBook}</small></div>
         <div className="course-copy">
           <span className="pill pill-soft">{messages.learn.currentCourse}</span><h2>{course.lessons.length} {messages.learn.lessons} · {courseProgress}% {messages.learn.completed}</h2>
           <p>{completed} {messages.learn.completedLessons}. {messages.learn.completionNote}</p>
@@ -56,15 +56,25 @@ export default function LearnPage() {
               <div className="lesson-node">{done ? <Check size={22} /> : !unlocked ? <LockKeyhole size={19} /> : lesson.id}</div>
               <div className="lesson-card-body">
                 <div className="lesson-card-title">
-                  <div><span>Bài {lesson.id}</span><h3>{lesson.title}</h3><p>{lesson.vi}</p></div>
+                  <div><span>{messages.common.lesson} {lesson.id}</span><h3>{lesson.title}</h3><p>{lesson.vi}</p></div>
                   {current ? <span className="pill">{messages.learn.current} · {progress}%</span> : null}
                   {done ? <span className="complete-label">{messages.learn.done}</span> : null}
                 </div>
 
                 <div className="lesson-chips">
-                  {chips.map((chip) => {
-                    const finished = state.completedActivities.includes("lesson:" + lesson.id + ":" + chip.key) || done;
-                    return <span className={finished ? "chip done" : "chip"} key={chip.key}>{chip.label}</span>;
+                  {chipKeys.map((key) => {
+                    const finished =
+                      state.completedActivities.includes(
+                        "lesson:" + lesson.id + ":" + key,
+                      ) || done;
+                    return (
+                      <span
+                        className={finished ? "chip done" : "chip"}
+                        key={key}
+                      >
+                        {messages.skills[key].vi}
+                      </span>
+                    );
                   })}
                 </div>
 
