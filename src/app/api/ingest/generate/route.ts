@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { callContentModel } from "@/lib/content-ai";
+import { callContentModel, callVisionContentModel, type InputContent } from "@/lib/content-ai";
+import { ingestionConfig } from "@/config/ingestion";
 
 export const maxDuration = 120;
 
@@ -7,6 +8,7 @@ type SourcePage = {
   fileName: string;
   pageNumber: number;
   text: string;
+  imageDataUrl?: string;
 };
 
 export async function POST(request: Request) {
@@ -66,32 +68,67 @@ export async function POST(request: Request) {
       }],
     };
 
-    const result = await callContentModel(
-      [
-        "Bạn là content compiler cho ứng dụng học tiếng Hàn của người Việt.",
-        "Mục tiêu là chuyển NỘI DUNG CÓ TRONG NGUỒN thành dữ liệu học tập, không viết một giáo trình mới.",
-        "QUY TẮC NGHIÊM NGẶT:",
-        "1. Chỉ trích xuất kiến thức xuất hiện trong các trang nguồn.",
-        "2. Không tự thêm chủ điểm từ vựng/ngữ pháp không có trong bài.",
-        "3. Mỗi mục phải có sourceRef theo marker SOURCE gần nhất.",
-        "4. Có thể tạo câu hỏi luyện tập mới nhưng kiến thức và đáp án phải suy ra trực tiếp từ nguồn.",
-        "5. Distractor có thể được tạo để làm MCQ nhưng không được giới thiệu kiến thức mới.",
-        "6. Với listening: ưu tiên transcript/câu nghe có trong nguồn. Nếu PDF chỉ có nội dung hội thoại/ví dụ mà không có transcript audio, được phép tạo bài nghe TTS từ CHÍNH các câu có trong nguồn; không sáng tác cấu trúc mới.",
-        "7. ỨNG DỤNG BẮT BUỘC có practice cho đủ 6 kỹ năng. Nếu nguồn không có mục Đọc/Viết riêng, hãy tạo một bài practice NGẮN chỉ từ từ vựng, ngữ pháp, hội thoại hoặc câu ví dụ đã có trong nguồn. Không thêm chủ đề/kiến thức mới. sourceRef phải ghi rõ Derived from <nguồn trang>. Chỉ dùng null khi source thực sự không đủ bất kỳ nội dung ngôn ngữ nào để suy ra bài tập.",
-        "8. Cố gắng bao phủ TOÀN BỘ từ vựng và điểm ngữ pháp của bài, không chỉ lấy vài ví dụ.",
-        "9. speaking phải có ít nhất các câu/prompt luyện nói lấy nguyên hoặc biến đổi tối thiểu từ câu có trong nguồn; tuyệt đối không thêm mẫu ngữ pháp ngoài bài.",
-        "10. BẮT BUỘC giữ các phần khác của sách nếu có: hội thoại, phát âm, văn hóa, ghi chú, luyện tập hoặc mục đặc biệt. Dùng dialogues/pronunciation/culture/extraSections; không được bỏ vì không thuộc 6 skill chính.",
-        "11. Giữ nguyên tiếng Hàn; phần giải thích/meaning viết tiếng Việt rõ ràng.",
-        "12. Sinh 8-20 questions tùy lượng nội dung, phân bố nhiều dạng choice/input/reorder và ưu tiên đủ các skill có thể kiểm tra bằng quiz.",
-        "Trả về DUY NHẤT một JSON object, không markdown.",
-        "Hình dạng JSON tham chiếu:",
-        revisionNotes.length
-          ? "FEEDBACK TỪ VÒNG QA TRƯỚC - bắt buộc sửa: " + revisionNotes.join(" | ")
-          : "Không có feedback vòng trước.",
-        JSON.stringify(schema),
-      ].join("\n"),
-      source,
-    );
+    const instructions = [
+      "Bạn là content compiler cho ứng dụng học tiếng Hàn của người Việt.",
+      "Mục tiêu là chuyển NỘI DUNG CÓ TRONG NGUỒN thành dữ liệu học tập, không viết một giáo trình mới.",
+      "Các ảnh SOURCE PAGE IMAGE là một phần của nguồn. Hãy đọc chữ trong ảnh, tranh minh họa, bảng, sơ đồ và quan hệ hình-nghĩa khi chúng cung cấp kiến thức mà text extraction bỏ sót.",
+      "QUY TẮC NGHIÊM NGẶT:",
+      "1. Chỉ trích xuất kiến thức xuất hiện trong các trang nguồn.",
+      "2. Không tự thêm chủ điểm từ vựng/ngữ pháp không có trong bài.",
+      "3. Mỗi mục phải có sourceRef theo marker SOURCE gần nhất.",
+      "4. Có thể tạo câu hỏi luyện tập mới nhưng kiến thức và đáp án phải suy ra trực tiếp từ nguồn.",
+      "5. Distractor có thể được tạo để làm MCQ nhưng không được giới thiệu kiến thức mới.",
+      "6. Với listening: ưu tiên transcript/câu nghe có trong nguồn. Nếu PDF chỉ có nội dung hội thoại/ví dụ mà không có transcript audio, được phép tạo bài nghe TTS từ CHÍNH các câu có trong nguồn; không sáng tác cấu trúc mới.",
+      "7. ỨNG DỤNG BẮT BUỘC có practice cho đủ 6 kỹ năng. Nếu nguồn không có mục Đọc/Viết riêng, hãy tạo một bài practice NGẮN chỉ từ từ vựng, ngữ pháp, hội thoại hoặc câu ví dụ đã có trong nguồn. Không thêm chủ đề/kiến thức mới. sourceRef phải ghi rõ Derived from <nguồn trang>. Chỉ dùng null khi source thực sự không đủ bất kỳ nội dung ngôn ngữ nào để suy ra bài tập.",
+      "8. Cố gắng bao phủ TOÀN BỘ từ vựng và điểm ngữ pháp của bài, không chỉ lấy vài ví dụ.",
+      "9. speaking phải có ít nhất các câu/prompt luyện nói lấy nguyên hoặc biến đổi tối thiểu từ câu có trong nguồn; tuyệt đối không thêm mẫu ngữ pháp ngoài bài.",
+      "10. BẮT BUỘC giữ các phần khác của sách nếu có: hội thoại, phát âm, văn hóa, ghi chú, luyện tập hoặc mục đặc biệt. Dùng dialogues/pronunciation/culture/extraSections; không được bỏ vì không thuộc 6 skill chính.",
+      "11. Giữ nguyên tiếng Hàn; phần giải thích/meaning viết tiếng Việt rõ ràng.",
+      "12. Sinh 8-20 questions tùy lượng nội dung, phân bố nhiều dạng choice/input/reorder và ưu tiên đủ các skill có thể kiểm tra bằng quiz.",
+      "Trả về DUY NHẤT một JSON object, không markdown.",
+      "Hình dạng JSON tham chiếu:",
+      revisionNotes.length
+        ? "FEEDBACK TỪ VÒNG QA TRƯỚC - bắt buộc sửa: " + revisionNotes.join(" | ")
+        : "Không có feedback vòng trước.",
+      JSON.stringify(schema),
+    ].join("\n");
+
+    const visualPages = pages
+      .filter((page) => Boolean(page.imageDataUrl))
+      .slice(0, ingestionConfig.lesson.maxVisionPagesPerLesson);
+
+    let result: unknown;
+
+    if (visualPages.length) {
+      const multimodal: InputContent[] = [
+        {
+          type: "input_text",
+          text: source,
+        },
+      ];
+
+      for (const page of visualPages) {
+        multimodal.push(
+          {
+            type: "input_text",
+            text:
+              "SOURCE PAGE IMAGE: " +
+              page.fileName +
+              " · p." +
+              page.pageNumber,
+          },
+          {
+            type: "input_image",
+            image_url: page.imageDataUrl,
+            detail: "high",
+          },
+        );
+      }
+
+      result = await callVisionContentModel(instructions, multimodal);
+    } else {
+      result = await callContentModel(instructions, source);
+    }
 
     return NextResponse.json(result);
   } catch (error) {
