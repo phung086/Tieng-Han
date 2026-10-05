@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Noto_Sans_KR } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
+import "./game-theme.css";
 
 const vietnamese = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
