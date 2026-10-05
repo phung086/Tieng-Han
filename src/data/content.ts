@@ -41,6 +41,40 @@ export type WritingContent = {
   sourceRef?: string;
 };
 
+export type DialogueItem = {
+  id: string;
+  title?: string;
+  lines: Array<{
+    speaker?: string;
+    ko: string;
+    vi?: string;
+  }>;
+  sourceRef?: string;
+};
+
+export type PronunciationItem = {
+  id: string;
+  title: string;
+  explanation: string;
+  examples: string[];
+  sourceRef?: string;
+};
+
+export type CultureItem = {
+  id: string;
+  title: string;
+  text: string;
+  sourceRef?: string;
+};
+
+export type ExtraSection = {
+  id: string;
+  kind: string;
+  title: string;
+  content: string[];
+  sourceRef?: string;
+};
+
 export type LessonContent = {
   id: number;
   title: string;
@@ -52,6 +86,10 @@ export type LessonContent = {
   speaking: string[];
   reading: ReadingContent | null;
   writing: WritingContent | null;
+  dialogues?: DialogueItem[];
+  pronunciation?: PronunciationItem[];
+  culture?: CultureItem[];
+  extraSections?: ExtraSection[];
   sourceRef?: string;
   quality?: {
     coverageScore: number;
