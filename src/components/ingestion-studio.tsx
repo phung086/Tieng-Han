@@ -162,7 +162,7 @@ async function validateGeneratedLesson(
 
 export function IngestionStudio() {
   const { replaceCourse } = useContent();
-  const { resetProgress } = useLearning();
+  const { resetForCourse } = useLearning();
   const [files, setFiles] = useState<File[]>([]);
   const [documents, setDocuments] = useState<ExtractedDocument[]>([]);
   const [maps, setMaps] = useState<DocumentMap[]>([]);
@@ -438,7 +438,7 @@ export function IngestionStudio() {
         questions,
       };
 
-      resetProgress();
+      resetForCourse();
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
