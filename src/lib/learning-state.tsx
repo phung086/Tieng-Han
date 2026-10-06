@@ -10,6 +10,7 @@ import {
 } from "react";
 import { nextReviewIntervalDays } from "@/lib/review-schedule";
 import { useContent } from "@/lib/content-store";
+import { useAuth } from "@/lib/auth-client";
 
 export type SkillKey = "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
 type SkillStat = { correct: number; total: number };
@@ -117,41 +118,79 @@ function withActiveDay(current: LearningState) {
 
 export function LearningProvider({ children }: { children: React.ReactNode }) {
   const { activeCourseId, hydrated: contentHydrated } = useContent();
+  const { user } = useAuth();
   const [state, setState] = useState(defaultState);
   const [hydrated, setHydrated] = useState(false);
   const loadedCourseIdRef = useRef<string | null>(null);
+  const loadRunRef = useRef(0);
+  const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!contentHydrated || activeCourseId === "empty") return;
 
+    const runId = loadRunRef.current + 1;
+    loadRunRef.current = runId;
     loadedCourseIdRef.current = null;
-    let savedState: LearningState | null = null;
+    setHydrated(false);
+
     const storageKey = STORAGE_KEY_PREFIX + activeCourseId;
+    let localState: LearningState | null = null;
 
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
-        savedState = normalizeLoadedState(JSON.parse(saved));
+        localState = normalizeLoadedState(JSON.parse(saved));
       } else {
         const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
         if (legacy) {
-          savedState = normalizeLoadedState(JSON.parse(legacy));
+          localState = normalizeLoadedState(JSON.parse(legacy));
           window.localStorage.setItem(storageKey, legacy);
           window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         }
       }
     } catch {
-      // Persistence is optional; the app still works when storage is unavailable.
+      // Browser persistence is optional.
     }
 
-    const timer = window.setTimeout(() => {
-      loadedCourseIdRef.current = activeCourseId;
-      setState(savedState ?? defaultState);
-      setHydrated(true);
-    }, 0);
+    async function hydrate() {
+      let nextState = localState ?? defaultState;
 
-    return () => window.clearTimeout(timer);
-  }, [activeCourseId, contentHydrated]);
+      if (user) {
+        try {
+          const response = await fetch(
+            "/api/me/learning-state?courseId=" +
+              encodeURIComponent(activeCourseId),
+            { cache: "no-store" },
+          );
+
+          if (response.ok) {
+            const data = (await response.json()) as {
+              state?: Partial<LearningState> | null;
+            };
+            if (data.state) {
+              nextState = normalizeLoadedState(data.state);
+            }
+          }
+        } catch {
+          // Fall back to the course-scoped browser state.
+        }
+      }
+
+      if (loadRunRef.current !== runId) return;
+
+      loadedCourseIdRef.current = activeCourseId;
+      setState(nextState);
+      setHydrated(true);
+    }
+
+    void hydrate();
+
+    return () => {
+      if (loadRunRef.current === runId) {
+        loadRunRef.current += 1;
+      }
+    };
+  }, [activeCourseId, contentHydrated, user]);
 
   useEffect(() => {
     if (
@@ -161,11 +200,41 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
-    window.localStorage.setItem(
-      STORAGE_KEY_PREFIX + activeCourseId,
-      JSON.stringify(state),
-    );
-  }, [state, hydrated, activeCourseId]);
+
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY_PREFIX + activeCourseId,
+        JSON.stringify(state),
+      );
+    } catch {
+      // Account sync can still work if localStorage is unavailable.
+    }
+
+    if (!user) return;
+
+    if (serverSaveTimerRef.current) {
+      window.clearTimeout(serverSaveTimerRef.current);
+    }
+
+    serverSaveTimerRef.current = window.setTimeout(() => {
+      void fetch("/api/me/learning-state", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          courseId: activeCourseId,
+          state,
+        }),
+      }).catch(() => undefined);
+    }, 650);
+
+    return () => {
+      if (serverSaveTimerRef.current) {
+        window.clearTimeout(serverSaveTimerRef.current);
+        serverSaveTimerRef.current = null;
+      }
+    };
+  }, [state, hydrated, activeCourseId, user]);
+
 
   const value = useMemo<LearningContextValue>(() => ({
     state,
