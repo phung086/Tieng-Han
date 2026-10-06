@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -29,16 +29,15 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
   const [completedIds, setCompletedIds] = useState<string[]>([]);
 
   const dialogue = dialogues[dialogueIndex];
-  const speakers = useMemo(() => {
-    if (!dialogue) return [];
-    return Array.from(
-      new Set(
-        dialogue.lines
-          .map((line) => line.speaker)
-          .filter((speaker): speaker is string => Boolean(speaker)),
-      ),
-    );
-  }, [dialogue]);
+  const speakers = dialogue
+    ? Array.from(
+        new Set(
+          dialogue.lines
+            .map((line) => line.speaker)
+            .filter((speaker): speaker is string => Boolean(speaker)),
+        ),
+      )
+    : [];
 
   if (!lesson || !dialogues.length || !dialogue) {
     return <EmptySkillState lessonId={lessonId} skill="Hội thoại" />;
