@@ -59,12 +59,17 @@ export async function consumeReadyImportJob(jobId: string): Promise<{
 }> {
   const job = await requireImportJob(jobId);
 
-  // If already consumed, check if active course already exists
+  // If already consumed, reuse the persisted course only when it belongs
+  // to this exact import job. Otherwise rebuild it from this job's bundle.
   if (job.status === "consumed") {
     try {
       const existingRaw = await readFile(activeCourseFilePath, "utf8");
       const existing = JSON.parse(existingRaw) as RuntimeCourse;
-      if (existing && Array.isArray(existing.lessons) && existing.lessons.length > 0) {
+      if (
+        existing?.id === "course-" + jobId &&
+        Array.isArray(existing.lessons) &&
+        existing.lessons.length > 0
+      ) {
         return { job, course: existing };
       }
     } catch {
