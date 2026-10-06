@@ -3918,3 +3918,11 @@ body {
   }
 }
 
+.auto-advance-button-v3:disabled {
+  opacity: .84;
+  cursor: default;
+  color: white;
+  background: linear-gradient(180deg,#36c794,#24a979);
+  box-shadow: 0 4px 0 #16845d,0 8px 18px rgba(36,169,121,.15);
+}
+
