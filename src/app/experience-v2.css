@@ -3314,3 +3314,533 @@ body {
     height: 44px;
   }
 }
+
+
+/* Phase Scale 1 — auth, account sync and admin */
+.auth-shell-v1 {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(87, 195, 244, .17), transparent 18rem),
+    radial-gradient(circle at 88% 84%, rgba(116, 85, 239, .15), transparent 21rem),
+    linear-gradient(180deg, #f7fbff, #f8f6ff);
+}
+
+.auth-page-v1 {
+  min-height: 100vh;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(340px, .8fr);
+  gap: 26px;
+  align-items: center;
+  padding: 46px 0;
+}
+
+.auth-card-v1,
+.auth-side-v1 {
+  border: 4px solid white;
+  border-radius: 34px;
+  box-shadow: var(--hx-shadow);
+}
+
+.auth-card-v1 {
+  padding: clamp(24px, 4vw, 42px);
+  background: rgba(255, 255, 255, .94);
+}
+
+.auth-brand-v1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.auth-brand-v1 > span {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  color: white;
+  background: linear-gradient(145deg, #8065f3, #5e4ddb);
+  box-shadow: 0 5px 0 #4738ae;
+}
+
+.auth-brand-v1 strong,
+.auth-brand-v1 small {
+  display: block;
+}
+
+.auth-brand-v1 strong {
+  font-size: 16px;
+}
+
+.auth-brand-v1 small {
+  margin-top: 2px;
+  color: var(--hx-muted);
+  font-size: 8px;
+}
+
+.auth-copy-v1 h1 {
+  max-width: 620px;
+  margin: 8px 0 9px;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+}
+
+.auth-copy-v1 p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.auth-setup-note-v1 {
+  margin-top: 20px;
+  padding: 14px 15px;
+  border: 2px solid #f0dca6;
+  border-radius: 16px;
+  background: #fff8e7;
+}
+
+.auth-setup-note-v1 strong {
+  font-size: 10px;
+}
+
+.auth-setup-note-v1 p {
+  margin: 4px 0 0;
+  color: #786a49;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.auth-setup-note-v1 code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .8);
+}
+
+.auth-form-v1 {
+  display: grid;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.auth-form-v1 label {
+  display: grid;
+  gap: 7px;
+}
+
+.auth-form-v1 label > span {
+  color: #65708a;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.auth-form-v1 label > div {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+  border: 2px solid #e4eaf2;
+  border-radius: 16px;
+  color: #7563c8;
+  background: white;
+  box-shadow: 0 3px 0 #e9edf3;
+}
+
+.auth-form-v1 input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--hx-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+}
+
+.auth-form-v1 label > div:focus-within {
+  border-color: #9d89f5;
+  box-shadow: 0 3px 0 #e0d8ff;
+}
+
+.auth-submit-v1 {
+  width: 100%;
+  min-height: 50px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.auth-error-v1,
+.admin-error-v1 {
+  padding: 11px 13px;
+  border: 2px solid #ffd4dc;
+  border-radius: 14px;
+  color: #b44b61;
+  background: #fff2f5;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.auth-switch-v1 {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--hx-muted);
+  font-size: 8px;
+}
+
+.auth-switch-v1 a {
+  color: #6650d2;
+  font-weight: 900;
+}
+
+.auth-side-v1 {
+  min-height: 540px;
+  padding: clamp(24px, 4vw, 38px);
+  color: white;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255,255,255,.17), transparent 11rem),
+    linear-gradient(145deg, #6550cf, #5c6eea 58%, #4ab5df);
+  box-shadow: 0 9px 0 #4738a9, 0 28px 60px rgba(69, 60, 142, .18);
+}
+
+.auth-side-v1 .experience-kicker {
+  color: #ded8ff;
+}
+
+.auth-side-v1 > h2 {
+  margin: 8px 0 28px;
+  font-size: clamp(24px, 3vw, 35px);
+  line-height: 1.15;
+  letter-spacing: -.03em;
+}
+
+.auth-benefits-v1 {
+  display: grid;
+  gap: 13px;
+}
+
+.auth-benefits-v1 article {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid rgba(255,255,255,.2);
+  border-radius: 18px;
+  background: rgba(255,255,255,.09);
+}
+
+.auth-benefits-v1 article > strong {
+  color: #ffe18a;
+  font-size: 11px;
+}
+
+.auth-benefits-v1 h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+}
+
+.auth-benefits-v1 p {
+  margin: 0;
+  color: rgba(255,255,255,.75);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.admin-nav-item-v1 {
+  margin-top: 8px;
+}
+
+.admin-page-v1,
+.admin-setup-v1 {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 80px;
+}
+
+.admin-head-v1 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.admin-head-v1 h1,
+.admin-setup-v1 h1 {
+  margin: 7px 0 7px;
+  font-size: clamp(32px, 4vw, 50px);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+}
+
+.admin-head-v1 p,
+.admin-setup-v1 p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.admin-setup-v1 code {
+  justify-self: start;
+  padding: 11px 14px;
+  border: 2px solid #e2e7ef;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 3px 0 #e6ebf0;
+}
+
+.admin-metrics-v1 {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-metrics-v1 article {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 3px solid white;
+  border-radius: 20px;
+  background: rgba(255,255,255,.92);
+  box-shadow: var(--hx-shadow);
+}
+
+.admin-metrics-v1 article > span {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #6751d5;
+  background: #ede8ff;
+}
+
+.admin-metrics-v1 strong,
+.admin-metrics-v1 small {
+  display: block;
+}
+
+.admin-metrics-v1 strong {
+  font-size: 18px;
+}
+
+.admin-metrics-v1 small {
+  margin-top: 2px;
+  color: var(--hx-muted);
+  font-size: 7px;
+}
+
+.admin-panel-v1 {
+  padding: 22px;
+  border: 3px solid white;
+  border-radius: 28px;
+  background: rgba(255,255,255,.92);
+  box-shadow: var(--hx-shadow);
+}
+
+.admin-panel-head-v1 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.admin-panel-head-v1 h2 {
+  margin: 5px 0 0;
+  font-size: 19px;
+}
+
+.admin-panel-head-v1 a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #6750d6;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.admin-course-list-v1,
+.admin-user-list-v1 {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-course-list-v1 article,
+.admin-user-list-v1 article {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e8edf3;
+  border-radius: 17px;
+  background: white;
+}
+
+.admin-course-list-v1 article {
+  grid-template-columns: minmax(0, 1fr) auto 140px;
+}
+
+.admin-user-list-v1 article {
+  grid-template-columns: 42px minmax(0, 1fr) auto 130px;
+}
+
+.admin-course-list-v1 strong,
+.admin-course-list-v1 span,
+.admin-user-list-v1 strong,
+.admin-user-list-v1 span {
+  display: block;
+}
+
+.admin-course-list-v1 strong,
+.admin-user-list-v1 strong {
+  font-size: 10px;
+}
+
+.admin-course-list-v1 div > span,
+.admin-user-list-v1 div > span {
+  margin-top: 3px;
+  color: var(--hx-muted);
+  font-size: 8px;
+}
+
+.admin-course-list-v1 select,
+.admin-user-list-v1 select {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 2px solid #e1e7ef;
+  border-radius: 12px;
+  color: #47536c;
+  background: white;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.admin-status-v1,
+.admin-role-v1 {
+  display: inline-flex !important;
+  justify-content: center;
+  min-width: 72px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-status-v1.published {
+  color: #1d8e69;
+  background: #dff7ed;
+}
+
+.admin-status-v1.draft {
+  color: #9b721d;
+  background: #fff0c8;
+}
+
+.admin-status-v1.archived {
+  color: #7a8192;
+  background: #edf0f4;
+}
+
+.admin-role-v1.admin {
+  color: #654dcd;
+  background: #ece7ff;
+}
+
+.admin-role-v1.learner {
+  color: #267eaa;
+  background: #e2f3fb;
+}
+
+.admin-user-avatar-v1 {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #6049c5;
+  background: #ebe6ff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.profile-account-actions-v1 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (max-width: 1080px) {
+  .admin-metrics-v1 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .auth-page-v1 {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-side-v1 {
+    min-height: auto;
+  }
+
+  .admin-head-v1 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-course-list-v1 article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .admin-course-list-v1 select {
+    grid-column: 1 / -1;
+  }
+
+  .admin-user-list-v1 article {
+    grid-template-columns: 42px 1fr auto;
+  }
+
+  .admin-user-list-v1 select {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .auth-page-v1 {
+    width: min(100% - 20px, 1180px);
+    padding: 18px 0;
+  }
+
+  .auth-card-v1,
+  .auth-side-v1 {
+    border-radius: 24px;
+  }
+
+  .admin-metrics-v1 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-panel-v1 {
+    padding: 15px;
+  }
+
+  .admin-panel-head-v1 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
