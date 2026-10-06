@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -26,6 +26,8 @@ import {
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
+
+const AUTO_ADVANCE_DELAY_MS = 850;
 
 const normalize = (value: string) =>
   value
@@ -79,6 +81,15 @@ export function StudySession({
   const [skillStats, setSkillStats] = useState<
     Partial<Record<SkillKey, { correct: number; total: number }>>
   >({});
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!questions.length) {
     return (
@@ -126,46 +137,25 @@ export function StudySession({
     },
   }[mode];
 
-  function submit() {
-    if (!submittedAnswer || checked) return;
-
-    setChecked(true);
-
-    if (isCorrect) {
-      setCorrectCount((value) => value + 1);
-      const nextCombo = combo + 1;
-      setCombo(nextCombo);
-      setBestCombo((value) => Math.max(value, nextCombo));
-    } else {
-      setCombo(0);
-      setFocus((value) => Math.max(0, value - 1));
-      setMistakeIds((current) =>
-        current.includes(question.id)
-          ? current
-          : [...current, question.id],
-      );
+  function advance(
+    effectiveCorrectCount = correctCount,
+    effectiveSkillStats = skillStats,
+  ) {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
     }
 
-    setSkillStats((current) => {
-      const previous = current[question.skill] ?? { correct: 0, total: 0 };
-      return {
-        ...current,
-        [question.skill]: {
-          correct: previous.correct + (isCorrect ? 1 : 0),
-          total: previous.total + 1,
-        },
-      };
-    });
-
-    recordAnswer(question.skill, isCorrect, question.id);
-  }
-
-  function next() {
     if (index === questions.length - 1) {
-      if (skill && masteryPassed(correctCount, questions.length)) {
+      if (
+        skill &&
+        masteryPassed(effectiveCorrectCount, questions.length)
+      ) {
         completeLessonSkill(activeLessonId, skill);
       } else if (mode === "mastery" && !retryIds) {
-        for (const [skillKey, stat] of Object.entries(skillStats)) {
+        for (const [skillKey, stat] of Object.entries(
+          effectiveSkillStats,
+        )) {
           if (stat && masteryPassed(stat.correct, stat.total)) {
             completeLessonSkill(activeLessonId, skillKey as SkillKey);
           }
@@ -182,7 +172,61 @@ export function StudySession({
     setShowHint(false);
   }
 
+  function submit(answerOverride?: string) {
+    const candidate = answerOverride ?? submittedAnswer;
+    if (!candidate || checked) return;
+
+    const correct =
+      normalize(candidate) === normalize(question.answer);
+    const nextCorrectCount = correctCount + (correct ? 1 : 0);
+    const previousSkill = skillStats[question.skill] ?? {
+      correct: 0,
+      total: 0,
+    };
+    const nextSkillStats = {
+      ...skillStats,
+      [question.skill]: {
+        correct: previousSkill.correct + (correct ? 1 : 0),
+        total: previousSkill.total + 1,
+      },
+    };
+
+    if (answerOverride !== undefined) {
+      setAnswer(answerOverride);
+    }
+
+    setChecked(true);
+    setCorrectCount(nextCorrectCount);
+    setSkillStats(nextSkillStats);
+
+    if (correct) {
+      const nextCombo = combo + 1;
+      setCombo(nextCombo);
+      setBestCombo((value) => Math.max(value, nextCombo));
+    } else {
+      setCombo(0);
+      setFocus((value) => Math.max(0, value - 1));
+      setMistakeIds((current) =>
+        current.includes(question.id)
+          ? current
+          : [...current, question.id],
+      );
+    }
+
+    recordAnswer(question.skill, correct, question.id);
+
+    if (correct) {
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        advance(nextCorrectCount, nextSkillStats);
+      }, AUTO_ADVANCE_DELAY_MS);
+    }
+  }
+
   function resetSession(nextRetryIds: string[] | null) {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     setRetryIds(nextRetryIds);
     setIndex(0);
     setAnswer("");
@@ -365,7 +409,7 @@ export function StudySession({
                   className={"session-option" + state}
                   disabled={checked}
                   key={choice}
-                  onClick={() => setAnswer(choice)}
+                  onClick={() => submit(choice)}
                   type="button"
                 >
                   <span>
@@ -515,13 +559,17 @@ export function StudySession({
 
         <button
           className="primary-button"
-          disabled={!submittedAnswer}
-          onClick={checked ? next : submit}
+          disabled={!submittedAnswer || (checked && isCorrect)}
+          onClick={checked ? () => advance() : () => submit()}
         >
           {checked
-            ? index === questions.length - 1
-              ? messages.quiz.result
-              : messages.quiz.continue
+            ? isCorrect
+              ? index === questions.length - 1
+                ? "Đúng rồi · đang hoàn tất…"
+                : "Đúng rồi · tự chuyển…"
+              : index === questions.length - 1
+                ? messages.quiz.result
+                : messages.quiz.continue
             : messages.quiz.check}
           <ArrowRight size={18} />
         </button>
