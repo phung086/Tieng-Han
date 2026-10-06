@@ -3858,3 +3858,63 @@ body {
     flex-direction: column;
   }
 }
+
+/* Learner interaction polish */
+@keyframes haneul-page-enter-v3 {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes haneul-course-switch-v3 {
+  from {
+    opacity: .28;
+    transform: translateY(10px) scale(.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page {
+  animation: haneul-page-enter-v3 220ms cubic-bezier(.2,.72,.3,1);
+}
+
+.course-switch-enter-v3 {
+  animation: haneul-course-switch-v3 260ms cubic-bezier(.2,.72,.3,1);
+}
+
+.session-footer-v3.success .primary-button:disabled {
+  opacity: .82;
+  cursor: default;
+  background: linear-gradient(180deg,#36c794,#24a979);
+  box-shadow: 0 4px 0 #16845d,0 8px 18px rgba(36,169,121,.15);
+}
+
+.session-footer-v3.success .primary-button:disabled svg {
+  animation: auto-next-nudge-v3 650ms ease-in-out infinite alternate;
+}
+
+@keyframes auto-next-nudge-v3 {
+  from { transform: translateX(0); }
+  to { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .course-switch-enter-v3,
+  .session-footer-v3.success .primary-button:disabled svg {
+    animation: none !important;
+  }
+
+  .course-library-card-v2 {
+    transition: none;
+  }
+}
+
