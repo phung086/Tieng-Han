@@ -131,7 +131,6 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
     const runId = loadRunRef.current + 1;
     loadRunRef.current = runId;
     loadedCourseIdRef.current = null;
-    setHydrated(false);
 
     const storageKey = STORAGE_KEY_PREFIX + activeCourseId;
     let localState: LearningState | null = null;
