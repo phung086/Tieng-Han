@@ -7,6 +7,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -14,6 +15,7 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   const messages = useMessages();
   const lesson = getLesson(lessonId);
   const content = lesson?.writing;
+  const nextStep = getNextLessonFlowStep(lessonId, "writing");
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -160,12 +162,17 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
         </div>
 
         {submitted && score >= 75 ? (
-          <Link
-            className="text-button writing-back"
-            href={"/learn/" + lessonId}
-          >
-            {messages.writing.back}
-          </Link>
+          <div className="writing-next-v4">
+            <Link className="primary-button" href={nextStep.href}>
+              Tiếp: {nextStep.label}
+            </Link>
+            <Link
+              className="text-button writing-back"
+              href={"/learn/" + lessonId}
+            >
+              {messages.writing.back}
+            </Link>
+          </div>
         ) : null}
       </section>
     </div>
