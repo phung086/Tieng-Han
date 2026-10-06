@@ -31,14 +31,18 @@ export type RuntimeCourse = {
 
 type ContentContextValue = {
   course: RuntimeCourse;
+  courses: RuntimeCourse[];
+  activeCourseId: string;
   hydrated: boolean;
   getLesson: (lessonId: number) => LessonContent | null;
   replaceCourse: (course: RuntimeCourse) => void;
+  selectCourse: (courseId: string) => void;
   resetCourse: () => void;
 };
 
 const LEGACY_STORAGE_KEY = "haneul-course-v2";
 const FALLBACK_STORAGE_KEY = "haneul-course-fallback-v1";
+const ACTIVE_COURSE_ID_KEY = "haneul-active-course-id-v1";
 
 const emptyRuntimeCourse: RuntimeCourse = {
   id: "empty",
@@ -83,74 +87,90 @@ function readLocalFallback() {
   return null;
 }
 
-async function readServerCourse() {
+async function readServerLibrary() {
   try {
-    const response = await fetch("/api/course", { cache: "no-store" });
+    const response = await fetch("/api/courses", { cache: "no-store" });
     if (!response.ok) return null;
 
-    const data = (await response.json()) as { course?: unknown };
-    return isPersistableCourse(data.course) ? data.course : null;
+    const data = (await response.json()) as {
+      courses?: unknown[];
+      activeCourseId?: unknown;
+    };
+    const courses = Array.isArray(data.courses)
+      ? data.courses.filter(isPersistableCourse)
+      : [];
+    if (!courses.length) return null;
+
+    return {
+      courses,
+      activeCourseId:
+        typeof data.activeCourseId === "string"
+          ? data.activeCourseId
+          : courses[0].id,
+    };
   } catch {
     return null;
   }
 }
 
 async function restoreCourse() {
-  // The server-side active course is authoritative when Haneul is online.
-  // This is important after a new import is consumed: IndexedDB/localStorage
-  // may still contain the previously studied course after a browser refresh.
-  const serverCourse = await readServerCourse();
-  if (serverCourse) {
+  const serverLibrary = await readServerLibrary();
+
+  if (serverLibrary) {
+    let preferredId: string | null = null;
     try {
-      await writeStoredCourse(serverCourse);
+      preferredId = window.localStorage.getItem(ACTIVE_COURSE_ID_KEY);
+    } catch {
+      preferredId = null;
+    }
+
+    const selected =
+      serverLibrary.courses.find((item) => item.id === preferredId) ??
+      serverLibrary.courses.find(
+        (item) => item.id === serverLibrary.activeCourseId,
+      ) ??
+      serverLibrary.courses[0];
+
+    try {
+      await writeStoredCourse(selected);
+      window.localStorage.setItem(ACTIVE_COURSE_ID_KEY, selected.id);
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
     } catch {
-      try {
-        window.localStorage.setItem(
-          FALLBACK_STORAGE_KEY,
-          JSON.stringify(serverCourse),
-        );
-      } catch {
-        // Runtime state can still use the server course.
-      }
+      // Runtime state can still use server data.
     }
-    return serverCourse;
+
+    return { course: selected, courses: serverLibrary.courses };
   }
 
   try {
     const stored = await readStoredCourse();
-    if (isPersistableCourse(stored)) return stored;
+    if (isPersistableCourse(stored)) {
+      return { course: stored, courses: [stored] };
+    }
   } catch {
     // IndexedDB can be unavailable in restricted browser modes.
   }
 
   const fallback = readLocalFallback();
-
-  if (fallback) {
-    try {
-      await writeStoredCourse(fallback);
-      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    } catch {
-      // Keep using the localStorage fallback.
-    }
-    return fallback;
-  }
-
-  return null;
+  return fallback ? { course: fallback, courses: [fallback] } : null;
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [course, setCourse] = useState<RuntimeCourse>(emptyRuntimeCourse);
+  const [courses, setCourses] = useState<RuntimeCourse[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     void restoreCourse()
-      .then((savedCourse) => {
+      .then((restored) => {
         if (cancelled) return;
-        if (savedCourse) setCourse(savedCourse);
+        if (restored) {
+          setCourse(restored.course);
+          setCourses(restored.courses);
+        }
         setHydrated(true);
       })
       .catch(() => {
@@ -163,7 +183,13 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || course.id === "empty") return;
+
+    try {
+      window.localStorage.setItem(ACTIVE_COURSE_ID_KEY, course.id);
+    } catch {
+      // Selection persistence is optional.
+    }
 
     void writeStoredCourse(course).catch(() => {
       try {
@@ -176,20 +202,32 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<ContentContextValue>(() => ({
     course,
+    courses,
+    activeCourseId: course.id,
     hydrated,
     getLesson(lessonId) {
       return course.lessons.find((lesson) => lesson.id === lessonId) ?? null;
     },
     replaceCourse(nextCourse) {
+      setCourses((current) => [
+        nextCourse,
+        ...current.filter((item) => item.id !== nextCourse.id),
+      ]);
       setCourse(nextCourse);
+    },
+    selectCourse(courseId) {
+      const nextCourse = courses.find((item) => item.id === courseId);
+      if (nextCourse) setCourse(nextCourse);
     },
     resetCourse() {
       setCourse(emptyRuntimeCourse);
+      setCourses([]);
       void clearStoredCourse().catch(() => undefined);
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
+      window.localStorage.removeItem(ACTIVE_COURSE_ID_KEY);
     },
-  }), [course, hydrated]);
+  }), [course, courses, hydrated]);
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
 }
