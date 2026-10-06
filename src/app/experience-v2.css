@@ -1854,7 +1854,7 @@ body {
 }
 
 .practice-mode-grid-v3 {
-  grid-template-columns: repeat(5,minmax(0,1fr));
+  grid-template-columns: repeat(3,minmax(0,1fr));
 }
 
 .practice-review-callout-v3 {
