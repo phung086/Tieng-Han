@@ -32,7 +32,7 @@ type LearningContextValue = {
   completeActivity: (activityId: string, xp?: number) => void;
   completeLessonSkill: (lessonId: number, skill: SkillKey) => void;
   resetProgress: () => void;
-  resetForCourse: () => void;
+  resetForCourse: (courseId?: string) => void;
 };
 
 const LEGACY_STORAGE_KEY = "haneul-learning-state-v2";
@@ -290,13 +290,18 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
       }
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
-    resetForCourse() {
-      setState({
-        ...defaultState,
-        lessonProgress: {},
-      });
-      if (activeCourseId !== "empty") {
-        window.localStorage.removeItem(STORAGE_KEY_PREFIX + activeCourseId);
+    resetForCourse(courseId) {
+      const targetCourseId = courseId ?? activeCourseId;
+      if (targetCourseId === activeCourseId) {
+        setState({
+          ...defaultState,
+          lessonProgress: {},
+        });
+      }
+      if (targetCourseId !== "empty") {
+        window.localStorage.removeItem(
+          STORAGE_KEY_PREFIX + targetCourseId,
+        );
       }
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
