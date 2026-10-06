@@ -47,16 +47,6 @@ function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function bootstrapRole(email: string): UserRole {
-  const bootstrapEmail = process.env.HANEUL_BOOTSTRAP_ADMIN_EMAIL
-    ?.trim()
-    .toLowerCase();
-
-  return bootstrapEmail && bootstrapEmail === email
-    ? "admin"
-    : "learner";
-}
-
 export async function createUser(input: {
   name: string;
   email: string;
@@ -72,7 +62,7 @@ export async function createUser(input: {
   const email = normalizeEmail(input.email);
   const id = randomUUID();
   const passwordHash = await hashPassword(input.password);
-  const role = bootstrapRole(email);
+  const role: UserRole = "learner";
 
   try {
     const result = await dbQuery<UserRow>(
