@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
+  CheckCircle2,
+  Circle,
   FileText,
   Headphones,
   MessageCircle,
@@ -11,6 +13,7 @@ import {
   PenLine,
   Play,
   ShieldCheck,
+  Sparkles,
   Volume2,
 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
@@ -53,6 +56,66 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     extraSections.length +
     media.length;
 
+  const missionSteps = [
+    {
+      skill: "vocabulary",
+      ko: "어휘",
+      title: "Khởi động từ vựng",
+      desc: lesson.vocabulary.length + " từ/cụm từ trọng tâm",
+      href: "/vocabulary?lesson=" + lessonId,
+      available: lesson.vocabulary.length > 0,
+    },
+    {
+      skill: "grammar",
+      ko: "문법",
+      title: "Nắm mẫu câu",
+      desc: lesson.grammar.length + " điểm ngữ pháp + câu luyện trộn",
+      href: "/practice/quiz?lesson=" + lessonId + "&mode=guided",
+      available: lesson.grammar.length > 0,
+    },
+    {
+      skill: "listening",
+      ko: "듣기",
+      title: "Nghe và bắt ý",
+      desc: lesson.listening.length + " lượt nghe có phản hồi",
+      href: "/listening?lesson=" + lessonId,
+      available: lesson.listening.length > 0,
+    },
+    {
+      skill: "speaking",
+      ko: "말하기",
+      title: "Nói thành phản xạ",
+      desc: lesson.speaking.length + " câu shadowing",
+      href: "/speaking?lesson=" + lessonId,
+      available: lesson.speaking.length > 0,
+    },
+    {
+      skill: "reading",
+      ko: "읽기",
+      title: "Đọc trong ngữ cảnh",
+      desc: lesson.reading ? "1 bài đọc + câu hỏi hiểu bài" : "Chưa có bài đọc",
+      href: "/reading?lesson=" + lessonId,
+      available: Boolean(lesson.reading),
+    },
+    {
+      skill: "writing",
+      ko: "쓰기",
+      title: "Dùng ngôn ngữ để viết",
+      desc: lesson.writing ? "1 nhiệm vụ viết có checklist" : "Chưa có bài viết",
+      href: "/writing?lesson=" + lessonId,
+      available: Boolean(lesson.writing),
+    },
+  ].filter((step) => step.available);
+
+  const isMissionDone = (skill: string) =>
+    state.completedActivities.includes("lesson:" + lessonId + ":" + skill);
+  const completedMissions = missionSteps.filter((step) =>
+    isMissionDone(step.skill),
+  ).length;
+  const nextMission =
+    missionSteps.find((step) => !isMissionDone(step.skill)) ??
+    missionSteps[0];
+
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
@@ -81,8 +144,11 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </div>
         <div className="lesson-header-actions">
           <span className="lesson-progress-pill">{progress}% {messages.lesson.completed}</span>
-          <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId}>
-            <Play size={17} /> {messages.lesson.practiceLesson}
+          <Link
+            className="primary-button"
+            href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
+          >
+            <Play size={17} /> {progress ? "Tiếp tục bài" : "Bắt đầu bài học"}
           </Link>
         </div>
       </header>
@@ -103,45 +169,98 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       </nav>
 
       {tab === "overview" ? (
-        <section className="lesson-overview-grid">
-          <article className="lesson-main-card">
-            <span className="eyebrow">{messages.lesson.objective}</span>
-            <h2>{lesson.objective}</h2>
-            <p>{messages.lesson.progressNote}</p>
-            <div className="lesson-step-list">
-              <button onClick={() => setTab("vocabulary")}>
-                <span>01</span><div><strong>어휘 · {messages.lesson.vocabulary}</strong><small>{lesson.vocabulary.length} {messages.lesson.items}</small></div>
-              </button>
-              <button onClick={() => setTab("grammar")}>
-                <span>02</span><div><strong>문법 · {messages.lesson.grammar}</strong><small>{lesson.grammar.length} {messages.lesson.points}</small></div>
-              </button>
-              <Link href={"/listening?lesson=" + lessonId}>
-                <span>03</span><div><strong>듣기 · {messages.lesson.listening}</strong><small>{lesson.listening.length} {messages.lesson.exercises}</small></div>
-              </Link>
-              <Link href={"/speaking?lesson=" + lessonId}>
-                <span>04</span><div><strong>말하기 · {messages.lesson.speaking}</strong><small>{lesson.speaking.length} {messages.lesson.sentences}</small></div>
-              </Link>
-              <button onClick={() => setTab("reading")}>
-                <span>05</span><div><strong>읽기 · {messages.lesson.reading}</strong><small>{lesson.reading ? messages.lesson.oneReading : messages.lesson.none}</small></div>
-              </button>
-              <Link href={"/writing?lesson=" + lessonId}>
-                <span>06</span><div><strong>쓰기 · {messages.lesson.writing}</strong><small>{lesson.writing ? messages.lesson.oneWriting : messages.lesson.none}</small></div>
-              </Link>
-              {supplementalCount ? (
-                <button onClick={() => setTab("supplement")}>
-                  <span>+</span><div><strong>교재 · {messages.lesson.extra}</strong><small>{supplementalCount} {messages.lesson.supplementItems}</small></div>
-                </button>
-              ) : null}
+        <section className="lesson-overview-v3">
+          <article className="lesson-mission-hero-v3">
+            <div className="lesson-mission-copy-v3">
+              <span className="experience-kicker">LESSON MISSION</span>
+              <h2>{lesson.objective}</h2>
+              <p>
+                Học theo từng chặng ngắn: nhận biết → hiểu → luyện → dùng → ôn lại.
+                Bạn có thể dừng bất cứ lúc nào và quay lại đúng bước đang học.
+              </p>
+
+              <div className="lesson-mission-progress-v3">
+                <div>
+                  <span style={{ width: progress + "%" }} />
+                </div>
+                <strong>{progress}%</strong>
+              </div>
+
+              <div className="lesson-mission-actions-v3">
+                <Link
+                  className="primary-button"
+                  href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
+                >
+                  <Sparkles size={17} />
+                  {completedMissions === missionSteps.length
+                    ? "Luyện lại bài"
+                    : "Tiếp tục: " + (nextMission?.title ?? "Bài học nhanh")}
+                </Link>
+                <Link
+                  className="secondary-button"
+                  href={"/practice/quiz?lesson=" + lessonId + "&mode=quick"}
+                >
+                  Quick 5
+                </Link>
+              </div>
+            </div>
+
+            <div className="lesson-mission-score-v3">
+              <span>MISSION</span>
+              <strong>{completedMissions}/{missionSteps.length}</strong>
+              <small>chặng đã hoàn thành</small>
             </div>
           </article>
 
-          <aside className="lesson-side-card">
-            <span className="eyebrow">{messages.lesson.suggestedPace}</span>
-            <h3>{messages.lesson.duration}</h3>
-            <div className="time-plan"><span>5’</span><p>{messages.lesson.vocabulary}</p></div>
-            <div className="time-plan"><span>7’</span><p>{messages.lesson.grammar}</p></div>
-            <div className="time-plan"><span>8’</span><p>{messages.lesson.listening} + {messages.lesson.speaking}</p></div>
-            <div className="time-plan"><span>10’</span><p>{messages.lesson.reading} + {messages.lesson.writing}</p></div>
+          <div className="lesson-road-v3">
+            {missionSteps.map((step, index) => {
+              const done = isMissionDone(step.skill);
+              const current = !done && nextMission?.skill === step.skill;
+
+              return (
+                <Link
+                  className={
+                    "lesson-road-step-v3" +
+                    (done ? " done" : "") +
+                    (current ? " current" : "")
+                  }
+                  href={step.href}
+                  key={step.skill}
+                >
+                  <div className="lesson-road-index-v3">
+                    {done ? (
+                      <CheckCircle2 size={22} />
+                    ) : (
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span>{step.ko}</span>
+                    <h3>{step.title}</h3>
+                    <p>{step.desc}</p>
+                  </div>
+                  <div className="lesson-road-status-v3">
+                    {done ? "Xong" : current ? "Tiếp theo" : <Circle size={12} />}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          <aside className="lesson-coach-v3">
+            <div>
+              <span className="experience-kicker">SMART PACE</span>
+              <h3>Một bài không cần học hết trong một lần.</h3>
+              <p>
+                Học 10–15 phút, nhận phản hồi ngay, rồi quay lại bằng hàng đợi ôn tập.
+                Haneul ưu tiên điểm yếu thay vì bắt bạn lặp cả bài.
+              </p>
+            </div>
+            <div className="lesson-coach-stats-v3">
+              <span><strong>{lesson.vocabulary.length}</strong> từ</span>
+              <span><strong>{lesson.grammar.length}</strong> mẫu câu</span>
+              <span><strong>{course.questions.filter((q) => q.lessonId === lessonId).length}</strong> câu luyện</span>
+            </div>
           </aside>
         </section>
       ) : null}
