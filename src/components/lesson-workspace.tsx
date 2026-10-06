@@ -115,6 +115,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const nextMission =
     missionSteps.find((step) => !isMissionDone(step.skill)) ??
     missionSteps[0];
+  const lessonIndex = course.lessons.findIndex((item) => item.id === lessonId);
+  const nextLesson =
+    lessonIndex >= 0 ? course.lessons[lessonIndex + 1] : undefined;
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
@@ -152,6 +155,38 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           </Link>
         </div>
       </header>
+
+      {progress >= 100 ? (
+        <section className="lesson-complete-banner-v4">
+          <div className="lesson-complete-icon-v4">
+            <CheckCircle2 size={28} />
+          </div>
+          <div>
+            <span className="experience-kicker">LESSON COMPLETE</span>
+            <h2>Bạn đã hoàn thành Bài {lessonId}.</h2>
+            <p>
+              Sáu kỹ năng cốt lõi đã đủ. Bạn có thể làm Mastery Check để củng cố hoặc đi tiếp sang bài mới.
+            </p>
+          </div>
+          <div className="lesson-complete-actions-v4">
+            <Link
+              className="secondary-button"
+              href={"/practice/quiz?lesson=" + lessonId + "&mode=mastery"}
+            >
+              Mastery Check
+            </Link>
+            {nextLesson ? (
+              <Link className="primary-button" href={"/learn/" + nextLesson.id}>
+                Sang Bài {nextLesson.id}
+              </Link>
+            ) : (
+              <Link className="primary-button" href="/review">
+                Ôn lại giáo trình
+              </Link>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <nav className="lesson-tabs" aria-label={messages.common.textbook}>
         {tabKeys.map((key) => (
