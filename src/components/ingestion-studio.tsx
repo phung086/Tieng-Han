@@ -283,9 +283,39 @@ export function IngestionStudio() {
       .then((data: { jobs?: Array<{ id: string; status: ImportJobStatus }> }) => {
         if (cancelled) return;
         const latestJob = data.jobs?.[0];
-        if (latestJob) {
-          setMcpJobId(latestJob.id);
-          setMcpStatus(latestJob.status);
+        if (!latestJob) return;
+
+        setMcpJobId(latestJob.id);
+        setMcpStatus(latestJob.status);
+
+        if (latestJob.status === "queued") {
+          setProgress(75);
+          setMessage(copy.mcpWaiting);
+        } else if (latestJob.status === "processing") {
+          setProgress(84);
+          setMessage(copy.mcpProcessing);
+        } else if (latestJob.status === "ready") {
+          setProgress(95);
+          setMessage(copy.mcpReady);
+        } else if (latestJob.status === "consumed") {
+          setProgress(100);
+          setStatus("done");
+          setMessage(copy.autoComplete);
+        }
+
+        if (
+          latestJob.status === "queued" ||
+          latestJob.status === "processing" ||
+          latestJob.status === "ready"
+        ) {
+          const runId = mcpRunRef.current + 1;
+          mcpRunRef.current = runId;
+
+          void monitorMcpJob(
+            latestJob.id,
+            { files: [], documents: [], maps: [] },
+            runId,
+          );
         }
       })
       .catch(() => undefined);

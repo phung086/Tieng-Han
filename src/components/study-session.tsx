@@ -16,9 +16,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useContent } from "@/lib/content-store";
-import { useLearning } from "@/lib/learning-state";
+import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import {
+  masteryPassed,
+  pickBalancedQuestions,
+} from "@/lib/study-session-plan";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -27,48 +31,6 @@ const normalize = (value: string) =>
     .trim()
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
-
-function pickGuidedQuestions<T extends { skill: string }>(
-  items: T[],
-  limit = 8,
-) {
-  if (items.length <= limit) return items;
-
-  const buckets = new Map<string, T[]>();
-  for (const item of items) {
-    const bucket = buckets.get(item.skill) ?? [];
-    bucket.push(item);
-    buckets.set(item.skill, bucket);
-  }
-
-  const selected: T[] = [];
-  const orderedSkills = [
-    "vocabulary",
-    "grammar",
-    "listening",
-    "speaking",
-    "reading",
-    "writing",
-  ];
-
-  while (selected.length < limit) {
-    let added = false;
-
-    for (const skill of orderedSkills) {
-      const bucket = buckets.get(skill);
-      const next = bucket?.shift();
-      if (!next) continue;
-
-      selected.push(next);
-      added = true;
-      if (selected.length >= limit) break;
-    }
-
-    if (!added) break;
-  }
-
-  return selected;
-}
 
 export function StudySession({
   lessonId,
@@ -90,7 +52,7 @@ export function StudySession({
 
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
-    return pickGuidedQuestions(all, 8);
+    return pickBalancedQuestions(all, 8);
   }, [course.questions, activeLessonId, mode]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
@@ -109,6 +71,9 @@ export function StudySession({
   const [bestCombo, setBestCombo] = useState(0);
   const [focus, setFocus] = useState(3);
   const [showHint, setShowHint] = useState(false);
+  const [skillStats, setSkillStats] = useState<
+    Partial<Record<SkillKey, { correct: number; total: number }>>
+  >({});
 
   if (!questions.length) {
     return (
@@ -166,7 +131,6 @@ export function StudySession({
       const nextCombo = combo + 1;
       setCombo(nextCombo);
       setBestCombo((value) => Math.max(value, nextCombo));
-      completeLessonSkill(activeLessonId, question.skill);
     } else {
       setCombo(0);
       setFocus((value) => Math.max(0, value - 1));
@@ -177,11 +141,29 @@ export function StudySession({
       );
     }
 
+    setSkillStats((current) => {
+      const previous = current[question.skill] ?? { correct: 0, total: 0 };
+      return {
+        ...current,
+        [question.skill]: {
+          correct: previous.correct + (isCorrect ? 1 : 0),
+          total: previous.total + 1,
+        },
+      };
+    });
+
     recordAnswer(question.skill, isCorrect, question.id);
   }
 
   function next() {
     if (index === questions.length - 1) {
+      if (mode === "mastery" && !retryIds) {
+        for (const [skill, stat] of Object.entries(skillStats)) {
+          if (stat && masteryPassed(stat.correct, stat.total)) {
+            completeLessonSkill(activeLessonId, skill as SkillKey);
+          }
+        }
+      }
       setFinished(true);
       return;
     }
@@ -206,6 +188,7 @@ export function StudySession({
     setBestCombo(0);
     setFocus(3);
     setShowHint(false);
+    setSkillStats({});
   }
 
   if (finished) {
