@@ -1414,3 +1414,773 @@ body {
     top: 14px;
   }
 }
+
+
+/* Learning Flow V3
+   Interaction patterns inspired by modern bite-sized learning products,
+   while keeping Haneul's own visual language and source-grounded content. */
+
+.lesson-overview-v3 {
+  display: grid;
+  gap: 18px;
+}
+
+.lesson-mission-hero-v3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 24px;
+  align-items: center;
+  padding: 28px;
+  border: 4px solid white;
+  border-radius: 30px;
+  color: white;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(255,255,255,.2), transparent 10rem),
+    linear-gradient(135deg,#7258f2,#5b69ed 58%,#48b8e8);
+  box-shadow: 0 8px 0 #4d3bb9,0 26px 55px rgba(73,68,159,.18);
+}
+
+.lesson-mission-copy-v3 h2 {
+  max-width: 760px;
+  margin: 8px 0 8px;
+  font-size: clamp(25px,3vw,38px);
+  line-height: 1.12;
+  letter-spacing: -.035em;
+}
+
+.lesson-mission-copy-v3 p {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(255,255,255,.8);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.lesson-mission-copy-v3 .experience-kicker {
+  color: #e5e0ff;
+}
+
+.lesson-mission-progress-v3 {
+  display: grid;
+  grid-template-columns: minmax(0,420px) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 22px 0 18px;
+}
+
+.lesson-mission-progress-v3 > div {
+  height: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  background: rgba(33,38,95,.22);
+}
+
+.lesson-mission-progress-v3 > div span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#ffd762,#fff3aa);
+}
+
+.lesson-mission-progress-v3 strong {
+  font-size: 11px;
+}
+
+.lesson-mission-actions-v3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.lesson-mission-actions-v3 .primary-button {
+  color: #513ac0;
+  background: white;
+  box-shadow: 0 5px 0 #d4dcf0;
+}
+
+.lesson-mission-actions-v3 .secondary-button {
+  color: white;
+  border-color: rgba(255,255,255,.35);
+  background: rgba(255,255,255,.12);
+  box-shadow: none;
+}
+
+.lesson-mission-score-v3 {
+  min-height: 148px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 20px;
+  border: 3px solid rgba(255,255,255,.72);
+  border-radius: 28px;
+  background: rgba(255,255,255,.14);
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.lesson-mission-score-v3 span,
+.lesson-mission-score-v3 small {
+  color: rgba(255,255,255,.76);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lesson-mission-score-v3 strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 35px;
+}
+
+.lesson-road-v3 {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+
+.lesson-road-step-v3 {
+  position: relative;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 50px minmax(0,1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 16px;
+  border: 3px solid white;
+  border-radius: 23px;
+  color: var(--hx-ink);
+  background: rgba(255,255,255,.91);
+  box-shadow: var(--hx-shadow);
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.lesson-road-step-v3:hover {
+  transform: translateY(-2px);
+}
+
+.lesson-road-step-v3.current {
+  border-color: #d6cdff;
+  background: linear-gradient(145deg,#f2edff,#fff);
+}
+
+.lesson-road-step-v3.done {
+  border-color: #d4f1e6;
+  background: linear-gradient(145deg,#eafbf5,#fff);
+}
+
+.lesson-road-index-v3 {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #7258e7;
+  background: #ede8ff;
+  box-shadow: inset 0 -3px 0 rgba(76,55,174,.08);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.lesson-road-step-v3.done .lesson-road-index-v3 {
+  color: #1c9870;
+  background: #dcf7ec;
+}
+
+.lesson-road-step-v3 > div:nth-child(2) > span {
+  color: #745ce0;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.lesson-road-step-v3 h3 {
+  margin: 4px 0 3px;
+  font-size: 13px;
+}
+
+.lesson-road-step-v3 p {
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.lesson-road-status-v3 {
+  min-width: 46px;
+  color: #8979cf;
+  font-size: 8px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.lesson-road-step-v3.done .lesson-road-status-v3 {
+  color: #23936f;
+}
+
+.lesson-coach-v3 {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 22px;
+  align-items: center;
+  padding: 21px 23px;
+  border: 3px solid white;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 92% 10%,rgba(255,214,98,.22),transparent 9rem),
+    rgba(255,255,255,.9);
+  box-shadow: var(--hx-shadow);
+}
+
+.lesson-coach-v3 h3 {
+  margin: 5px 0 5px;
+  font-size: 16px;
+}
+
+.lesson-coach-v3 p {
+  max-width: 700px;
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.lesson-coach-stats-v3 {
+  display: flex;
+  gap: 8px;
+}
+
+.lesson-coach-stats-v3 span {
+  min-width: 75px;
+  padding: 10px;
+  border-radius: 15px;
+  color: #69758f;
+  background: #f0f4f9;
+  font-size: 7px;
+  text-align: center;
+}
+
+.lesson-coach-stats-v3 strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #493aa7;
+  font-size: 14px;
+}
+
+/* Practice hub V3 */
+.practice-hub-v3 {
+  display: grid;
+  gap: 22px;
+  padding-bottom: 80px;
+}
+
+.practice-head-v3 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.practice-head-v3 h1 {
+  margin: 7px 0 7px;
+  font-size: clamp(32px,4vw,50px);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.practice-head-v3 p {
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 11px;
+}
+
+.practice-head-stats-v3 {
+  display: flex;
+  gap: 8px;
+}
+
+.practice-head-stats-v3 span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 45px;
+  padding: 0 12px;
+  border: 3px solid white;
+  border-radius: 15px;
+  color: #60708f;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 4px 0 #dde8f1;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.practice-current-v3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 23px 25px;
+  border: 4px solid white;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 91% 10%,rgba(113,88,246,.14),transparent 11rem),
+    linear-gradient(145deg,#fff,#f3f8ff);
+  box-shadow: var(--hx-shadow);
+}
+
+.practice-current-copy-v3 h2 {
+  margin: 9px 0 4px;
+  font-size: 22px;
+}
+
+.practice-current-copy-v3 p {
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 9px;
+}
+
+.practice-current-track-v3 {
+  width: min(430px,100%);
+  height: 8px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f6;
+}
+
+.practice-current-track-v3 i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#7358ee,#5fc5f2);
+}
+
+.practice-session-grid-v3 {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 14px;
+}
+
+.practice-session-card-v3 {
+  position: relative;
+  min-height: 225px;
+  overflow: hidden;
+  padding: 22px;
+  border: 3px solid white;
+  border-radius: 27px;
+  color: var(--hx-ink);
+  background: rgba(255,255,255,.92);
+  box-shadow: var(--hx-shadow);
+  transition: transform 150ms ease;
+}
+
+.practice-session-card-v3:hover {
+  transform: translateY(-3px);
+}
+
+.practice-session-card-v3.tone-violet {
+  background: linear-gradient(145deg,#f0ebff,#fff);
+}
+
+.practice-session-card-v3.tone-amber {
+  background: linear-gradient(145deg,#fff4d7,#fff);
+}
+
+.practice-session-card-v3.tone-mint {
+  background: linear-gradient(145deg,#e6fbf4,#fff);
+}
+
+.practice-session-icon-v3 {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  color: #6c53de;
+  background: rgba(113,88,246,.12);
+}
+
+.tone-amber .practice-session-icon-v3 {
+  color: #c37a17;
+  background: #ffedb7;
+}
+
+.tone-mint .practice-session-icon-v3 {
+  color: #1c9971;
+  background: #d9f5ea;
+}
+
+.practice-session-card-v3 > span {
+  color: #7d6bc2;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+
+.practice-session-card-v3 h2 {
+  margin: 5px 0 7px;
+  font-size: 18px;
+}
+
+.practice-session-card-v3 p {
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.practice-session-card-v3 small {
+  display: inline-flex;
+  margin-top: 17px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #6d7590;
+  background: rgba(255,255,255,.72);
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.practice-session-arrow-v3 {
+  position: absolute;
+  right: 19px;
+  bottom: 19px;
+}
+
+.practice-section-v3 {
+  display: grid;
+  gap: 14px;
+}
+
+.practice-mode-grid-v3 {
+  grid-template-columns: repeat(5,minmax(0,1fr));
+}
+
+.practice-review-callout-v3 {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 3px solid white;
+  border-radius: 25px;
+  background: rgba(255,255,255,.9);
+  box-shadow: var(--hx-shadow);
+}
+
+.practice-review-icon-v3 {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  color: #5c48c7;
+  background: #ece7ff;
+}
+
+.practice-review-callout-v3 h2 {
+  margin: 4px 0 4px;
+  font-size: 16px;
+}
+
+.practice-review-callout-v3 p {
+  margin: 0;
+  color: var(--hx-muted);
+  font-size: 9px;
+}
+
+/* Question session V3 */
+.study-session-v3 {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%,rgba(100,198,255,.17),transparent 16rem),
+    radial-gradient(circle at 85% 88%,rgba(121,91,244,.14),transparent 18rem),
+    linear-gradient(180deg,#f8fbff,#f6f5ff);
+}
+
+.session-header-v3 {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 18px max(22px,calc((100vw - 850px)/2));
+  border-bottom: 1px solid rgba(103,119,158,.1);
+  background: rgba(248,251,255,.88);
+  backdrop-filter: blur(18px);
+}
+
+.session-progress-wrap-v3 {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.session-progress-wrap-v3 small {
+  color: var(--hx-muted);
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.session-hud-v3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-hud-v3 span,
+.session-hud-v3 strong {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 2px solid white;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 3px 0 #e0e8f0;
+  font-size: 9px;
+}
+
+.session-hud-v3 span:first-child {
+  color: #ef6d82;
+}
+
+.session-hud-v3 span:nth-child(2) {
+  color: #e48d2b;
+}
+
+.session-body-v3 {
+  width: min(760px,calc(100% - 32px));
+  margin: 0 auto;
+  padding: 50px 0 155px;
+}
+
+.session-mode-copy-v3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-mode-copy-v3 small {
+  color: var(--hx-muted);
+  font-size: 8px;
+}
+
+.session-body-v3 > h1 {
+  margin-top: 25px;
+  font-size: 25px;
+}
+
+.session-hint-button-v3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+  color: #8168d6;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.session-hint-v3 {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 2px solid #eadfff;
+  border-radius: 15px;
+  color: #6b579f;
+  background: #f7f2ff;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.answer-coach-v3 {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-top: 22px;
+  padding: 15px;
+  border: 2px solid;
+  border-radius: 18px;
+}
+
+.answer-coach-v3.success {
+  border-color: #bfe9d9;
+  background: #effbf7;
+}
+
+.answer-coach-v3.error {
+  border-color: #ffd4db;
+  background: #fff3f5;
+}
+
+.answer-coach-icon-v3 {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+}
+
+.answer-coach-v3.success .answer-coach-icon-v3 {
+  color: #1d9d73;
+  background: #d7f4e8;
+}
+
+.answer-coach-v3.error .answer-coach-icon-v3 {
+  color: #dc6377;
+  background: #ffe0e5;
+}
+
+.answer-coach-v3 strong {
+  font-size: 11px;
+}
+
+.answer-coach-v3 p {
+  margin: 4px 0 0;
+  color: #66728b;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.answer-coach-v3 small {
+  display: block;
+  margin-top: 7px;
+  color: #8b5a66;
+  font-size: 8px;
+}
+
+.session-footer-v3 {
+  min-height: 106px;
+  padding: 18px max(22px,calc((100vw - 850px)/2));
+  border-top: 1px solid rgba(103,119,158,.12);
+  background: rgba(255,255,255,.93);
+  backdrop-filter: blur(18px);
+}
+
+.session-footer-copy-v3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #66718b;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.session-complete-v3 {
+  width: min(780px,calc(100% - 36px));
+  margin: 70px auto;
+}
+
+.session-result-grid-v3 {
+  width: min(620px,100%);
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 10px;
+  margin: 26px auto;
+}
+
+.session-result-grid-v3 article {
+  padding: 15px 10px;
+  border: 3px solid white;
+  border-radius: 19px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 4px 0 #e1e9f0;
+  text-align: center;
+}
+
+.session-result-grid-v3 strong {
+  display: block;
+  font-size: 20px;
+}
+
+.session-result-grid-v3 span {
+  color: var(--hx-muted);
+  font-size: 7px;
+  font-weight: 900;
+}
+
+@media (max-width: 980px) {
+  .practice-session-grid-v3 {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-mode-grid-v3 {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .practice-head-v3 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .lesson-mission-hero-v3 {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-road-v3 {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-coach-v3,
+  .practice-current-v3,
+  .practice-review-callout-v3 {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-coach-stats-v3 {
+    flex-wrap: wrap;
+  }
+
+  .practice-current-v3 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .practice-head-stats-v3 {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .session-result-grid-v3 {
+    grid-template-columns: repeat(2,1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .practice-mode-grid-v3 {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-road-step-v3 {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .lesson-road-status-v3 {
+    display: none;
+  }
+
+  .session-header-v3,
+  .session-footer-v3 {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .session-hud-v3 span {
+    padding: 0 7px;
+  }
+
+  .session-mode-copy-v3 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
