@@ -19,6 +19,10 @@ import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import {
+  masteryPassed,
+  pickBalancedQuestions,
+} from "@/lib/study-session-plan";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -27,48 +31,6 @@ const normalize = (value: string) =>
     .trim()
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
-
-function pickGuidedQuestions<T extends { skill: string }>(
-  items: T[],
-  limit = 8,
-) {
-  if (items.length <= limit) return items;
-
-  const buckets = new Map<string, T[]>();
-  for (const item of items) {
-    const bucket = buckets.get(item.skill) ?? [];
-    bucket.push(item);
-    buckets.set(item.skill, bucket);
-  }
-
-  const selected: T[] = [];
-  const orderedSkills = [
-    "vocabulary",
-    "grammar",
-    "listening",
-    "speaking",
-    "reading",
-    "writing",
-  ];
-
-  while (selected.length < limit) {
-    let added = false;
-
-    for (const skill of orderedSkills) {
-      const bucket = buckets.get(skill);
-      const next = bucket?.shift();
-      if (!next) continue;
-
-      selected.push(next);
-      added = true;
-      if (selected.length >= limit) break;
-    }
-
-    if (!added) break;
-  }
-
-  return selected;
-}
 
 export function StudySession({
   lessonId,
@@ -90,7 +52,7 @@ export function StudySession({
 
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
-    return pickGuidedQuestions(all, 8);
+    return pickBalancedQuestions(all, 8);
   }, [course.questions, activeLessonId, mode]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
@@ -197,11 +159,7 @@ export function StudySession({
     if (index === questions.length - 1) {
       if (mode === "mastery" && !retryIds) {
         for (const [skill, stat] of Object.entries(skillStats)) {
-          if (
-            stat &&
-            stat.total > 0 &&
-            stat.correct / stat.total >= 0.75
-          ) {
+          if (stat && masteryPassed(stat.correct, stat.total)) {
             completeLessonSkill(activeLessonId, skill as SkillKey);
           }
         }
