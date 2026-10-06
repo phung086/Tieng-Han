@@ -15,6 +15,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 type VocabMode = "cards" | "match";
 
@@ -56,6 +57,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   const matchProgress = Math.round(
     (matchedIds.length / Math.max(1, matchItems.length)) * 100,
   );
+  const nextStep = getNextLessonFlowStep(lessonId, "vocabulary");
 
   function speak(text = card.ko) {
     if (!("speechSynthesis" in window)) return;
@@ -153,8 +155,8 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={() => setMode("match")}>
             <Grid3X3 size={16} /> Chơi Ghép nhanh
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            {messages.common.backToLesson}
+          <Link className="primary-button" href={nextStep.href}>
+            Tiếp: {nextStep.label}
           </Link>
         </div>
       </div>
@@ -181,8 +183,8 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={() => setMode("cards")}>
             <Layers3 size={16} /> Flashcard
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            Quay lại bài học
+          <Link className="primary-button" href={nextStep.href}>
+            Tiếp: {nextStep.label}
           </Link>
         </div>
       </div>
