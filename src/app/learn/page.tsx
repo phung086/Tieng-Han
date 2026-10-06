@@ -74,6 +74,8 @@ export default function LearnPage() {
                 }
                 key={item.id}
                 type="button"
+                aria-pressed={active}
+                title={item.title}
                 onClick={() => selectCourse(item.id)}
               >
                 <div
@@ -94,7 +96,7 @@ export default function LearnPage() {
                 </div>
                 <div className="course-library-copy-v2">
                   <span>{item.level || "General"}</span>
-                  <strong>{item.title}</strong>
+                  <strong title={item.title}>{item.title}</strong>
                   <small>
                     {item.lessons.length} bài
                     {item.source?.pageCount
@@ -146,7 +148,7 @@ export default function LearnPage() {
       </section>
 
       {zones.map((lessons, zoneIndex) => (
-        <section className="journey-zone-v2" key={"zone-" + zoneIndex}>
+        <section className="journey-zone-v2 course-switch-enter-v3" key={"zone-" + course.id + "-" + zoneIndex}>
           <header className="zone-title-v2">
             <span className="zone-number-v2">{zoneIndex + 1}</span>
             <div>
