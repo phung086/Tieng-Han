@@ -5,7 +5,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Flame,
+  Heart,
+  Lightbulb,
   RotateCcw,
+  Sparkles,
+  Target,
   Trophy,
   X,
 } from "lucide-react";
@@ -15,24 +20,83 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 
+export type StudySessionMode = "guided" | "quick" | "mastery";
+
 const normalize = (value: string) =>
   value
     .trim()
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
 
-export function StudySession({ lessonId }: { lessonId?: number }) {
+function pickGuidedQuestions<T extends { skill: string }>(
+  items: T[],
+  limit = 8,
+) {
+  if (items.length <= limit) return items;
+
+  const buckets = new Map<string, T[]>();
+  for (const item of items) {
+    const bucket = buckets.get(item.skill) ?? [];
+    bucket.push(item);
+    buckets.set(item.skill, bucket);
+  }
+
+  const selected: T[] = [];
+  const orderedSkills = [
+    "vocabulary",
+    "grammar",
+    "listening",
+    "speaking",
+    "reading",
+    "writing",
+  ];
+
+  while (selected.length < limit) {
+    let added = false;
+
+    for (const skill of orderedSkills) {
+      const bucket = buckets.get(skill);
+      const next = bucket?.shift();
+      if (!next) continue;
+
+      selected.push(next);
+      added = true;
+      if (selected.length >= limit) break;
+    }
+
+    if (!added) break;
+  }
+
+  return selected;
+}
+
+export function StudySession({
+  lessonId,
+  mode = "guided",
+}: {
+  lessonId?: number;
+  mode?: StudySessionMode;
+}) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
 
   const activeLessonId = lessonId ?? course.lessons[0]?.id ?? 1;
 
-  const questions = useMemo(
-    () =>
-      course.questions.filter((item) => item.lessonId === activeLessonId),
-    [course.questions, activeLessonId],
-  );
+  const baseQuestions = useMemo(() => {
+    const all = course.questions.filter(
+      (item) => item.lessonId === activeLessonId,
+    );
+
+    if (mode === "quick") return all.slice(0, 5);
+    if (mode === "mastery") return all;
+    return pickGuidedQuestions(all, 8);
+  }, [course.questions, activeLessonId, mode]);
+
+  const [retryIds, setRetryIds] = useState<string[] | null>(null);
+  const questions = retryIds
+    ? baseQuestions.filter((item) => retryIds.includes(item.id))
+    : baseQuestions;
 
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -40,6 +104,11 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
   const [checked, setChecked] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [mistakeIds, setMistakeIds] = useState<string[]>([]);
+  const [combo, setCombo] = useState(0);
+  const [bestCombo, setBestCombo] = useState(0);
+  const [focus, setFocus] = useState(3);
+  const [showHint, setShowHint] = useState(false);
 
   if (!questions.length) {
     return (
@@ -69,6 +138,24 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
     writing: messages.skills.writing.vi,
   }[question.skill];
 
+  const modeCopy = {
+    guided: {
+      label: "Bài học nhanh",
+      title: "Học theo nhịp",
+      note: "Một phiên ngắn, trộn đều các kỹ năng.",
+    },
+    quick: {
+      label: "Quick 5",
+      title: "5 câu khởi động",
+      note: "Phiên siêu ngắn để giữ nhịp học.",
+    },
+    mastery: {
+      label: "Mastery",
+      title: "Chinh phục bài",
+      note: "Làm toàn bộ câu hỏi của bài để kiểm tra độ chắc.",
+    },
+  }[mode];
+
   function submit() {
     if (!submittedAnswer || checked) return;
 
@@ -76,7 +163,18 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
 
     if (isCorrect) {
       setCorrectCount((value) => value + 1);
+      const nextCombo = combo + 1;
+      setCombo(nextCombo);
+      setBestCombo((value) => Math.max(value, nextCombo));
       completeLessonSkill(activeLessonId, question.skill);
+    } else {
+      setCombo(0);
+      setFocus((value) => Math.max(0, value - 1));
+      setMistakeIds((current) =>
+        current.includes(question.id)
+          ? current
+          : [...current, question.id],
+      );
     }
 
     recordAnswer(question.skill, isCorrect, question.id);
@@ -92,45 +190,83 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
     setAnswer("");
     setTokens([]);
     setChecked(false);
+    setShowHint(false);
   }
 
-  function restart() {
+  function resetSession(nextRetryIds: string[] | null) {
+    setRetryIds(nextRetryIds);
     setIndex(0);
     setAnswer("");
     setTokens([]);
     setChecked(false);
     setCorrectCount(0);
     setFinished(false);
+    setMistakeIds([]);
+    setCombo(0);
+    setBestCombo(0);
+    setFocus(3);
+    setShowHint(false);
   }
 
   if (finished) {
     const score = Math.round(
-      (correctCount / questions.length) * 100,
+      (correctCount / Math.max(1, questions.length)) * 100,
     );
+    const estimatedXp =
+      correctCount * 10 + (questions.length - correctCount) * 2;
 
     return (
-      <div className="session-complete">
+      <div className="session-complete session-complete-v3">
         <div className="complete-orb"><Trophy size={34} /></div>
-        <span className="eyebrow">{messages.quiz.complete}</span>
+        <span className="eyebrow">{modeCopy.label} hoàn tất</span>
         <h1>
-          {score >= 80
-            ? messages.quiz.great
-            : messages.quiz.retryTitle}
+          {score >= 90
+            ? "Quá chắc tay!"
+            : score >= 75
+              ? "Tiến bộ rất ổn."
+              : "Ôn lại vài điểm rồi thử tiếp nhé."}
         </h1>
         <p>
-          {messages.quiz.answerSummaryPrefix} {correctCount}/{questions.length}{" "}
-          {messages.quiz.answerSummarySuffix}
+          Bạn trả lời đúng {correctCount}/{questions.length} câu trong phiên này.
         </p>
-        <div className="score-ring-big">
-          <strong>{score}%</strong>
-          <span>{messages.quiz.accuracy}</span>
+
+        <div className="session-result-grid-v3">
+          <article>
+            <strong>{score}%</strong>
+            <span>Độ chính xác</span>
+          </article>
+          <article>
+            <strong>+{estimatedXp}</strong>
+            <span>XP phiên học</span>
+          </article>
+          <article>
+            <strong>{bestCombo}</strong>
+            <span>Combo tốt nhất</span>
+          </article>
+          <article>
+            <strong>{mistakeIds.length}</strong>
+            <span>Điểm cần ôn</span>
+          </article>
         </div>
+
         <div className="complete-actions">
-          <button className="secondary-button" onClick={restart}>
-            <RotateCcw size={17} /> {messages.common.restart}
-          </button>
+          {mistakeIds.length ? (
+            <button
+              className="secondary-button"
+              onClick={() => resetSession([...mistakeIds])}
+            >
+              <RotateCcw size={17} /> Luyện lại câu sai
+            </button>
+          ) : (
+            <button
+              className="secondary-button"
+              onClick={() => resetSession(null)}
+            >
+              <RotateCcw size={17} /> Làm lại phiên
+            </button>
+          )}
           <Link className="primary-button" href={"/learn/" + activeLessonId}>
-            {messages.common.backToLesson} <ArrowRight size={17} />
+            Quay lại bài học <ArrowRight size={17} />
           </Link>
         </div>
       </div>
@@ -138,8 +274,8 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
   }
 
   return (
-    <div className="study-session">
-      <header className="session-header">
+    <div className="study-session study-session-v3">
+      <header className="session-header session-header-v3">
         <Link
           className="icon-button"
           href={"/learn/" + activeLessonId}
@@ -147,16 +283,35 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
         >
           <ArrowLeft size={18} />
         </Link>
-        <div className="session-progress">
-          <span style={{ width: progress + "%" }} />
+
+        <div className="session-progress-wrap-v3">
+          <div className="session-progress">
+            <span style={{ width: progress + "%" }} />
+          </div>
+          <small>{modeCopy.label} · {progress}%</small>
         </div>
-        <strong>{index + 1}/{questions.length}</strong>
+
+        <div className="session-hud-v3">
+          <span title="Focus">
+            <Heart size={16} fill="currentColor" />
+            {focus}
+          </span>
+          <span title="Combo">
+            <Flame size={16} />
+            {combo}
+          </span>
+          <strong>{index + 1}/{questions.length}</strong>
+        </div>
       </header>
 
-      <main className="session-body">
-        <span className="pill pill-soft">
-          {skillLabel} · {messages.common.lesson} {activeLessonId}
-        </span>
+      <main className="session-body session-body-v3">
+        <div className="session-mode-copy-v3">
+          <span className="pill pill-soft">
+            {skillLabel} · {messages.common.lesson} {activeLessonId}
+          </span>
+          <small>{modeCopy.note}</small>
+        </div>
+
         <h1>{question.title}</h1>
         <div className="question-prompt korean-text">
           {question.prompt}
@@ -166,6 +321,28 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
           <p className="question-translation">
             {question.translation}
           </p>
+        ) : null}
+
+        {!checked ? (
+          <button
+            className="session-hint-button-v3"
+            type="button"
+            onClick={() => setShowHint((value) => !value)}
+          >
+            <Lightbulb size={16} />
+            {showHint ? "Ẩn gợi ý" : "Cần một gợi ý?"}
+          </button>
+        ) : null}
+
+        {showHint && !checked ? (
+          <div className="session-hint-v3">
+            <Sparkles size={17} />
+            <span>
+              {question.translation
+                ? "Hãy dựa vào nghĩa câu và cấu trúc đã học trong bài."
+                : "Thử loại các đáp án không khớp với từ vựng hoặc mẫu ngữ pháp của bài."}
+            </span>
+          </div>
         ) : null}
 
         {question.type === "choice" ? (
@@ -283,11 +460,34 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
             </div>
           </div>
         ) : null}
+
+        {checked ? (
+          <div
+            className={
+              "answer-coach-v3 " + (isCorrect ? "success" : "error")
+            }
+          >
+            <div className="answer-coach-icon-v3">
+              {isCorrect ? <Check size={21} /> : <X size={21} />}
+            </div>
+            <div>
+              <strong>
+                {isCorrect ? "Chính xác!" : "Chưa đúng, nhưng đây là điểm cần nhớ."}
+              </strong>
+              <p>{question.explanation}</p>
+              {!isCorrect ? (
+                <small>
+                  Đáp án đúng: <b>{question.answer}</b>
+                </small>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </main>
 
       <footer
         className={
-          "session-footer" +
+          "session-footer session-footer-v3" +
           (checked
             ? isCorrect
               ? " success"
@@ -295,25 +495,22 @@ export function StudySession({ lessonId }: { lessonId?: number }) {
             : "")
         }
       >
-        {checked ? (
-          <div className="session-feedback">
-            <div className="feedback-icon">
-              {isCorrect ? <Check size={20} /> : <X size={20} />}
-            </div>
-            <div>
-              <strong>
+        <div className="session-footer-copy-v3">
+          {checked ? (
+            <>
+              <Target size={17} />
+              <span>
                 {isCorrect
-                  ? messages.quiz.correct
-                  : messages.quiz.wrong}
-              </strong>
-              <p>{question.explanation}</p>
-            </div>
-          </div>
-        ) : (
-          <span className="footer-hint">
-            {messages.quiz.xpHint}
-          </span>
-        )}
+                  ? combo >= 2
+                    ? "Combo " + combo + " · giữ nhịp nhé!"
+                    : "Tốt lắm, tiếp tục thôi."
+                  : "Sai một câu không sao — hệ thống sẽ đưa điểm này vào ôn tập."}
+              </span>
+            </>
+          ) : (
+            <span>{messages.quiz.xpHint}</span>
+          )}
+        </div>
 
         <button
           className="primary-button"
