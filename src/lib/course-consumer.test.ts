@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { unlink } from "node:fs/promises";
+import { unlink, writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
 import {
   activeCourseFilePath,
   buildRuntimeCourseFromBundle,
@@ -186,6 +187,34 @@ describe("course-consumer", () => {
     expect(active?.lessons).toHaveLength(1);
   });
 
+
+  it("rebuilds an already-consumed job when the persisted active course belongs to another job", async () => {
+    const bundle = sampleBundle();
+    const job = {
+      ...readyJob(bundle),
+      id: "import-new-job",
+      status: "consumed",
+    } as ImportJob;
+
+    await mkdir(path.dirname(activeCourseFilePath), { recursive: true });
+    await writeFile(
+      activeCourseFilePath,
+      JSON.stringify({
+        ...buildRuntimeCourseFromBundle("import-old-job", bundle),
+        title: "Old cached course",
+      }),
+      "utf8",
+    );
+
+    vi.mocked(requireImportJob).mockResolvedValue(job);
+    vi.mocked(readImportPages).mockResolvedValue([]);
+
+    const result = await consumeReadyImportJob(job.id);
+
+    expect(result.course.id).toBe("course-import-new-job");
+    expect(result.course.title).toBe("Tiếng Hàn Sơ cấp 1");
+    expect(consumeImportJob).not.toHaveBeenCalled();
+  });
 
   it("uses language-neutral fallbacks for blank imported metadata", () => {
     const bundle = sampleBundle();
