@@ -15,6 +15,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 type VocabMode = "cards" | "match";
 
@@ -56,6 +57,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   const matchProgress = Math.round(
     (matchedIds.length / Math.max(1, matchItems.length)) * 100,
   );
+  const nextStep = getNextLessonFlowStep(lessonId, "vocabulary");
 
   function speak(text = card.ko) {
     if (!("speechSynthesis" in window)) return;
@@ -71,7 +73,10 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
     if (correct) setKnown((value) => value + 1);
 
     if (position === order.length - 1) {
-      completeLessonSkill(lessonId, "vocabulary");
+      const finalKnown = known + (correct ? 1 : 0);
+      if (finalKnown / deck.length >= 0.7) {
+        completeLessonSkill(lessonId, "vocabulary");
+      }
       setFinished(true);
       return;
     }
@@ -138,13 +143,19 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   if (finished && mode === "cards") {
+    const passed = known / deck.length >= 0.7;
+
     return (
       <div className="skill-complete-card">
         <div className="complete-orb"><CheckCircle2 size={32} /></div>
-        <span className="eyebrow">{messages.vocabulary.complete}</span>
+        <span className="eyebrow">
+          {passed ? messages.vocabulary.complete : "CẦN CỦNG CỐ THÊM"}
+        </span>
         <h1>{known}/{deck.length} {messages.vocabulary.rememberedSuffix}</h1>
         <p>
-          Bạn vừa hoàn thành lượt Active Recall của Bài {lessonId}. Những từ quên sẽ quay lại trong hàng đợi ôn.
+          {passed
+            ? "Bạn đã đủ chắc để đi tiếp. Những từ quên vẫn sẽ quay lại trong hàng đợi ôn."
+            : "Hãy thử lại hoặc dùng Ghép nhanh. Mục tiêu của chặng này là nhớ chủ động ít nhất 70% số từ."}
         </p>
         <div className="complete-actions">
           <button className="secondary-button" onClick={restartCards}>
@@ -153,9 +164,11 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={() => setMode("match")}>
             <Grid3X3 size={16} /> Chơi Ghép nhanh
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            {messages.common.backToLesson}
-          </Link>
+          {passed ? (
+            <Link className="primary-button" href={nextStep.href}>
+              Tiếp: {nextStep.label}
+            </Link>
+          ) : null}
         </div>
       </div>
     );
@@ -181,8 +194,8 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={() => setMode("cards")}>
             <Layers3 size={16} /> Flashcard
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            Quay lại bài học
+          <Link className="primary-button" href={nextStep.href}>
+            Tiếp: {nextStep.label}
           </Link>
         </div>
       </div>

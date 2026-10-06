@@ -23,6 +23,7 @@ import {
   masteryPassed,
   pickBalancedQuestions,
 } from "@/lib/study-session-plan";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -203,6 +204,9 @@ export function StudySession({
     );
     const estimatedXp =
       correctCount * 10 + (questions.length - correctCount) * 2;
+    const nextSkillStep = skill
+      ? getNextLessonFlowStep(activeLessonId, skill)
+      : null;
 
     return (
       <div className="session-complete session-complete-v3">
@@ -254,8 +258,16 @@ export function StudySession({
               <RotateCcw size={17} /> Làm lại phiên
             </button>
           )}
-          <Link className="primary-button" href={"/learn/" + activeLessonId}>
-            Quay lại bài học <ArrowRight size={17} />
+          <Link
+            className="primary-button"
+            href={nextSkillStep?.href ?? ("/learn/" + activeLessonId)}
+          >
+            {nextSkillStep
+              ? "Tiếp: " + nextSkillStep.label
+              : mode === "mastery"
+                ? "Hoàn tất bài học"
+                : "Quay lại bài học"}
+            <ArrowRight size={17} />
           </Link>
         </div>
       </div>

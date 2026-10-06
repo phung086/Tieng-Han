@@ -7,6 +7,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 type RecognitionResultEvent = {
   results: {
@@ -64,6 +65,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
 
   const target = sentences[index] ?? "";
+  const nextStep = getNextLessonFlowStep(lessonId, "speaking");
   const score = useMemo(
     () => similarity(transcript, target),
     [transcript, target],
@@ -135,7 +137,15 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
 
   function next() {
     if (index === sentences.length - 1) {
-      completeLessonSkill(lessonId, "speaking");
+      const average = scores.length
+        ? Math.round(
+            scores.reduce((sum, item) => sum + item, 0) / scores.length,
+          )
+        : 0;
+
+      if (unsupported || average >= 75) {
+        completeLessonSkill(lessonId, "speaking");
+      }
       setFinished(true);
       return;
     }
@@ -157,6 +167,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
           scores.reduce((sum, item) => sum + item, 0) / scores.length,
         )
       : 0;
+    const passed = unsupported || average >= 75;
 
     return (
       <div className="skill-complete-card">
@@ -168,15 +179,21 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
             : messages.speaking.averagePrefix + " " + average + "%"}
         </h1>
         <p>
-          {messages.speaking.completionBody} {messages.common.lesson} {lessonId}.
+          {passed
+            ? unsupported
+              ? "Trình duyệt không hỗ trợ chấm giọng nói, nên Haneul ghi nhận lượt shadowing thủ công."
+              : "Bạn đạt " + average + "% độ khớp và đủ điều kiện hoàn thành chặng Nói."
+            : "Bạn đang ở " + average + "%. Hãy nghe mẫu chậm và thử lại để đạt tối thiểu 75%."}
         </p>
         <div className="complete-actions">
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.speaking.retry}
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            {messages.common.backToLesson}
-          </Link>
+          {passed ? (
+            <Link className="primary-button" href={nextStep.href}>
+              Tiếp: {nextStep.label}
+            </Link>
+          ) : null}
         </div>
       </div>
     );
