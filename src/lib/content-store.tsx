@@ -83,7 +83,41 @@ function readLocalFallback() {
   return null;
 }
 
+async function readServerCourse() {
+  try {
+    const response = await fetch("/api/course", { cache: "no-store" });
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { course?: unknown };
+    return isPersistableCourse(data.course) ? data.course : null;
+  } catch {
+    return null;
+  }
+}
+
 async function restoreCourse() {
+  // The server-side active course is authoritative when Haneul is online.
+  // This is important after a new import is consumed: IndexedDB/localStorage
+  // may still contain the previously studied course after a browser refresh.
+  const serverCourse = await readServerCourse();
+  if (serverCourse) {
+    try {
+      await writeStoredCourse(serverCourse);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
+    } catch {
+      try {
+        window.localStorage.setItem(
+          FALLBACK_STORAGE_KEY,
+          JSON.stringify(serverCourse),
+        );
+      } catch {
+        // Runtime state can still use the server course.
+      }
+    }
+    return serverCourse;
+  }
+
   try {
     const stored = await readStoredCourse();
     if (isPersistableCourse(stored)) return stored;
@@ -101,23 +135,6 @@ async function restoreCourse() {
       // Keep using the localStorage fallback.
     }
     return fallback;
-  }
-
-  try {
-    const response = await fetch("/api/course", { cache: "no-store" });
-    if (response.ok) {
-      const data = (await response.json()) as { course?: unknown };
-      if (isPersistableCourse(data.course)) {
-        try {
-          await writeStoredCourse(data.course);
-        } catch {
-          // Keep using the runtime data
-        }
-        return data.course;
-      }
-    }
-  } catch {
-    // Offline or server not reachable
   }
 
   return null;
