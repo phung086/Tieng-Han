@@ -7,6 +7,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 type RecognitionResultEvent = {
   results: {
@@ -64,6 +65,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
 
   const target = sentences[index] ?? "";
+  const nextStep = getNextLessonFlowStep(lessonId, "speaking");
   const score = useMemo(
     () => similarity(transcript, target),
     [transcript, target],
@@ -174,8 +176,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.speaking.retry}
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            {messages.common.backToLesson}
+          <Link className="primary-button" href={nextStep.href}>
+            Tiếp: {nextStep.label}
           </Link>
         </div>
       </div>
