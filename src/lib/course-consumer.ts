@@ -1,4 +1,10 @@
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  rename,
+  readdir,
+} from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import {
@@ -21,6 +27,12 @@ export const activeCourseFilePath = path.join(
   "active-course.json",
 );
 
+export const courseLibraryDir = path.join(
+  process.cwd(),
+  ".haneul",
+  "courses",
+);
+
 async function writeJsonAtomic(filePath: string, value: unknown) {
   await mkdir(path.dirname(filePath), { recursive: true });
   const temporary = filePath + "." + randomUUID() + ".tmp";
@@ -28,13 +40,56 @@ async function writeJsonAtomic(filePath: string, value: unknown) {
   await rename(temporary, filePath);
 }
 
+function isRuntimeCourse(value: unknown): value is RuntimeCourse {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+
+  return (
+    typeof record.id === "string" &&
+    typeof record.title === "string" &&
+    typeof record.level === "string" &&
+    Array.isArray(record.lessons) &&
+    Array.isArray(record.questions)
+  );
+}
+
+function libraryFilePath(courseId: string) {
+  return path.join(courseLibraryDir, courseId + ".json");
+}
+
+async function readRuntimeCourseFile(filePath: string) {
+  try {
+    const raw = await readFile(filePath, "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    return isRuntimeCourse(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readCoverImage(jobId: string) {
+  try {
+    const firstPages = await readImportPages({
+      jobId,
+      startPage: 1,
+      endPage: 1,
+      limit: 1,
+    });
+    return firstPages[0]?.previewImageDataUrl;
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildRuntimeCourseFromBundle(
   jobId: string,
   bundle: CompiledCourseBundle,
   coverImageDataUrl?: string,
+  importedAt = new Date().toISOString(),
 ): RuntimeCourse {
   const sourceFiles = bundle.sourceFiles ?? [];
   const language = bundle.language ?? defaultLanguageProfile;
+
   return {
     id: "course-" + jobId,
     title: bundle.course.title.trim() || language.targetName,
@@ -43,7 +98,7 @@ export function buildRuntimeCourseFromBundle(
     source: {
       fileName: sourceFiles[0],
       fileNames: sourceFiles,
-      importedAt: new Date().toISOString(),
+      importedAt,
       pageCount: bundle.sourceManifest?.[0]?.pageCount,
       edition: bundle.course.edition,
       coverImageDataUrl,
@@ -53,29 +108,31 @@ export function buildRuntimeCourseFromBundle(
   };
 }
 
+async function buildRuntimeCourseForJob(job: ImportJob) {
+  if (!job.resultBundle) {
+    throw new Error("Import job không có resultBundle để nhập khóa học.");
+  }
+
+  const bundle = parseCourseBundle(JSON.stringify(job.resultBundle));
+  const coverImageDataUrl = await readCoverImage(job.id);
+
+  return buildRuntimeCourseFromBundle(
+    job.id,
+    bundle,
+    coverImageDataUrl,
+    job.updatedAt || job.createdAt,
+  );
+}
+
+async function persistLibraryCourse(course: RuntimeCourse) {
+  await writeJsonAtomic(libraryFilePath(course.id), course);
+}
+
 export async function consumeReadyImportJob(jobId: string): Promise<{
   job: ImportJob;
   course: RuntimeCourse;
 }> {
   const job = await requireImportJob(jobId);
-
-  // If already consumed, reuse the persisted course only when it belongs
-  // to this exact import job. Otherwise rebuild it from this job's bundle.
-  if (job.status === "consumed") {
-    try {
-      const existingRaw = await readFile(activeCourseFilePath, "utf8");
-      const existing = JSON.parse(existingRaw) as RuntimeCourse;
-      if (
-        existing?.id === "course-" + jobId &&
-        Array.isArray(existing.lessons) &&
-        existing.lessons.length > 0
-      ) {
-        return { job, course: existing };
-      }
-    } catch {
-      // Re-create from job resultBundle if needed
-    }
-  }
 
   if (job.status !== "ready" && job.status !== "consumed") {
     throw new Error(
@@ -83,70 +140,101 @@ export async function consumeReadyImportJob(jobId: string): Promise<{
     );
   }
 
-  if (!job.resultBundle) {
-    throw new Error("Import job không có resultBundle để nhập khóa học.");
-  }
-
-  // 1. Validate resultBundle
-  const bundle = parseCourseBundle(JSON.stringify(job.resultBundle));
-
-  // 2. Extract cover image from page 1 if available
-  let coverImageDataUrl: string | undefined;
-  try {
-    const firstPages = await readImportPages({
-      jobId,
-      startPage: 1,
-      endPage: 1,
-      limit: 1,
-    });
-    if (firstPages[0]?.previewImageDataUrl) {
-      coverImageDataUrl = firstPages[0].previewImageDataUrl;
-    }
-  } catch {
-    // Media preview is optional
-  }
-
-  // 3. Build RuntimeCourse
-  const runtimeCourse = buildRuntimeCourseFromBundle(
-    jobId,
-    bundle,
-    coverImageDataUrl,
+  let runtimeCourse = await readRuntimeCourseFile(
+    libraryFilePath("course-" + jobId),
   );
 
-  // 4. Atomically persist learner-facing course data
+  if (!runtimeCourse) {
+    runtimeCourse = await buildRuntimeCourseForJob(job);
+    await persistLibraryCourse(runtimeCourse);
+  }
+
+  // Keep active-course.json for backward compatibility with existing routes.
   await writeJsonAtomic(activeCourseFilePath, runtimeCourse);
 
-  // 5. Update job status to consumed only after persistence succeeds
   const updatedJob =
     job.status === "consumed" ? job : await consumeImportJob(jobId);
 
   return { job: updatedJob, course: runtimeCourse };
 }
 
-export async function getActiveCourse(): Promise<RuntimeCourse | null> {
-  // Check active course file first
+export async function getCourseLibrary(): Promise<RuntimeCourse[]> {
+  await mkdir(courseLibraryDir, { recursive: true });
+
+  const byId = new Map<string, RuntimeCourse>();
+
   try {
-    const raw = await readFile(activeCourseFilePath, "utf8");
-    const parsed = JSON.parse(raw) as RuntimeCourse;
-    if (parsed && Array.isArray(parsed.lessons) && parsed.lessons.length > 0) {
-      return parsed;
+    const entries = await readdir(courseLibraryDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      const course = await readRuntimeCourseFile(
+        path.join(courseLibraryDir, entry.name),
+      );
+      if (course) byId.set(course.id, course);
     }
   } catch {
-    // Continue to check import jobs
+    // Continue with migration sources.
   }
 
-  // If not persisted yet, find any ready or consumed import job
+  // Preserve the legacy active course if it predates the library directory.
+  const legacyActive = await readRuntimeCourseFile(activeCourseFilePath);
+  if (legacyActive && !byId.has(legacyActive.id)) {
+    byId.set(legacyActive.id, legacyActive);
+    await persistLibraryCourse(legacyActive);
+  }
+
+  // Migrate every previously consumed import job into the course library.
+  // This restores Sơ cấp 1 and Sơ cấp 2 without requiring a re-import.
   try {
     const jobs = await listImportJobs();
-    const readyOrConsumed = jobs.find(
-      (j) => (j.status === "ready" || j.status === "consumed") && j.resultBundle,
-    );
-    if (readyOrConsumed) {
-      const result = await consumeReadyImportJob(readyOrConsumed.id);
+
+    for (const job of jobs) {
+      if (job.status !== "consumed" || !job.resultBundle) continue;
+
+      const courseId = "course-" + job.id;
+      if (byId.has(courseId)) continue;
+
+      try {
+        const course = await buildRuntimeCourseForJob(job);
+        byId.set(course.id, course);
+        await persistLibraryCourse(course);
+      } catch {
+        // One malformed historical job must not hide the rest of the library.
+      }
+    }
+  } catch {
+    // The library can still operate from persisted course files.
+  }
+
+  return [...byId.values()].sort((a, b) => {
+    const aTime = a.source?.importedAt
+      ? new Date(a.source.importedAt).getTime()
+      : 0;
+    const bTime = b.source?.importedAt
+      ? new Date(b.source.importedAt).getTime()
+      : 0;
+    return bTime - aTime;
+  });
+}
+
+export async function getActiveCourse(): Promise<RuntimeCourse | null> {
+  const active = await readRuntimeCourseFile(activeCourseFilePath);
+  if (active) return active;
+
+  const library = await getCourseLibrary();
+  if (library.length) return library[0];
+
+  // Backward-compatible recovery for an unconsumed ready job.
+  try {
+    const jobs = await listImportJobs();
+    const ready = jobs.find((job) => job.status === "ready" && job.resultBundle);
+    if (ready) {
+      const result = await consumeReadyImportJob(ready.id);
       return result.course;
     }
   } catch {
-    // No jobs found
+    // No recoverable course.
   }
 
   return null;

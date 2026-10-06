@@ -1,7 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { nextReviewIntervalDays } from "@/lib/review-schedule";
+import { useContent } from "@/lib/content-store";
 
 export type SkillKey = "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
 type SkillStat = { correct: number; total: number };
@@ -31,10 +39,11 @@ type LearningContextValue = {
   completeActivity: (activityId: string, xp?: number) => void;
   completeLessonSkill: (lessonId: number, skill: SkillKey) => void;
   resetProgress: () => void;
-  resetForCourse: () => void;
+  resetForCourse: (courseId?: string) => void;
 };
 
-const STORAGE_KEY = "haneul-learning-state-v2";
+const LEGACY_STORAGE_KEY = "haneul-learning-state-v2";
+const STORAGE_KEY_PREFIX = "haneul-learning-state-v2:";
 const ALL_SKILLS: SkillKey[] = ["vocabulary", "grammar", "listening", "speaking", "reading", "writing"];
 const DAY_MS = 86_400_000;
 
@@ -107,31 +116,56 @@ function withActiveDay(current: LearningState) {
 }
 
 export function LearningProvider({ children }: { children: React.ReactNode }) {
+  const { activeCourseId, hydrated: contentHydrated } = useContent();
   const [state, setState] = useState(defaultState);
   const [hydrated, setHydrated] = useState(false);
+  const loadedCourseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!contentHydrated || activeCourseId === "empty") return;
+
+    loadedCourseIdRef.current = null;
     let savedState: LearningState | null = null;
+    const storageKey = STORAGE_KEY_PREFIX + activeCourseId;
 
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) savedState = normalizeLoadedState(JSON.parse(saved));
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved) {
+        savedState = normalizeLoadedState(JSON.parse(saved));
+      } else {
+        const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          savedState = normalizeLoadedState(JSON.parse(legacy));
+          window.localStorage.setItem(storageKey, legacy);
+          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+      }
     } catch {
       // Persistence is optional; the app still works when storage is unavailable.
     }
 
     const timer = window.setTimeout(() => {
-      if (savedState) setState(savedState);
+      loadedCourseIdRef.current = activeCourseId;
+      setState(savedState ?? defaultState);
       setHydrated(true);
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [activeCourseId, contentHydrated]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state, hydrated]);
+    if (
+      !hydrated ||
+      activeCourseId === "empty" ||
+      loadedCourseIdRef.current !== activeCourseId
+    ) {
+      return;
+    }
+    window.localStorage.setItem(
+      STORAGE_KEY_PREFIX + activeCourseId,
+      JSON.stringify(state),
+    );
+  }, [state, hydrated, activeCourseId]);
 
   const value = useMemo<LearningContextValue>(() => ({
     state,
@@ -266,16 +300,27 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
     },
     resetProgress() {
       setState(defaultState);
-      window.localStorage.removeItem(STORAGE_KEY);
+      if (activeCourseId !== "empty") {
+        window.localStorage.removeItem(STORAGE_KEY_PREFIX + activeCourseId);
+      }
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
-    resetForCourse() {
-      setState({
-        ...defaultState,
-        lessonProgress: {},
-      });
-      window.localStorage.removeItem(STORAGE_KEY);
+    resetForCourse(courseId) {
+      const targetCourseId = courseId ?? activeCourseId;
+      if (targetCourseId === activeCourseId) {
+        setState({
+          ...defaultState,
+          lessonProgress: {},
+        });
+      }
+      if (targetCourseId !== "empty") {
+        window.localStorage.removeItem(
+          STORAGE_KEY_PREFIX + targetCourseId,
+        );
+      }
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
-  }), [state, hydrated]);
+  }), [state, hydrated, activeCourseId]);
 
   return <LearningContext.Provider value={value}>{children}</LearningContext.Provider>;
 }

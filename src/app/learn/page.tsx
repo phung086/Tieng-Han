@@ -8,6 +8,8 @@ import {
   Sparkles,
   Star,
   Trophy,
+  LibraryBig,
+  Layers3,
 } from "lucide-react";
 import { EmptyCourseState } from "@/components/empty-course-state";
 import { useContent } from "@/lib/content-store";
@@ -15,7 +17,7 @@ import { useLearning } from "@/lib/learning-state";
 
 export default function LearnPage() {
   const { state } = useLearning();
-  const { course } = useContent();
+  const { course, courses, selectCourse } = useContent();
 
   if (!course.lessons.length) {
     return (
@@ -48,6 +50,68 @@ export default function LearnPage() {
 
   return (
     <div className="page journey-page-v2">
+      <section className="course-library-v2">
+        <div className="section-head-v2">
+          <div>
+            <span className="experience-kicker">COURSE LIBRARY</span>
+            <h2>Giáo trình của bạn</h2>
+          </div>
+          <span className="library-count-v2">
+            <LibraryBig size={15} />
+            {courses.length} giáo trình
+          </span>
+        </div>
+
+        <div className="course-library-grid-v2">
+          {courses.map((item) => {
+            const active = item.id === course.id;
+            return (
+              <button
+                className={
+                  active
+                    ? "course-library-card-v2 active"
+                    : "course-library-card-v2"
+                }
+                key={item.id}
+                type="button"
+                onClick={() => selectCourse(item.id)}
+              >
+                <div
+                  className={
+                    "course-library-cover-v2" +
+                    (item.source?.coverImageDataUrl ? " actual-cover" : "")
+                  }
+                >
+                  {item.source?.coverImageDataUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={item.source.coverImageDataUrl}
+                      alt={item.title}
+                    />
+                  ) : (
+                    <Layers3 size={28} />
+                  )}
+                </div>
+                <div className="course-library-copy-v2">
+                  <span>{item.level || "General"}</span>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.lessons.length} bài
+                    {item.source?.pageCount
+                      ? " · " + item.source.pageCount + " trang"
+                      : ""}
+                  </small>
+                  <small>{item.source?.fileName ?? "Haneul Course"}</small>
+                </div>
+                <div className="course-library-state-v2">
+                  {active ? "ĐANG HỌC" : "CHỌN"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="journey-hero-v2">
         <div
           className={
