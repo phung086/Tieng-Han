@@ -323,6 +323,10 @@ export function IngestionStudio() {
     return () => {
       cancelled = true;
     };
+    // Intentionally hydrate bridge/job state once on mount. monitorMcpJob
+    // uses mcpRunRef to cancel stale polling runs; rerunning this effect
+    // when localized copy or function identities change would duplicate polls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const primaryMap = maps[0];
