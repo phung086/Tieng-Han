@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { unlink, writeFile, mkdir } from "node:fs/promises";
+import { unlink, writeFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import {
   activeCourseFilePath,
+  courseLibraryDir,
   buildRuntimeCourseFromBundle,
   consumeReadyImportJob,
   getActiveCourse,
+  getCourseLibrary,
 } from "@/lib/course-consumer";
 import { parseCourseBundle } from "@/lib/course-bundle";
 import type { ImportJob } from "@/lib/import-jobs";
@@ -146,10 +148,12 @@ describe("course-consumer", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await unlink(activeCourseFilePath).catch(() => undefined);
+    await rm(courseLibraryDir, { recursive: true, force: true });
   });
 
   afterEach(async () => {
     await unlink(activeCourseFilePath).catch(() => undefined);
+    await rm(courseLibraryDir, { recursive: true, force: true });
   });
 
   it("consumes a ready import job into learner runtime course", async () => {
@@ -214,6 +218,48 @@ describe("course-consumer", () => {
     expect(result.course.id).toBe("course-import-new-job");
     expect(result.course.title).toBe("Tiếng Hàn Sơ cấp 1");
     expect(consumeImportJob).not.toHaveBeenCalled();
+  });
+
+  it("keeps multiple consumed course levels in the library", async () => {
+    const levelOne = sampleBundle();
+    const levelTwo = {
+      ...sampleBundle(),
+      course: {
+        ...sampleBundle().course,
+        title: "Tiếng Hàn Sơ cấp 2",
+        level: "초급 2",
+      },
+    };
+
+    const firstJob = {
+      ...readyJob(levelOne),
+      id: "import-level-1",
+      status: "consumed",
+      resultBundle: levelOne,
+    } as ImportJob;
+    const secondJob = {
+      ...readyJob(levelTwo),
+      id: "import-level-2",
+      status: "consumed",
+      resultBundle: levelTwo,
+    } as ImportJob;
+
+    vi.mocked(listImportJobs).mockResolvedValue([secondJob, firstJob]);
+    vi.mocked(readImportPages).mockResolvedValue([]);
+
+    const library = await getCourseLibrary();
+
+    expect(library).toHaveLength(2);
+    expect(library.map((item) => item.level).sort()).toEqual([
+      "초급 1",
+      "초급 2",
+    ]);
+    expect(library.map((item) => item.id)).toContain(
+      "course-import-level-1",
+    );
+    expect(library.map((item) => item.id)).toContain(
+      "course-import-level-2",
+    );
   });
 
   it("uses language-neutral fallbacks for blank imported metadata", () => {
