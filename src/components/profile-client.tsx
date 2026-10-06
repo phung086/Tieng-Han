@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -34,6 +35,7 @@ const skillLabels: Record<SkillKey, string> = {
 };
 
 export function ProfileClient() {
+  const router = useRouter();
   const { course } = useContent();
   const { state } = useLearning();
   const { configured, user, logout } = useAuth();
@@ -265,7 +267,8 @@ export function ProfileClient() {
                   className="secondary-button"
                   onClick={() => {
                     void logout().then(() => {
-                      window.location.href = "/login";
+                      router.replace("/login");
+                      router.refresh();
                     });
                   }}
                   type="button"
