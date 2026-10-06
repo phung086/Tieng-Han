@@ -22,8 +22,8 @@ import {
 } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 
-const skillTones: Record<SkillKey, string> = {
-  vocabulary: "violet",
+const skillTone: Record<SkillKey, string> = {
+  vocabulary: "purple",
   grammar: "blue",
   listening: "mint",
   speaking: "coral",
@@ -51,6 +51,9 @@ export default function DashboardPage() {
     ) ?? course.lessons[course.lessons.length - 1];
 
   const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
+  const completedLessons = course.lessons.filter(
+    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
+  ).length;
   const courseProgress = Math.round(
     course.lessons.reduce(
       (sum, lesson) =>
@@ -58,9 +61,6 @@ export default function DashboardPage() {
       0,
     ) / Math.max(1, course.lessons.length),
   );
-  const completedLessons = course.lessons.filter(
-    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
-  ).length;
   const dueCount = Object.values(state.mastery).filter(
     (item) => item.dueAt <= today,
   ).length;
@@ -73,151 +73,171 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="page dashboard-page">
-      <header className="game-topbar">
+    <div className="page home-v2">
+      <header className="home-head-v2">
         <div>
-          <span className="game-kicker">HANEUL ADVENTURE</span>
-          <h1>Hôm nay mình học gì?</h1>
-          <p>Mỗi chặng nhỏ là một bước tiến gần hơn đến phản xạ tiếng Hàn tự nhiên.</p>
+          <span className="experience-kicker">HANEUL SKY JOURNEY</span>
+          <h1>오늘도 한 걸음 더.</h1>
+          <p>
+            Một phiên ngắn hôm nay vẫn đủ để giữ nhịp và tiến gần hơn đến phản xạ tự nhiên.
+          </p>
         </div>
 
-        <div className="game-hud" aria-label="Tiến độ hôm nay">
-          <div className="hud-chip streak">
+        <div className="home-hud-v2" aria-label="Chỉ số học hôm nay">
+          <div className="home-hud-pill-v2 flame">
             <Flame size={18} />
-            <span>{state.streak} ngày</span>
+            {state.streak} ngày
           </div>
-          <div className="hud-chip xp">
+          <div className="home-hud-pill-v2 star">
             <Star size={18} />
-            <span>{state.xp} XP</span>
+            {state.xp} XP
           </div>
-          <div className="hud-chip goal">
+          <div className="home-hud-pill-v2 target">
             <Target size={18} />
-            <span>{state.todayXp}/{state.dailyGoal}</span>
+            {state.todayXp}/{state.dailyGoal}
           </div>
         </div>
       </header>
 
-      <section className="game-hero">
-        <div className="game-hero-copy">
-          <span className="hero-label">
-            <Sparkles size={14} />
-            Tiếp tục hành trình
-          </span>
-          <h2>{current.title}</h2>
-          <p>{current.vi} · {current.objective}</p>
+      <section className="home-layout-v2">
+        <article className="adventure-card-v2">
+          <div className="adventure-copy-v2">
+            <span className="adventure-label-v2">
+              <Sparkles size={14} />
+              Tiếp tục hành trình
+            </span>
+            <h2>{current.title}</h2>
+            <p>
+              {current.vi} · {current.objective}
+            </p>
 
-          <div className="hero-progress-line">
-            <div className="hero-progress-track">
-              <span style={{ width: currentProgress + "%" }} />
+            <div className="adventure-progress-v2">
+              <div className="adventure-track-v2">
+                <i style={{ width: currentProgress + "%" }} />
+              </div>
+              <strong>{currentProgress}%</strong>
             </div>
-            <strong>{currentProgress}%</strong>
+
+            <div className="adventure-actions-v2">
+              <Link className="primary-button" href={"/learn/" + current.id}>
+                Học tiếp
+                <ArrowRight size={18} />
+              </Link>
+              <Link className="ghost-game-button-v2" href="/learn">
+                <BookOpen size={16} />
+                Xem bản đồ
+              </Link>
+            </div>
           </div>
 
-          <Link className="primary-button" href={"/learn/" + current.id}>
-            Học tiếp
-            <ArrowRight size={18} />
-          </Link>
-        </div>
-
-        <div className="game-hero-visual">
-          <HaneulMascot size="lg" />
-          <div className="hero-level-bubble">
-            Bài {current.id} · {completedCurrentSkills}/6 kỹ năng
+          <div className="adventure-visual-v2">
+            <span className="adventure-orbit-v2" />
+            <HaneulMascot size="lg" />
+            <div className="current-badge-v2">
+              Bài {current.id} · {completedCurrentSkills}/6 kỹ năng
+            </div>
           </div>
-        </div>
+        </article>
+
+        <aside className="mission-stack-v2">
+          <article className="mission-card-v2 review">
+            <div className="mission-icon-v2">
+              <RotateCcw size={23} />
+            </div>
+            <div>
+              <strong>Ôn đúng lúc</strong>
+              <p>
+                {dueCount
+                  ? dueCount + " mục đang đến hạn hôm nay."
+                  : "Hàng đợi sạch. Bạn đang giữ trí nhớ rất ổn."}
+              </p>
+            </div>
+            <Link href="/review" aria-label="Mở ôn tập">
+              <ArrowRight size={16} />
+            </Link>
+          </article>
+
+          <article className="mission-card-v2 goal">
+            <div className="mission-icon-v2">
+              <Target size={23} />
+            </div>
+            <div>
+              <strong>Mục tiêu ngày</strong>
+              <p>
+                {state.todayXp}/{state.dailyGoal} XP · {goalProgress}% hoàn thành.
+              </p>
+            </div>
+            <Link href="/practice" aria-label="Mở luyện tập">
+              <ArrowRight size={16} />
+            </Link>
+          </article>
+
+          <article className="mission-card-v2 course">
+            <div className="mission-icon-v2">
+              <Trophy size={23} />
+            </div>
+            <div>
+              <strong>{completedLessons}/{course.lessons.length} bài</strong>
+              <p>
+                Tổng tiến độ giáo trình hiện tại: {courseProgress}%.
+              </p>
+            </div>
+            <Link href="/learn" aria-label="Mở lộ trình">
+              <ArrowRight size={16} />
+            </Link>
+          </article>
+        </aside>
       </section>
 
-      <section className="quest-grid" aria-label="Nhiệm vụ học tập">
-        <article className="quest-card review">
-          <div className="quest-icon">
-            <RotateCcw size={24} />
-          </div>
-          <h3>Ôn tập hôm nay</h3>
-          <p>
-            {dueCount
-              ? dueCount + " nội dung đang đến hạn ôn lại."
-              : "Chưa có nội dung quá hạn. Bạn đang giữ nhịp rất tốt."}
-          </p>
-          <Link className="text-button" href="/review">
-            Mở ôn tập <ArrowRight size={15} />
-          </Link>
-        </article>
-
-        <article className="quest-card daily">
-          <div className="quest-icon">
-            <Target size={24} />
-          </div>
-          <h3>Nhiệm vụ ngày</h3>
-          <p>Kiếm {state.dailyGoal} XP để giữ chuỗi học đều đặn.</p>
-          <div className="quest-progress">
-            <span style={{ width: goalProgress + "%" }} />
-          </div>
-          <strong>{state.todayXp} / {state.dailyGoal} XP</strong>
-        </article>
-
-        <article className="quest-card course">
-          <div className="quest-icon">
-            <Trophy size={24} />
-          </div>
-          <h3>Hành trình giáo trình</h3>
-          <p>
-            Đã hoàn thành {completedLessons}/{course.lessons.length} bài · tổng tiến độ {courseProgress}%.
-          </p>
-          <Link className="text-button" href="/learn">
-            Xem bản đồ học <ArrowRight size={15} />
-          </Link>
-        </article>
-      </section>
-
-      <section>
-        <div className="game-section-title">
+      <section className="home-section-v2">
+        <div className="section-head-v2">
           <div>
-            <span className="game-kicker">SKILL ISLANDS</span>
-            <h2>6 kỹ năng của bạn</h2>
+            <span className="experience-kicker">SKILL CONSTELLATION</span>
+            <h2>6 kỹ năng trên cùng một bầu trời</h2>
           </div>
-          <Link className="text-button" href="/stats">
-            Xem thống kê <ArrowRight size={15} />
+          <Link href="/stats">
+            Xem hiệu suất
+            <ArrowRight size={15} />
           </Link>
         </div>
 
-        <div className="skill-islands">
-          {(Object.keys(skillTones) as SkillKey[]).map((key) => {
+        <div className="skill-deck-v2">
+          {(Object.keys(skillTone) as SkillKey[]).map((key) => {
             const score = accuracy(state.skills[key]);
             const label = messages.skills[key];
             return (
               <article
-                className={"skill-island tone-" + skillTones[key]}
+                className={"skill-card-v2 " + skillTone[key]}
                 key={key}
               >
-                <span className="skill-korean">{label.ko}</span>
+                <span>{label.ko}</span>
                 <h3>{label.vi}</h3>
-                <strong className="skill-score">{score}%</strong>
-                <div className="mini-progress">
-                  <span style={{ width: score + "%" }} />
-                </div>
-                <p>
+                <strong>{score}%</strong>
+                <small>
                   {state.skills[key].total
                     ? state.skills[key].correct +
                       "/" +
                       state.skills[key].total +
-                      " câu đúng"
-                    : "Chưa bắt đầu"}
-                </p>
+                      " lượt đúng"
+                    : "Chưa có dữ liệu"}
+                </small>
               </article>
             );
           })}
         </div>
       </section>
 
-      <section className="game-section-title">
-        <div>
-          <span className="game-kicker">QUICK START</span>
-          <h2>Vào học ngay</h2>
+      <section className="home-section-v2">
+        <div className="section-head-v2">
+          <div>
+            <span className="experience-kicker">YOUR SPACE</span>
+            <h2>Tiến độ này là của riêng bạn</h2>
+          </div>
+          <Link href="/profile">
+            Mở hồ sơ
+            <ArrowRight size={15} />
+          </Link>
         </div>
-        <Link className="secondary-button small" href={"/learn/" + current.id}>
-          <BookOpen size={16} />
-          Bài {current.id}
-        </Link>
       </section>
     </div>
   );

@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BookOpenText, Flame, Home, RotateCcw, Settings, Sparkles, Target } from "lucide-react";
+import {
+  BarChart3,
+  BookOpenText,
+  Flame,
+  Home,
+  RotateCcw,
+  Sparkles,
+  Target,
+  UserRound,
+} from "lucide-react";
 import { LearningProvider, useLearning } from "@/lib/learning-state";
 import { ContentProvider, useContent } from "@/lib/content-store";
 import { I18nProvider, useMessages } from "@/i18n/messages";
@@ -27,27 +36,59 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       <aside className="sidebar">
         <Link className="brand" href="/" aria-label={productConfig.name}>
           <span className="brand-mark">{productConfig.mark}</span>
-          <span><strong>{productConfig.name}</strong><small>{productConfig.koreanSubtitle}</small></span>
+          <span>
+            <strong>{productConfig.name}</strong>
+            <small>{productConfig.koreanSubtitle}</small>
+          </span>
         </Link>
 
         <nav className="side-nav" aria-label={messages.navigation.textbook}>
           {navigation.map(({ href, key, icon: Icon }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return <Link className={active ? "nav-item active" : "nav-item"} href={href} key={href}><Icon size={20} strokeWidth={2.1} /><span>{messages.navigation[key]}</span></Link>;
+            const active =
+              href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+            return (
+              <Link
+                className={active ? "nav-item active" : "nav-item"}
+                href={href}
+                key={href}
+              >
+                <Icon size={20} strokeWidth={2.1} />
+                <span>{messages.navigation[key]}</span>
+              </Link>
+            );
           })}
         </nav>
 
         <div className="sidebar-spacer" />
 
         <div className="streak-card">
-          <div className="streak-icon"><Flame size={19} /></div>
-          <div><strong>{state.streak} {messages.dashboard.days}</strong><span>{messages.navigation.streak}</span></div>
+          <div className="streak-icon">
+            <Flame size={19} />
+          </div>
+          <div>
+            <strong>
+              {state.streak} {messages.dashboard.days}
+            </strong>
+            <span>{messages.navigation.streak}</span>
+          </div>
         </div>
 
-        <Link className="profile-chip" href="/settings">
-          <div className="avatar">H</div>
-          <div><strong>{productConfig.defaultLearnerName}</strong><span>{course.level || messages.common.noData} · {state.xp} XP</span></div>
-          <Settings size={17} />
+        <Link
+          className={pathname.startsWith("/profile") ? "profile-chip active" : "profile-chip"}
+          href="/profile"
+          aria-label="Mở hồ sơ học tập"
+        >
+          <div className="avatar">
+            {productConfig.defaultLearnerName.slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <strong>{productConfig.defaultLearnerName}</strong>
+            <span>
+              {course.level || messages.common.noData} · {state.xp} XP
+            </span>
+          </div>
+          <UserRound size={17} />
         </Link>
       </aside>
 
@@ -55,19 +96,51 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
       <nav className="bottom-nav" aria-label={messages.navigation.textbook}>
         {navigation.map(({ href, key, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-          return <Link className={active ? "bottom-item active" : "bottom-item"} href={href} key={href}><Icon size={20} strokeWidth={2.2} /><span>{messages.navigation[key]}</span></Link>;
+          const active =
+            href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+          return (
+            <Link
+              className={active ? "bottom-item active" : "bottom-item"}
+              href={href}
+              key={href}
+            >
+              <Icon size={20} strokeWidth={2.2} />
+              <span>{messages.navigation[key]}</span>
+            </Link>
+          );
         })}
       </nav>
 
       <div className="mobile-topbar">
-        <Link className="mobile-brand" href="/"><span className="brand-mark">{productConfig.mark}</span><strong>{productConfig.name}</strong></Link>
-        <Link className="mobile-library" href="/settings" aria-label={messages.navigation.settingsAria}><Sparkles size={20} /></Link>
+        <Link className="mobile-brand" href="/">
+          <span className="brand-mark">{productConfig.mark}</span>
+          <strong>{productConfig.name}</strong>
+        </Link>
+        <Link
+          className="mobile-library"
+          href="/profile"
+          aria-label="Mở hồ sơ học tập"
+        >
+          {pathname.startsWith("/profile") ? (
+            <Sparkles size={20} />
+          ) : (
+            <UserRound size={20} />
+          )}
+        </Link>
       </div>
     </div>
   );
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  return <I18nProvider><ContentProvider><LearningProvider><ShellContent>{children}</ShellContent></LearningProvider></ContentProvider></I18nProvider>;
+  return (
+    <I18nProvider>
+      <ContentProvider>
+        <LearningProvider>
+          <ShellContent>{children}</ShellContent>
+        </LearningProvider>
+      </ContentProvider>
+    </I18nProvider>
+  );
 }

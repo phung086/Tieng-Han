@@ -4,13 +4,11 @@ import Link from "next/link";
 import {
   Check,
   LockKeyhole,
-  Map,
   Play,
   Sparkles,
   Star,
   Trophy,
 } from "lucide-react";
-import { HaneulMascot } from "@/components/haneul-mascot";
 import { EmptyCourseState } from "@/components/empty-course-state";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
@@ -43,30 +41,14 @@ export default function LearnPage() {
       (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100,
     ) ?? course.lessons[course.lessons.length - 1];
 
+  const zones = Array.from(
+    { length: Math.ceil(course.lessons.length / 5) },
+    (_, index) => course.lessons.slice(index * 5, index * 5 + 5),
+  );
+
   return (
-    <div className="page">
-      <header className="world-header">
-        <div>
-          <span className="game-kicker">LEARNING WORLD</span>
-          <h1>Bản đồ hành trình</h1>
-          <p>
-            Mở từng chặng theo thứ tự, hoàn thành đủ kỹ năng để tiến đến bài tiếp theo.
-          </p>
-        </div>
-
-        <div className="world-stats">
-          <div className="world-stat">
-            <strong>{courseProgress}%</strong>
-            <span>Tiến độ</span>
-          </div>
-          <div className="world-stat">
-            <strong>{completed}/{course.lessons.length}</strong>
-            <span>Hoàn thành</span>
-          </div>
-        </div>
-      </header>
-
-      <section className="course-world-hero">
+    <div className="page journey-page-v2">
+      <section className="journey-hero-v2">
         <div
           className={
             "book-cover" +
@@ -85,93 +67,129 @@ export default function LearnPage() {
           )}
         </div>
 
-        <div className="course-world-copy">
-          <span className="game-kicker">{course.level}</span>
-          <h2>{course.title}</h2>
+        <div className="journey-title-v2">
+          <span className="experience-kicker">LEARNING WORLD</span>
+          <h1>{course.title}</h1>
           <p>
-            {course.lessons.length} bài học · bài hiện tại: {current.id}
+            Đi từng chặng nhỏ, mở từng bài và giữ nhịp học đều. Bài hiện tại là Bài {current.id}.
           </p>
-          <div className="course-progress-track">
-            <span style={{ width: courseProgress + "%" }} />
-          </div>
         </div>
 
-        <HaneulMascot size="sm" />
+        <div className="journey-stat-v2">
+          <strong>{courseProgress}%</strong>
+          <span>{completed}/{course.lessons.length} bài hoàn thành</span>
+        </div>
       </section>
 
-      <section className="game-world-map" aria-label="Bản đồ bài học">
-        {course.lessons.map((lesson, index) => {
-          const progress = state.lessonProgress[String(lesson.id)] ?? 0;
-          const previousDone =
-            index === 0 ||
-            (state.lessonProgress[String(course.lessons[index - 1].id)] ??
-              0) >= 100;
-          const done = progress >= 100;
-          const unlocked = done || previousDone;
-          const isCurrent = unlocked && !done;
-          const status = done ? "done" : isCurrent ? "current" : "locked";
+      {zones.map((lessons, zoneIndex) => (
+        <section className="journey-zone-v2" key={"zone-" + zoneIndex}>
+          <header className="zone-title-v2">
+            <span className="zone-number-v2">{zoneIndex + 1}</span>
+            <div>
+              <span>CHẶNG {zoneIndex + 1}</span>
+              <h2>
+                {zoneIndex === 0
+                  ? "Làm quen & tạo phản xạ"
+                  : zoneIndex === 1
+                    ? "Dùng tiếng Hàn trong đời sống"
+                    : "Củng cố & chinh phục"}
+              </h2>
+            </div>
+          </header>
 
-          return (
-            <article className={"world-stop " + status} key={lesson.id}>
-              <div className="world-node">
-                {done ? (
-                  <Check size={32} strokeWidth={3} />
-                ) : unlocked ? (
-                  <Play size={29} fill="currentColor" />
-                ) : (
-                  <LockKeyhole size={27} />
-                )}
-              </div>
+          <div className="zone-path-v2">
+            {lessons.map((lesson) => {
+              const globalIndex = course.lessons.findIndex(
+                (item) => item.id === lesson.id,
+              );
+              const progress =
+                state.lessonProgress[String(lesson.id)] ?? 0;
+              const previousDone =
+                globalIndex === 0 ||
+                (state.lessonProgress[
+                  String(course.lessons[globalIndex - 1].id)
+                ] ?? 0) >= 100;
+              const done = progress >= 100;
+              const unlocked = done || previousDone;
+              const currentLesson = unlocked && !done;
+              const status = done
+                ? "done"
+                : currentLesson
+                  ? "current"
+                  : "locked";
 
-              <div className="world-island">
-                <span className="lesson-number">
-                  {done ? (
-                    <Trophy size={12} />
-                  ) : isCurrent ? (
-                    <Sparkles size={12} />
-                  ) : (
-                    <Map size={12} />
-                  )}
-                  Bài {String(lesson.id).padStart(2, "0")}
-                </span>
+              return (
+                <article
+                  className={"journey-stop-v2 " + status}
+                  key={lesson.id}
+                >
+                  <div className="journey-node-v2">
+                    {done ? (
+                      <Check size={29} strokeWidth={3} />
+                    ) : unlocked ? (
+                      <Play size={25} fill="currentColor" />
+                    ) : (
+                      <LockKeyhole size={24} />
+                    )}
+                  </div>
 
-                <h3>{lesson.title}</h3>
-                <p>{lesson.vi}</p>
+                  <div className="journey-card-v2">
+                    <span>
+                      {done
+                        ? "ĐÃ HOÀN THÀNH"
+                        : currentLesson
+                          ? "ĐANG CHỜ BẠN"
+                          : "CHƯA MỞ KHÓA"}
+                    </span>
+                    <h3>
+                      Bài {String(lesson.id).padStart(2, "0")} · {lesson.title}
+                    </h3>
+                    <p>{lesson.vi}</p>
+                    <div className="journey-mini-track-v2">
+                      <i style={{ width: progress + "%" }} />
+                    </div>
 
-                <div className="world-progress">
-                  <span style={{ width: progress + "%" }} />
-                </div>
-
-                {unlocked ? (
-                  <Link
-                    className="world-island-link"
-                    href={"/learn/" + lesson.id}
-                    aria-label={"Mở bài " + lesson.id + " " + lesson.title}
-                  />
-                ) : (
-                  <span className="world-lock-note">
-                    <LockKeyhole size={11} />
-                    Hoàn thành bài trước để mở khóa
-                  </span>
-                )}
-              </div>
-            </article>
-          );
-        })}
-
-        <div className="world-stop done">
-          <div className="world-node">
-            <Star size={34} fill="currentColor" />
+                    {unlocked ? (
+                      <Link
+                        href={"/learn/" + lesson.id}
+                        aria-label={
+                          "Mở bài " + lesson.id + " " + lesson.title
+                        }
+                      />
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
           </div>
-          <div className="world-island">
-            <span className="lesson-number">
-              <Trophy size={12} />
-              Đích đến
-            </span>
-            <h3>Chinh phục {course.level}</h3>
-            <p>Hoàn thành tất cả bài học để kết thúc hành trình.</p>
+        </section>
+      ))}
+
+      <section className="journey-zone-v2">
+        <header className="zone-title-v2">
+          <span className="zone-number-v2">
+            <Star size={21} fill="currentColor" />
+          </span>
+          <div>
+            <span>ĐÍCH ĐẾN</span>
+            <h2>Chinh phục {course.level}</h2>
           </div>
-        </div>
+        </header>
+
+        <article className="mission-card-v2 course">
+          <div className="mission-icon-v2">
+            <Trophy size={25} />
+          </div>
+          <div>
+            <strong>{completed}/{course.lessons.length} bài hoàn thành</strong>
+            <p>
+              Khi hoàn thành toàn bộ giáo trình, đây sẽ là cột mốc đầu tiên trong hành trình Haneul của bạn.
+            </p>
+          </div>
+          <Link href="/stats" aria-label="Xem tiến độ">
+            <Sparkles size={16} />
+          </Link>
+        </article>
       </section>
     </div>
   );
