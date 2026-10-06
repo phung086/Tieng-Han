@@ -7,6 +7,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -31,6 +32,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   const item = items[index];
+  const nextStep = getNextLessonFlowStep(lessonId, "listening");
 
   function play(rate = 0.72) {
     if (!("speechSynthesis" in window)) return;
@@ -84,8 +86,8 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.listening.listenAgain}
           </button>
-          <Link className="primary-button" href={"/learn/" + lessonId}>
-            {messages.common.backToLesson}
+          <Link className="primary-button" href={nextStep.href}>
+            Tiếp: {nextStep.label}
           </Link>
         </div>
       </div>
