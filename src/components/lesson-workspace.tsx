@@ -70,7 +70,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       ko: "문법",
       title: "Nắm mẫu câu",
       desc: lesson.grammar.length + " điểm ngữ pháp + câu luyện trộn",
-      href: "/practice/quiz?lesson=" + lessonId + "&mode=guided",
+      href: "/grammar?lesson=" + lessonId,
       available: lesson.grammar.length > 0,
     },
     {
