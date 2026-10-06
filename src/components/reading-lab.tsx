@@ -39,7 +39,10 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
     reading.questions.forEach((item, index) => {
       recordAnswer("reading", answers[index] === item.answer, item.id);
     });
-    completeLessonSkill(lessonId, "reading");
+
+    if (correct / Math.max(1, reading.questions.length) >= 0.75) {
+      completeLessonSkill(lessonId, "reading");
+    }
   }
 
   function reset() {
@@ -149,7 +152,8 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
             >
               {checked ? messages.reading.retry : messages.reading.check}
             </button>
-            {checked ? (
+            {checked &&
+            correct / Math.max(1, reading.questions.length) >= 0.75 ? (
               <Link className="primary-button" href={nextStep.href}>
                 Tiếp: {nextStep.label} <ArrowRight size={16} />
               </Link>
