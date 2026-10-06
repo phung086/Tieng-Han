@@ -586,7 +586,7 @@ export function IngestionStudio() {
         if (job.status === "ready" && job.resultBundle) {
           const consumeResult = await consumeMcpImportJob(jobId);
           if (consumeResult.course) {
-            resetForCourse();
+            resetForCourse(consumeResult.course.id);
             replaceCourse(consumeResult.course);
           } else {
             const bundleFile = new File(
@@ -835,7 +835,7 @@ export function IngestionStudio() {
       setCourseTitle(runtimeCourse.title);
       setLevel(runtimeCourse.level);
       setEdition(bundle.course.edition ?? edition);
-      resetForCourse();
+      resetForCourse(runtimeCourse.id);
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
@@ -1037,7 +1037,7 @@ export function IngestionStudio() {
         questions,
       };
 
-      resetForCourse();
+      resetForCourse(runtimeCourse.id);
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
