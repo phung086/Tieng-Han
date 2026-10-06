@@ -206,7 +206,12 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
           ) : <span />}
 
           <button
-            className="primary-button"
+            className={
+              "primary-button" +
+              (checked && selected === item.answer
+                ? " auto-advance-button-v3"
+                : "")
+            }
             disabled={!selected || (checked && selected === item.answer)}
             onClick={checked ? () => advance() : () => submit()}
           >
