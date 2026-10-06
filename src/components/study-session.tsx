@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useContent } from "@/lib/content-store";
-import { useLearning } from "@/lib/learning-state";
+import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 
@@ -109,6 +109,9 @@ export function StudySession({
   const [bestCombo, setBestCombo] = useState(0);
   const [focus, setFocus] = useState(3);
   const [showHint, setShowHint] = useState(false);
+  const [skillStats, setSkillStats] = useState<
+    Partial<Record<SkillKey, { correct: number; total: number }>>
+  >({});
 
   if (!questions.length) {
     return (
@@ -166,7 +169,6 @@ export function StudySession({
       const nextCombo = combo + 1;
       setCombo(nextCombo);
       setBestCombo((value) => Math.max(value, nextCombo));
-      completeLessonSkill(activeLessonId, question.skill);
     } else {
       setCombo(0);
       setFocus((value) => Math.max(0, value - 1));
@@ -177,11 +179,33 @@ export function StudySession({
       );
     }
 
+    setSkillStats((current) => {
+      const previous = current[question.skill] ?? { correct: 0, total: 0 };
+      return {
+        ...current,
+        [question.skill]: {
+          correct: previous.correct + (isCorrect ? 1 : 0),
+          total: previous.total + 1,
+        },
+      };
+    });
+
     recordAnswer(question.skill, isCorrect, question.id);
   }
 
   function next() {
     if (index === questions.length - 1) {
+      if (mode === "mastery" && !retryIds) {
+        for (const [skill, stat] of Object.entries(skillStats)) {
+          if (
+            stat &&
+            stat.total > 0 &&
+            stat.correct / stat.total >= 0.75
+          ) {
+            completeLessonSkill(activeLessonId, skill as SkillKey);
+          }
+        }
+      }
       setFinished(true);
       return;
     }
@@ -206,6 +230,7 @@ export function StudySession({
     setBestCombo(0);
     setFocus(3);
     setShowHint(false);
+    setSkillStats({});
   }
 
   if (finished) {
