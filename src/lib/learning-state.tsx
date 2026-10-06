@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { nextReviewIntervalDays } from "@/lib/review-schedule";
 import { useContent } from "@/lib/content-store";
 
@@ -112,11 +119,12 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
   const { activeCourseId, hydrated: contentHydrated } = useContent();
   const [state, setState] = useState(defaultState);
   const [hydrated, setHydrated] = useState(false);
+  const loadedCourseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!contentHydrated || activeCourseId === "empty") return;
 
-    setHydrated(false);
+    loadedCourseIdRef.current = null;
     let savedState: LearningState | null = null;
     const storageKey = STORAGE_KEY_PREFIX + activeCourseId;
 
@@ -137,6 +145,7 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
     }
 
     const timer = window.setTimeout(() => {
+      loadedCourseIdRef.current = activeCourseId;
       setState(savedState ?? defaultState);
       setHydrated(true);
     }, 0);
@@ -145,7 +154,13 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
   }, [activeCourseId, contentHydrated]);
 
   useEffect(() => {
-    if (!hydrated || activeCourseId === "empty") return;
+    if (
+      !hydrated ||
+      activeCourseId === "empty" ||
+      loadedCourseIdRef.current !== activeCourseId
+    ) {
+      return;
+    }
     window.localStorage.setItem(
       STORAGE_KEY_PREFIX + activeCourseId,
       JSON.stringify(state),
