@@ -118,6 +118,11 @@ export const viMessages = {
         ko: "어휘",
         desc: "Lật thẻ, nghe phát âm và tự đánh giá độ nhớ.",
       },
+      grammar: {
+        title: "Ngữ pháp",
+        ko: "문법",
+        desc: "Hiểu mẫu câu từ giáo trình, nghe ví dụ rồi luyện có phản hồi.",
+      },
       listening: {
         title: "Luyện nghe",
         ko: "듣기",
