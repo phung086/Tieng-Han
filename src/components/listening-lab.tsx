@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Headphones, Pause, Play, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
@@ -8,6 +8,8 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+
+const AUTO_ADVANCE_DELAY_MS = 850;
 
 export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -21,6 +23,15 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const [playing, setPlaying] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!lesson || !items.length) {
     return (
@@ -45,17 +56,14 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
     window.speechSynthesis.speak(utterance);
   }
 
-  function submit() {
-    if (!selected || checked) return;
-    const correct = selected === item.answer;
-    if (correct) setCorrectCount((value) => value + 1);
-    setChecked(true);
-    recordAnswer("listening", correct, item.id);
-  }
+  function advance(effectiveCorrectCount = correctCount) {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
 
-  function next() {
     if (index === items.length - 1) {
-      if (correctCount / items.length >= 0.75) {
+      if (effectiveCorrectCount / items.length >= 0.75) {
         completeLessonSkill(lessonId, "listening");
       }
       setFinished(true);
@@ -67,7 +75,33 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
     setChecked(false);
   }
 
+  function submit(choiceOverride?: string) {
+    const candidate = choiceOverride ?? selected;
+    if (!candidate || checked) return;
+
+    const correct = candidate === item.answer;
+    const nextCorrectCount = correctCount + (correct ? 1 : 0);
+
+    if (choiceOverride !== undefined) {
+      setSelected(choiceOverride);
+    }
+
+    setCorrectCount(nextCorrectCount);
+    setChecked(true);
+    recordAnswer("listening", correct, item.id);
+
+    if (correct) {
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        advance(nextCorrectCount);
+      }, AUTO_ADVANCE_DELAY_MS);
+    }
+  }
+
   function restart() {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     setIndex(0);
     setSelected("");
     setChecked(false);
@@ -154,7 +188,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
                 className={state}
                 disabled={checked}
                 key={choice}
-                onClick={() => setSelected(choice)}
+                onClick={() => submit(choice)}
               >
                 {choice}
               </button>
@@ -173,13 +207,17 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
 
           <button
             className="primary-button"
-            disabled={!selected}
-            onClick={checked ? next : submit}
+            disabled={!selected || (checked && selected === item.answer)}
+            onClick={checked ? () => advance() : () => submit()}
           >
             {checked
-              ? index === items.length - 1
-                ? messages.common.finish
-                : messages.listening.next
+              ? selected === item.answer
+                ? index === items.length - 1
+                  ? "Đúng rồi · đang hoàn tất…"
+                  : "Đúng rồi · tự chuyển…"
+                : index === items.length - 1
+                  ? messages.common.finish
+                  : messages.listening.next
               : messages.listening.check}
           </button>
         </div>
