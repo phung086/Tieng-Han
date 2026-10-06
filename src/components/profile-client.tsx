@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BookOpenCheck,
   CalendarDays,
   Flame,
+  Database,
   Gauge,
+  LogIn,
+  LogOut,
   Medal,
   Settings,
   ShieldCheck,
@@ -19,6 +23,7 @@ import {
 import { useContent } from "@/lib/content-store";
 import { accuracy, useLearning, type SkillKey } from "@/lib/learning-state";
 import { productConfig } from "@/config/product";
+import { useAuth } from "@/lib/auth-client";
 
 const skillLabels: Record<SkillKey, string> = {
   vocabulary: "Từ vựng",
@@ -30,8 +35,11 @@ const skillLabels: Record<SkillKey, string> = {
 };
 
 export function ProfileClient() {
+  const router = useRouter();
   const { course } = useContent();
   const { state } = useLearning();
+  const { configured, user, logout } = useAuth();
+  const learnerName = user?.name ?? productConfig.defaultLearnerName;
 
   const totalAttempts = Object.values(state.skills).reduce(
     (sum, item) => sum + item.total,
@@ -95,19 +103,27 @@ export function ProfileClient() {
     <div className="profile-v2">
       <section className="profile-hero-v2">
         <div className="profile-avatar-v2">
-          <span>{productConfig.defaultLearnerName.slice(0, 1).toUpperCase()}</span>
+          <span>{learnerName.slice(0, 1).toUpperCase()}</span>
           <i />
         </div>
 
         <div className="profile-identity-v2">
           <span className="experience-kicker">HANEUL LEARNER</span>
-          <h1>{productConfig.defaultLearnerName}</h1>
+          <h1>{learnerName}</h1>
           <p>
-            Hồ sơ học tập cục bộ · sẵn sàng chuyển sang tài khoản thật khi thêm xác thực.
+            {user
+              ? "Tiến độ đang được đồng bộ theo tài khoản Haneul."
+              : configured
+                ? "Đăng nhập để đồng bộ tiến độ giữa các thiết bị."
+                : "Local-only mode · tiến độ hiện được lưu trên trình duyệt này."}
           </p>
           <div className="profile-tags-v2">
-            <span><ShieldCheck size={14} /> Local profile</span>
+            <span>
+              <ShieldCheck size={14} />
+              {user ? user.role.toUpperCase() : configured ? "Guest" : "Local profile"}
+            </span>
             <span><BookOpenCheck size={14} /> {course.level || "Chưa có cấp độ"}</span>
+            {user ? <span><Database size={14} /> {user.email}</span> : null}
           </div>
         </div>
 
@@ -222,16 +238,54 @@ export function ProfileClient() {
 
         <article className="account-future-v2">
           <div className="future-icon-v2"><UserRound size={27} /></div>
-          <span className="experience-kicker">NEXT PHASE</span>
-          <h2>Tài khoản & đồng bộ</h2>
+          <span className="experience-kicker">
+            {user ? "ACCOUNT SYNC" : "HANEUL ACCOUNT"}
+          </span>
+          <h2>
+            {user
+              ? "Tài khoản đã được kết nối"
+              : configured
+                ? "Đăng nhập để đồng bộ"
+                : "Local-only mode"}
+          </h2>
           <p>
-            Nền UI đã sẵn cho đăng ký, đăng nhập, đồng bộ tiến độ nhiều thiết bị và phân quyền admin.
-            Chưa bật backend auth để tránh ảnh hưởng luồng học hiện tại.
+            {user
+              ? "XP, mastery, tiến độ từng giáo trình và enrollment được lưu theo tài khoản trong PostgreSQL."
+              : configured
+                ? "Bạn vẫn có thể học cục bộ, nhưng đăng nhập sẽ giúp giữ tiến độ theo tài khoản."
+                : "Database chưa được cấu hình nên Haneul tiếp tục dùng localStorage/IndexedDB như trước."}
           </p>
-          <Link className="secondary-button" href="/settings">
-            <Settings size={16} />
-            Cài đặt hiện tại
-          </Link>
+          <div className="profile-account-actions-v1">
+            {user ? (
+              <>
+                {user.role === "admin" ? (
+                  <Link className="secondary-button" href="/admin">
+                    <ShieldCheck size={16} /> Quản trị
+                  </Link>
+                ) : null}
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    void logout().then(() => {
+                      router.replace("/login");
+                      router.refresh();
+                    });
+                  }}
+                  type="button"
+                >
+                  <LogOut size={16} /> Đăng xuất
+                </button>
+              </>
+            ) : configured ? (
+              <Link className="primary-button" href="/login">
+                <LogIn size={16} /> Đăng nhập
+              </Link>
+            ) : (
+              <Link className="secondary-button" href="/settings">
+                <Settings size={16} /> Cài đặt hiện tại
+              </Link>
+            )}
+          </div>
         </article>
       </section>
     </div>

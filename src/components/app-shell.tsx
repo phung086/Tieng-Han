@@ -8,6 +8,7 @@ import {
   Flame,
   Home,
   RotateCcw,
+  Shield,
   Sparkles,
   Target,
   UserRound,
@@ -16,6 +17,7 @@ import { LearningProvider, useLearning } from "@/lib/learning-state";
 import { ContentProvider, useContent } from "@/lib/content-store";
 import { I18nProvider, useMessages } from "@/i18n/messages";
 import { productConfig } from "@/config/product";
+import { AuthProvider, useAuth } from "@/lib/auth-client";
 
 const navigation = [
   { href: "/", key: "today", icon: Home },
@@ -29,7 +31,15 @@ function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { state } = useLearning();
   const { course } = useContent();
+  const { configured, user } = useAuth();
   const messages = useMessages();
+
+  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+    return <div className="auth-shell-v1">{children}</div>;
+  }
+
+  const learnerName = user?.name ?? productConfig.defaultLearnerName;
+  const profileHref = configured && !user ? "/login" : "/profile";
 
   return (
     <div className="app-shell">
@@ -60,6 +70,16 @@ function ShellContent({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        {user?.role === "admin" ? (
+          <Link
+            className={pathname.startsWith("/admin") ? "nav-item active admin-nav-item-v1" : "nav-item admin-nav-item-v1"}
+            href="/admin"
+          >
+            <Shield size={20} strokeWidth={2.1} />
+            <span>Quản trị</span>
+          </Link>
+        ) : null}
+
         <div className="sidebar-spacer" />
 
         <div className="streak-card">
@@ -76,16 +96,20 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
         <Link
           className={pathname.startsWith("/profile") ? "profile-chip active" : "profile-chip"}
-          href="/profile"
-          aria-label="Mở hồ sơ học tập"
+          href={profileHref}
+          aria-label={user ? "Mở hồ sơ học tập" : "Đăng nhập Haneul"}
         >
           <div className="avatar">
-            {productConfig.defaultLearnerName.slice(0, 1).toUpperCase()}
+            {learnerName.slice(0, 1).toUpperCase()}
           </div>
           <div>
-            <strong>{productConfig.defaultLearnerName}</strong>
+            <strong>{user ? learnerName : configured ? "Đăng nhập" : learnerName}</strong>
             <span>
-              {course.level || messages.common.noData} · {state.xp} XP
+              {user
+                ? (user.role === "admin" ? "Admin" : "Learner") + " · " + state.xp + " XP"
+                : configured
+                  ? "Đồng bộ tiến độ"
+                  : (course.level || messages.common.noData) + " · " + state.xp + " XP"}
             </span>
           </div>
           <UserRound size={17} />
@@ -119,8 +143,8 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         </Link>
         <Link
           className="mobile-library"
-          href="/profile"
-          aria-label="Mở hồ sơ học tập"
+          href={profileHref}
+          aria-label={user ? "Mở hồ sơ học tập" : "Đăng nhập Haneul"}
         >
           {pathname.startsWith("/profile") ? (
             <Sparkles size={20} />
@@ -136,11 +160,13 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider>
-      <ContentProvider>
-        <LearningProvider>
-          <ShellContent>{children}</ShellContent>
-        </LearningProvider>
-      </ContentProvider>
+      <AuthProvider>
+        <ContentProvider>
+          <LearningProvider>
+            <ShellContent>{children}</ShellContent>
+          </LearningProvider>
+        </ContentProvider>
+      </AuthProvider>
     </I18nProvider>
   );
 }
