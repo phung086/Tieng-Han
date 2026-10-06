@@ -24,6 +24,7 @@ import { EmptyCourseState } from "@/components/empty-course-state";
 
 const skillModes = [
   { path: "/vocabulary", key: "vocabulary", icon: Layers3, tone: "blue" },
+  { path: "/grammar", key: "grammar", icon: Brain, tone: "violet" },
   { path: "/listening", key: "listening", icon: Headphones, tone: "mint" },
   { path: "/speaking", key: "speaking", icon: Mic2, tone: "coral" },
   { path: "/reading", key: "reading", icon: BookOpenText, tone: "amber" },

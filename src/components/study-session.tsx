@@ -35,9 +35,11 @@ const normalize = (value: string) =>
 export function StudySession({
   lessonId,
   mode = "guided",
+  skill,
 }: {
   lessonId?: number;
   mode?: StudySessionMode;
+  skill?: SkillKey;
 }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { course } = useContent();
@@ -47,13 +49,15 @@ export function StudySession({
 
   const baseQuestions = useMemo(() => {
     const all = course.questions.filter(
-      (item) => item.lessonId === activeLessonId,
+      (item) =>
+        item.lessonId === activeLessonId &&
+        (!skill || item.skill === skill),
     );
 
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
     return pickBalancedQuestions(all, 8);
-  }, [course.questions, activeLessonId, mode]);
+  }, [course.questions, activeLessonId, mode, skill]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
   const questions = retryIds
@@ -157,10 +161,12 @@ export function StudySession({
 
   function next() {
     if (index === questions.length - 1) {
-      if (mode === "mastery" && !retryIds) {
-        for (const [skill, stat] of Object.entries(skillStats)) {
+      if (skill && masteryPassed(correctCount, questions.length)) {
+        completeLessonSkill(activeLessonId, skill);
+      } else if (mode === "mastery" && !retryIds) {
+        for (const [skillKey, stat] of Object.entries(skillStats)) {
           if (stat && masteryPassed(stat.correct, stat.total)) {
-            completeLessonSkill(activeLessonId, skill as SkillKey);
+            completeLessonSkill(activeLessonId, skillKey as SkillKey);
           }
         }
       }
