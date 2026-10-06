@@ -55,7 +55,9 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
 
   function next() {
     if (index === items.length - 1) {
-      completeLessonSkill(lessonId, "listening");
+      if (correctCount / items.length >= 0.75) {
+        completeLessonSkill(lessonId, "listening");
+      }
       setFinished(true);
       return;
     }
@@ -74,21 +76,32 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   if (finished) {
+    const score = Math.round(
+      (correctCount / Math.max(1, items.length)) * 100,
+    );
+    const passed = score >= 75;
+
     return (
       <div className="skill-complete-card">
         <div className="complete-orb"><CheckCircle2 size={32} /></div>
-        <span className="eyebrow">{messages.listening.result}</span>
+        <span className="eyebrow">
+          {passed ? messages.listening.result : "CẦN NGHE LẠI THÊM"}
+        </span>
         <h1>{correctCount}/{items.length} {messages.listening.correctSuffix}</h1>
         <p>
-          {messages.listening.completionBody} {messages.common.lesson} {lessonId}.
+          {passed
+            ? "Bạn đã đạt " + score + "% và đủ điều kiện hoàn thành chặng Nghe."
+            : "Bạn đang ở " + score + "%. Nghe lại chậm rồi thử thêm một lượt để đạt tối thiểu 75%."}
         </p>
         <div className="complete-actions">
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.listening.listenAgain}
           </button>
-          <Link className="primary-button" href={nextStep.href}>
-            Tiếp: {nextStep.label}
-          </Link>
+          {passed ? (
+            <Link className="primary-button" href={nextStep.href}>
+              Tiếp: {nextStep.label}
+            </Link>
+          ) : null}
         </div>
       </div>
     );
