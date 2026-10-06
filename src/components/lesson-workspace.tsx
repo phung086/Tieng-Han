@@ -297,6 +297,50 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <span><strong>{course.questions.filter((q) => q.lessonId === lessonId).length}</strong> câu luyện</span>
             </div>
           </aside>
+
+          {dialogues.length || pronunciation.length ? (
+            <section className="lesson-immersion-v4">
+              <div className="section-head-v2">
+                <div>
+                  <span className="experience-kicker">IMMERSION BONUS</span>
+                  <h2>Dùng tiếng Hàn gần với tình huống thật</h2>
+                </div>
+              </div>
+              <div className="lesson-immersion-grid-v4">
+                {dialogues.length ? (
+                  <Link
+                    className="lesson-immersion-card-v4 conversation"
+                    href={"/conversation?lesson=" + lessonId}
+                  >
+                    <span className="lesson-immersion-icon-v4">
+                      <MessageCircle size={23} />
+                    </span>
+                    <div>
+                      <span>대화 · HỘI THOẠI</span>
+                      <h3>Luyện theo vai</h3>
+                      <p>{dialogues.length} đoạn hội thoại từ giáo trình.</p>
+                    </div>
+                  </Link>
+                ) : null}
+
+                {pronunciation.length ? (
+                  <Link
+                    className="lesson-immersion-card-v4 pronunciation"
+                    href={"/pronunciation?lesson=" + lessonId}
+                  >
+                    <span className="lesson-immersion-icon-v4">
+                      <Volume2 size={23} />
+                    </span>
+                    <div>
+                      <span>발음 · PHÁT ÂM</span>
+                      <h3>Nghe chậm & bắt chước</h3>
+                      <p>{pronunciation.length} điểm phát âm cần chú ý.</p>
+                    </div>
+                  </Link>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
         </section>
       ) : null}
 
