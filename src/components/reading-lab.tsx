@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpenText, Check, Eye, EyeOff, X } from "lucide-react";
+import { ArrowRight, BookOpenText, Check, Eye, EyeOff, X } from "lucide-react";
+import Link from "next/link";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
 export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -13,6 +15,7 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const messages = useMessages();
   const lesson = getLesson(lessonId);
   const content = lesson?.reading;
+  const nextStep = getNextLessonFlowStep(lessonId, "reading");
   const [showTranslation, setShowTranslation] = useState(false);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [checked, setChecked] = useState(false);
@@ -138,13 +141,20 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
             </div>
           ) : null}
 
-          <button
-            className="primary-button"
-            disabled={Object.keys(answers).length < reading.questions.length}
-            onClick={checked ? reset : submit}
-          >
-            {checked ? messages.reading.retry : messages.reading.check}
-          </button>
+          <div className="reading-actions-v4">
+            <button
+              className="secondary-button"
+              disabled={Object.keys(answers).length < reading.questions.length}
+              onClick={checked ? reset : submit}
+            >
+              {checked ? messages.reading.retry : messages.reading.check}
+            </button>
+            {checked ? (
+              <Link className="primary-button" href={nextStep.href}>
+                Tiếp: {nextStep.label} <ArrowRight size={16} />
+              </Link>
+            ) : null}
+          </div>
         </article>
       </section>
     </div>
