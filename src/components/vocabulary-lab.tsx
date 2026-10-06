@@ -73,7 +73,10 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
     if (correct) setKnown((value) => value + 1);
 
     if (position === order.length - 1) {
-      completeLessonSkill(lessonId, "vocabulary");
+      const finalKnown = known + (correct ? 1 : 0);
+      if (finalKnown / deck.length >= 0.7) {
+        completeLessonSkill(lessonId, "vocabulary");
+      }
       setFinished(true);
       return;
     }
@@ -140,13 +143,19 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   if (finished && mode === "cards") {
+    const passed = known / deck.length >= 0.7;
+
     return (
       <div className="skill-complete-card">
         <div className="complete-orb"><CheckCircle2 size={32} /></div>
-        <span className="eyebrow">{messages.vocabulary.complete}</span>
+        <span className="eyebrow">
+          {passed ? messages.vocabulary.complete : "CẦN CỦNG CỐ THÊM"}
+        </span>
         <h1>{known}/{deck.length} {messages.vocabulary.rememberedSuffix}</h1>
         <p>
-          Bạn vừa hoàn thành lượt Active Recall của Bài {lessonId}. Những từ quên sẽ quay lại trong hàng đợi ôn.
+          {passed
+            ? "Bạn đã đủ chắc để đi tiếp. Những từ quên vẫn sẽ quay lại trong hàng đợi ôn."
+            : "Hãy thử lại hoặc dùng Ghép nhanh. Mục tiêu của chặng này là nhớ chủ động ít nhất 70% số từ."}
         </p>
         <div className="complete-actions">
           <button className="secondary-button" onClick={restartCards}>
@@ -155,9 +164,11 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={() => setMode("match")}>
             <Grid3X3 size={16} /> Chơi Ghép nhanh
           </button>
-          <Link className="primary-button" href={nextStep.href}>
-            Tiếp: {nextStep.label}
-          </Link>
+          {passed ? (
+            <Link className="primary-button" href={nextStep.href}>
+              Tiếp: {nextStep.label}
+            </Link>
+          ) : null}
         </div>
       </div>
     );
