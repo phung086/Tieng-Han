@@ -32,12 +32,28 @@ export async function syncCourseCatalog(
   try {
     await client.query("BEGIN");
 
+    const existingCount = await client.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM haneul_course_catalog",
+    );
+    const bootstrapLibrary =
+      Number(existingCount.rows[0]?.count ?? 0) === 0;
+    const initialStatus: CoursePublicationStatus = bootstrapLibrary
+      ? "published"
+      : "draft";
+
     for (const course of courses) {
       await client.query(
         `
           INSERT INTO haneul_course_catalog
             (course_id, title, level, status, metadata, published_at)
-          VALUES ($1, $2, $3, 'published', $4::jsonb, NOW())
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5::jsonb,
+            CASE WHEN $4 = 'published' THEN NOW() ELSE NULL END
+          )
           ON CONFLICT (course_id)
           DO UPDATE SET
             title = EXCLUDED.title,
@@ -49,6 +65,7 @@ export async function syncCourseCatalog(
           course.id,
           course.title,
           course.level,
+          initialStatus,
           JSON.stringify({ source: course.source ?? null }),
         ],
       );
