@@ -42,8 +42,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+
+    void fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: AuthStatus) => {
+        if (cancelled) return;
+        setConfigured(Boolean(data.configured));
+        setUser(data.user ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setConfigured(false);
+        setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
