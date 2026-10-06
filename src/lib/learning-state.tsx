@@ -123,7 +123,7 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const loadedCourseIdRef = useRef<string | null>(null);
   const loadRunRef = useRef(0);
-  const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverSaveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!contentHydrated || activeCourseId === "empty") return;
