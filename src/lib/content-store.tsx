@@ -124,6 +124,22 @@ async function restoreCourse() {
       preferredId = null;
     }
 
+    // On first migration, preserve the course the learner was already using
+    // so legacy progress is attached to the correct level.
+    if (!preferredId) {
+      try {
+        const cached = await readStoredCourse();
+        if (
+          isPersistableCourse(cached) &&
+          serverLibrary.courses.some((item) => item.id === cached.id)
+        ) {
+          preferredId = cached.id;
+        }
+      } catch {
+        // Fall back to the server's active course.
+      }
+    }
+
     const selected =
       serverLibrary.courses.find((item) => item.id === preferredId) ??
       serverLibrary.courses.find(
