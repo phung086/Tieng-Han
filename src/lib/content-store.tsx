@@ -233,7 +233,14 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     },
     selectCourse(courseId) {
       const nextCourse = courses.find((item) => item.id === courseId);
-      if (nextCourse) setCourse(nextCourse);
+      if (nextCourse) {
+        setCourse(nextCourse);
+        void fetch("/api/me/enrollments", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ courseId }),
+        }).catch(() => undefined);
+      }
     },
     resetCourse() {
       setCourse(emptyRuntimeCourse);
