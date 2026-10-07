@@ -4361,3 +4361,124 @@ img {
   }
 }
 
+/* Cross-page card tightening for real account/course data */
+.profile-tags-v2 span {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-tags-v2 span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-lesson-v2 > div {
+  min-width: 0;
+}
+
+.recent-lesson-v2 strong,
+.recent-lesson-v2 small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-course-list-v1 > article > div,
+.admin-user-list-v1 > article > div:not(.admin-user-avatar-v1) {
+  min-width: 0;
+}
+
+.admin-course-list-v1 div > span,
+.admin-user-list-v1 div > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-card > div:nth-child(2) {
+  min-width: 0;
+}
+
+.settings-card p {
+  overflow-wrap: anywhere;
+}
+
+.stats-grid,
+.stats-strip,
+.chart-card,
+.skill-detail-card {
+  min-width: 0;
+}
+
+.bar-chart {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skill-detail-row {
+  min-width: 0;
+  grid-template-columns: minmax(72px, 90px) minmax(0, 1fr) 38px;
+}
+
+@media (max-width: 640px) {
+  .settings-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .settings-card > .secondary-button,
+  .settings-card > .settings-badge {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  .settings-card > .settings-badge {
+    text-align: center;
+  }
+
+  .admin-course-list-v1 article,
+  .admin-user-list-v1 article {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .admin-course-list-v1 article {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-status-v1,
+  .admin-role-v1,
+  .admin-course-list-v1 select,
+  .admin-user-list-v1 select {
+    justify-self: start;
+  }
+
+  .admin-user-list-v1 .admin-role-v1,
+  .admin-user-list-v1 select {
+    grid-column: 2;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card,
+  .skill-detail-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .stats-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .bar-chart {
+    gap: 7px;
+  }
+
+  .skill-detail-row {
+    grid-template-columns: 68px minmax(0, 1fr) 34px;
+    gap: 8px;
+  }
+}
+
