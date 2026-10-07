@@ -11,6 +11,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import { ActiveCourseChip } from "@/components/active-course-chip";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
@@ -160,6 +161,7 @@ export default function ReviewPage() {
           <p>
             Haneul đưa đúng điểm yếu quay lại đúng lúc, thay vì bắt bạn học lại cả bài.
           </p>
+          <ActiveCourseChip compact />
         </div>
 
         <div className="review-head-stats-v4">

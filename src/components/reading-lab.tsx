@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, BookOpenText, Check, Eye, EyeOff, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowRight,
+  BookOpenText,
+  Check,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+
+const AUTO_ADVANCE_DELAY_MS = 900;
 
 export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -17,10 +28,22 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   const content = lesson?.reading;
   const nextStep = getNextLessonFlowStep(lessonId, "reading");
   const [showTranslation, setShowTranslation] = useState(false);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [selected, setSelected] = useState("");
   const [checked, setChecked] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
 
-  if (!lesson || !content) {
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
+
+  if (!lesson || !content || !content.questions.length) {
     return (
       <EmptySkillState
         lessonId={lessonId}
@@ -30,38 +53,98 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   const reading = content;
-  const correct = reading.questions.filter(
-    (item, index) => answers[index] === item.answer,
-  ).length;
+  const question = reading.questions[questionIndex];
+  const isCorrect = selected === question.answer;
+  const progress = Math.round(
+    ((questionIndex + (checked ? 1 : 0)) / reading.questions.length) * 100,
+  );
 
-  function submit() {
+  function advance(effectiveCorrectCount = correctCount) {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
+    if (questionIndex === reading.questions.length - 1) {
+      const passed =
+        effectiveCorrectCount / Math.max(1, reading.questions.length) >= 0.75;
+
+      if (passed) {
+        completeLessonSkill(lessonId, "reading");
+      }
+
+      setFinished(true);
+      return;
+    }
+
+    setQuestionIndex((value) => value + 1);
+    setSelected("");
+    setChecked(false);
+  }
+
+  function choose(choice: string) {
+    if (checked) return;
+
+    const correct = choice === question.answer;
+    const nextCorrectCount = correctCount + (correct ? 1 : 0);
+
+    setSelected(choice);
     setChecked(true);
-    reading.questions.forEach((item, index) => {
-      recordAnswer("reading", answers[index] === item.answer, item.id);
-    });
+    setCorrectCount(nextCorrectCount);
+    recordAnswer("reading", correct, question.id);
 
-    if (correct / Math.max(1, reading.questions.length) >= 0.75) {
-      completeLessonSkill(lessonId, "reading");
+    if (correct) {
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        advance(nextCorrectCount);
+      }, AUTO_ADVANCE_DELAY_MS);
     }
   }
 
   function reset() {
-    setAnswers({});
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
+    setQuestionIndex(0);
+    setSelected("");
     setChecked(false);
+    setCorrectCount(0);
+    setFinished(false);
   }
 
+  const finalScore = Math.round(
+    (correctCount / Math.max(1, reading.questions.length)) * 100,
+  );
+  const passed = finalScore >= 75;
+
   return (
-    <div className="skill-lab reading-lab">
-      <header className="skill-lab-header">
-        <span className="eyebrow">
-          {messages.skills.reading.ko} · {messages.common.lesson.toUpperCase()} {lessonId}
+    <div className="skill-lab reading-lab reading-lab-v5">
+      <header className="skill-lab-header reading-head-v5">
+        <div>
+          <span className="eyebrow">
+            {messages.skills.reading.ko} · {messages.common.lesson.toUpperCase()} {lessonId}
+          </span>
+          <h1>{messages.reading.title}</h1>
+          <p>{messages.reading.intro}</p>
+        </div>
+        <span className="reading-progress-pill-v5">
+          {finished ? (
+            "Hoàn tất"
+          ) : (
+            <>
+              {questionIndex + 1}/{reading.questions.length} câu
+            </>
+          )}
         </span>
-        <h1>{messages.reading.title}</h1>
-        <p>{messages.reading.intro}</p>
       </header>
 
-      <section className="reading-workspace">
-        <article className="reading-passage">
+      <div className="reading-progress-track-v5" aria-label="Tiến độ đọc hiểu">
+        <span style={{ width: (finished ? 100 : progress) + "%" }} />
+      </div>
+
+      <section className="reading-workspace reading-workspace-v5">
+        <article className="reading-passage reading-passage-v5">
           <div className="reading-passage-top">
             <div>
               <BookOpenText size={20} />
@@ -71,6 +154,7 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
             <button
               className="text-button"
               onClick={() => setShowTranslation((value) => !value)}
+              type="button"
             >
               {showTranslation ? <EyeOff size={16} /> : <Eye size={16} />}
               {showTranslation
@@ -86,79 +170,118 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
           ) : null}
         </article>
 
-        <article className="reading-questions">
-          {reading.questions.map((item, index) => (
-            <div className="reading-question" key={item.id}>
-              <span>{messages.reading.question} {index + 1}</span>
-              <h3 className="korean-text">{item.q}</h3>
-
-              <div className="reading-choice-row">
-                {item.choices.map((choice) => {
-                  const selected = answers[index] === choice;
-                  const state = checked
-                    ? choice === item.answer
-                      ? " correct"
-                      : selected
-                        ? " wrong"
-                        : ""
-                    : selected
-                      ? " selected"
-                      : "";
-
-                  return (
-                    <button
-                      className={state}
-                      disabled={checked}
-                      key={choice}
-                      onClick={() =>
-                        setAnswers((current) => ({
-                          ...current,
-                          [index]: choice,
-                        }))
-                      }
-                    >
-                      {choice}
-                      {checked && choice === item.answer ? (
-                        <Check size={15} />
-                      ) : null}
-                      {checked && selected && choice !== item.answer ? (
-                        <X size={15} />
-                      ) : null}
-                    </button>
-                  );
-                })}
+        <article className="reading-questions reading-question-stage-v5">
+          {finished ? (
+            <div className="reading-complete-v5">
+              <div className={passed ? "reading-complete-icon-v5 passed" : "reading-complete-icon-v5"}>
+                <CheckCircle2 size={28} />
+              </div>
+              <span className="experience-kicker">READING RESULT</span>
+              <h2>{correctCount}/{reading.questions.length} câu đúng</h2>
+              <strong>{finalScore}%</strong>
+              <p>
+                {passed
+                  ? "Bạn đã đủ chắc để chuyển sang kỹ năng tiếp theo."
+                  : "Bạn chưa đạt 75%. Hãy xem lại đoạn đọc và thử thêm một lượt."}
+              </p>
+              <div className="reading-actions-v4">
+                <button className="secondary-button" onClick={reset} type="button">
+                  <RotateCcw size={16} /> {messages.reading.retry}
+                </button>
+                {passed ? (
+                  <Link className="primary-button" href={nextStep.href}>
+                    Tiếp: {nextStep.label} <ArrowRight size={16} />
+                  </Link>
+                ) : null}
               </div>
             </div>
-          ))}
+          ) : (
+            <>
+              <div className="reading-question-top-v5">
+                <span>
+                  {messages.reading.question} {questionIndex + 1}
+                </span>
+                <small>
+                  {checked
+                    ? isCorrect
+                      ? "Đúng · đang chuyển câu tiếp"
+                      : "Xem lại đáp án rồi tiếp tục"
+                    : "Chọn một đáp án"}
+                </small>
+              </div>
 
-          {checked ? (
-            <div className="reading-result">
-              <strong>
-                {correct}/{reading.questions.length} {messages.reading.correctSuffix}
-              </strong>
-              <span>
-                {correct === reading.questions.length
-                  ? messages.reading.allCorrect
-                  : messages.reading.retryNote}
-              </span>
-            </div>
-          ) : null}
+              <div className="reading-question current" key={question.id}>
+                <h3 className="korean-text">{question.q}</h3>
 
-          <div className="reading-actions-v4">
-            <button
-              className="secondary-button"
-              disabled={Object.keys(answers).length < reading.questions.length}
-              onClick={checked ? reset : submit}
-            >
-              {checked ? messages.reading.retry : messages.reading.check}
-            </button>
-            {checked &&
-            correct / Math.max(1, reading.questions.length) >= 0.75 ? (
-              <Link className="primary-button" href={nextStep.href}>
-                Tiếp: {nextStep.label} <ArrowRight size={16} />
-              </Link>
-            ) : null}
-          </div>
+                <div className="reading-choice-row">
+                  {question.choices.map((choice) => {
+                    const choiceSelected = selected === choice;
+                    const state = checked
+                      ? choice === question.answer
+                        ? " correct"
+                        : choiceSelected
+                          ? " wrong"
+                          : ""
+                      : choiceSelected
+                        ? " selected"
+                        : "";
+
+                    return (
+                      <button
+                        className={state}
+                        disabled={checked}
+                        key={choice}
+                        onClick={() => choose(choice)}
+                        type="button"
+                      >
+                        <span>{choice}</span>
+                        {checked && choice === question.answer ? (
+                          <Check size={15} />
+                        ) : null}
+                        {checked &&
+                        choiceSelected &&
+                        choice !== question.answer ? (
+                          <X size={15} />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {checked ? (
+                <div
+                  aria-live="polite"
+                  role="status"
+                  className={isCorrect ? "reading-feedback-v5 good" : "reading-feedback-v5 bad"}
+                >
+                  <strong>
+                    {isCorrect ? "Chính xác!" : "Chưa đúng."}
+                  </strong>
+                  <span>
+                    {isCorrect
+                      ? "Haneul sẽ tự chuyển sau một nhịp ngắn."
+                      : "Đáp án đúng: " + question.answer}
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="reading-actions-v4">
+                {checked && !isCorrect ? (
+                  <button
+                    className="primary-button"
+                    onClick={() => advance()}
+                    type="button"
+                  >
+                    {questionIndex === reading.questions.length - 1
+                      ? messages.common.finish
+                      : messages.listening.next}
+                    <ArrowRight size={16} />
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
         </article>
       </section>
     </div>

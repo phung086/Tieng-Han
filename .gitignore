@@ -16,3 +16,7 @@ storage/
 
 # Local Haneul import/MCP queue
 .haneul/
+
+# Browser UX test artifacts
+playwright-report/
+test-results/
