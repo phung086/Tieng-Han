@@ -129,9 +129,6 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
   const isMissionDone = (skill: string) =>
     state.completedActivities.includes("lesson:" + lessonId + ":" + skill);
-  const completedMissions = missionSteps.filter((step) =>
-    isMissionDone(step.skill),
-  ).length;
   const completedCoreMissions = missionSteps.filter(
     (step) => step.required && isMissionDone(step.skill),
   ).length;
