@@ -97,7 +97,9 @@ The compiler can evolve only through an explicit compiler-contract change.
 5. Course publication is an admin concern, not a compiler concern.
 6. Gamification supports learning decisions; it must not obscure them.
 7. Learners only see published courses when PostgreSQL is enabled.
-8. Disabling an account revokes its server sessions.
+8. Enrollment and learning-state APIs enforce the same course visibility policy.
+9. Learning-state counters reject impossible values such as correct > total.
+10. Disabling an account revokes its server sessions.
 
 ## Scaling path
 
