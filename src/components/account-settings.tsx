@@ -61,7 +61,7 @@ function formatDate(value: string) {
 export function AccountSettings() {
   const router = useRouter();
   const { configured, user, refresh } = useAuth();
-  const [name, setName] = useState(user?.name ?? "");
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [sessions, setSessions] = useState<SessionView[]>([]);
@@ -74,15 +74,10 @@ export function AccountSettings() {
     [sessions],
   );
 
-  useEffect(() => {
-    setName(user?.name ?? "");
-  }, [user?.name]);
+  const name = nameDraft ?? user?.name ?? "";
 
   async function loadSessions() {
-    if (!user) {
-      setSessions([]);
-      return;
-    }
+    if (!user) return;
 
     try {
       const response = await fetch("/api/me/sessions", {
@@ -99,8 +94,26 @@ export function AccountSettings() {
   }
 
   useEffect(() => {
-    void loadSessions();
-  }, [user?.id]);
+    if (!user) return;
+
+    let cancelled = false;
+
+    void fetch("/api/me/sessions", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{ sessions?: SessionView[] }>;
+      })
+      .then((data) => {
+        if (!cancelled && data) {
+          setSessions(data.sessions ?? []);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   function begin(key: string) {
     setPending(key);
@@ -127,6 +140,7 @@ export function AccountSettings() {
       }
 
       await refresh();
+      setNameDraft(null);
       setMessage("Đã cập nhật tên hiển thị.");
     } catch {
       setError("Không thể kết nối máy chủ.");
@@ -298,7 +312,7 @@ export function AccountSettings() {
             <input
               maxLength={80}
               minLength={2}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => setNameDraft(event.target.value)}
               required
               value={name}
             />
