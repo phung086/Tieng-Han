@@ -55,6 +55,7 @@ Luồng Haneul Vở bài tập phải ưu tiên nội dung của chính workshee
 diễn giải tự nhiên bằng kiến thức ngoài nguồn.
 
 - Contract: `docs/WORKSHEET_TRANSLATION_CONTRACT.md`
+- Worker prompt: `docs/WORKSHEET_WORKER_PROMPT.md`
 - Regression fixture Bài 1: `docs/WORKSHEET_BAI_1_REGRESSION.md`
 
 Hai tài liệu này quy định glossary lock, entity/addressee preservation và QA
