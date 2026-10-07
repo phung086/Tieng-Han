@@ -15,25 +15,23 @@ multi-user persistence and admin features are introduced.
 
 ## Learning experience
 
-Each lesson uses six core stages:
+Each lesson has two progression-critical core stages:
 
 1. Vocabulary
 2. Grammar
-3. Listening
-4. Speaking
-5. Reading
-6. Writing
 
-The flow then ends with a Mastery Check.
+Listening, Speaking, Reading and Writing remain available as optional practice.
+Mastery Check is also optional. Completing optional skills adds practice evidence
+and XP, but never blocks the next lesson.
 
-Completion is evidence-based:
+Core progression is evidence-based:
 
 - Vocabulary Active Recall: >= 70% remembered, or complete Match Sprint.
 - Grammar: >= 75% on filtered grammar practice.
-- Listening: >= 75%.
-- Speaking: >= 75% speech-match when browser recognition is available.
-- Reading: >= 75%.
-- Writing: >= 75% local rubric.
+
+The next lesson unlocks once the available Vocabulary + Grammar core is
+complete. Listening, Speaking, Reading and Writing can be skipped when the
+learner is not in a suitable situation and resumed later.
 
 Lessons expose the next recommended activity directly so learners do not have
 to navigate back to a dashboard after every stage.
