@@ -17,6 +17,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
+import { ActiveCourseChip } from "@/components/active-course-chip";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
@@ -97,6 +98,7 @@ export default function PracticePage() {
           <p>
             Chọn một phiên ngắn, luyện một kỹ năng riêng hoặc quay lại các điểm yếu.
           </p>
+          <ActiveCourseChip compact />
         </div>
 
         <div className="practice-head-stats-v3">
