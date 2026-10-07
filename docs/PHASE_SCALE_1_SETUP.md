@@ -122,6 +122,8 @@ an admin publishes them explicitly.
 - All learner capabilities.
 - Open `/admin`.
 - Open `/import`.
+- Use the protected import/ingest APIs behind the same admin boundary.
+- Monitor queued/processing/ready/failed jobs from `/admin`.
 - Upload/import source PDFs using the unchanged MCP pipeline.
 - Publish, draft or archive courses.
 - Promote/demote users while protecting the final active admin.
@@ -152,3 +154,18 @@ Phase Scale 1 must not silently change:
 
 A later phase can move compiled course payloads into object storage/database,
 but that is intentionally not part of this migration.
+
+
+## 10. Import API boundary
+
+When `DATABASE_URL` is configured, the browser-side import and AI-ingestion
+HTTP routes require an authenticated admin. Mutating routes also require a
+same-origin request.
+
+This applies to the UI-facing `/api/import-jobs/*`, `/api/ingest/*` and
+MCP automation status endpoints. It does **not** replace the separate MCP
+token/authentication used by `/mcp`, so ChatGPT/Haneul Learning Bridge keeps
+its existing compiler connection.
+
+When PostgreSQL is not configured, these browser APIs preserve the existing
+local-first development behavior.
