@@ -25,3 +25,34 @@ export const loginSchema = z.object({
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
+
+
+export const updateProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Tên phải có ít nhất 2 ký tự.")
+    .max(80, "Tên quá dài."),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z
+    .string()
+    .min(1, "Vui lòng nhập mật khẩu hiện tại.")
+    .max(128),
+  newPassword: z
+    .string()
+    .min(10, "Mật khẩu mới phải có ít nhất 10 ký tự.")
+    .max(128, "Mật khẩu mới quá dài."),
+  revokeOtherSessions: z.boolean().default(true),
+});
+
+export const sessionActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("revoke"),
+    sessionId: z.string().uuid("Session ID không hợp lệ."),
+  }),
+  z.object({
+    action: z.literal("revokeOthers"),
+  }),
+]);
