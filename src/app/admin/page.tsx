@@ -6,6 +6,7 @@ import {
   getAdminCourseCatalog,
   getAdminOverview,
   getAdminUsers,
+  getRecentAuditEvents,
   syncCourseCatalog,
 } from "@/lib/db/course-catalog";
 import { getCourseLibrary } from "@/lib/course-consumer";
@@ -40,10 +41,11 @@ export default async function AdminPage() {
     })),
   );
 
-  const [overview, courses, users] = await Promise.all([
+  const [overview, courses, users, auditEvents] = await Promise.all([
     getAdminOverview(),
     getAdminCourseCatalog(),
     getAdminUsers(),
+    getRecentAuditEvents(24),
   ]);
 
   return (
@@ -65,6 +67,15 @@ export default async function AdminPage() {
           status: item.status,
           createdAt: item.createdAt.toISOString(),
           lastLoginAt: item.lastLoginAt?.toISOString() ?? null,
+        }))}
+        initialAuditEvents={auditEvents.map((event) => ({
+          id: event.id,
+          actorName: event.actorName,
+          eventType: event.eventType,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          metadata: event.metadata,
+          createdAt: event.createdAt.toISOString(),
         }))}
       />
     </div>

@@ -222,6 +222,16 @@ test("course library keeps long titles readable and switches course cleanly", as
     expect(box?.width ?? 0).toBeGreaterThan(260);
   }
 
+  await page.getByLabel("Tìm giáo trình").fill("Sơ cấp 2");
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText("Sơ cấp 2");
+
+  await page.getByLabel("Tìm giáo trình").fill("");
+  await page.getByLabel("Lọc theo cấp độ").selectOption("중급 3");
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText("Trung cấp 3");
+
+  await page.getByLabel("Lọc theo cấp độ").selectOption("all");
   await cards.nth(1).click();
   await expect(page.locator(".journey-title-v2 h1")).toHaveText(courses[1].title);
   await expectNoPageOverflow(page);
@@ -295,4 +305,72 @@ test("core learner and account routes avoid document-level horizontal overflow",
     await expect(page.locator("body")).toBeVisible();
     await expectNoPageOverflow(page);
   }
+});
+
+
+test("account settings expose profile password and session controls without overflow", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        configured: true,
+        user: {
+          id: "user-1",
+          email: "learner@example.com",
+          name: "Người học Haneul",
+          role: "learner",
+        },
+      }),
+    });
+  });
+
+  await page.route("**/api/me/sessions", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          sessions: [
+            {
+              id: "9f9cde4b-fac1-4e72-9920-3f9066251cb5",
+              createdAt: "2026-10-07T00:00:00.000Z",
+              lastSeenAt: "2026-10-07T01:00:00.000Z",
+              expiresAt: "2026-11-06T00:00:00.000Z",
+              userAgent:
+                "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/154.0 Safari/537.36",
+              current: true,
+            },
+            {
+              id: "0fd442fb-e32d-45ec-b766-7e3d922e524d",
+              createdAt: "2026-10-05T00:00:00.000Z",
+              lastSeenAt: "2026-10-06T01:00:00.000Z",
+              expiresAt: "2026-11-04T00:00:00.000Z",
+              userAgent:
+                "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/154.0 Mobile Safari/537.36",
+              current: false,
+            },
+          ],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, revoked: 1 }),
+    });
+  });
+
+  await page.goto("/settings");
+
+  await expect(page.getByText("Tài khoản Haneul")).toBeVisible();
+  await expect(page.getByLabel("Tên hiển thị")).toHaveValue("Người học Haneul");
+  await expect(page.getByText(/Windows · Chrome · Thiết bị này/)).toBeVisible();
+  await expect(page.getByText(/Android · Chrome/)).toBeVisible();
+  await expect(page.locator('a[href="/import"]')).toHaveCount(0);
+  await expectNoPageOverflow(page);
 });

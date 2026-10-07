@@ -16,8 +16,12 @@ course compilation, Course Bundle validation, or the six-skill learning flow.
 - Course publish/draft/archive state.
 - User/course enrollment tracking.
 - Per-user/per-course learning-state sync.
+- Profile display-name management.
+- Password changes with optional revocation of other sessions.
+- Active-session/device management.
+- Admin account enable/disable controls with session revocation.
 - Browser localStorage remains a fallback and migration source.
-- Audit events for registration, login/logout and admin mutations.
+- Audit events for registration, login/logout, account security and admin mutations.
 
 ## 1. Provision PostgreSQL
 
@@ -121,6 +125,19 @@ an admin publishes them explicitly.
 - Upload/import source PDFs using the unchanged MCP pipeline.
 - Publish, draft or archive courses.
 - Promote/demote users while protecting the final active admin.
+- Enable/disable learner accounts.
+- Disabling an account revokes all of its server sessions.
+- Review recent audit activity.
+
+### Account owner
+
+Signed-in users can open `/settings` to:
+
+- update their display name;
+- change their password;
+- view active sessions/devices;
+- revoke another session;
+- sign out all other devices.
 
 ## 9. Protected systems
 
