@@ -368,7 +368,7 @@ test("account settings expose profile password and session controls without over
   await page.goto("/settings");
 
   await expect(page.getByText("Tài khoản Haneul")).toBeVisible();
-  await expect(page.getByDisplayValue("Người học Haneul")).toBeVisible();
+  await expect(page.getByLabel("Tên hiển thị")).toHaveValue("Người học Haneul");
   await expect(page.getByText(/Windows · Chrome · Thiết bị này/)).toBeVisible();
   await expect(page.getByText(/Android · Chrome/)).toBeVisible();
   await expect(page.locator('a[href="/import"]')).toHaveCount(0);
