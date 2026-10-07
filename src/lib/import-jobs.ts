@@ -77,3 +77,8 @@ export type CreateImportJobInput = Pick<
   ImportJob,
   "language" | "courseHint" | "sourceManifest" | "documents" | "detectedMaps"
 >;
+
+
+export function canDeleteImportJob(status: ImportJobStatus) {
+  return status === "failed" || status === "consumed";
+}

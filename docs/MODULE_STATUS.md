@@ -103,6 +103,7 @@ Includes:
 - overview metrics;
 - live import-pipeline monitor with checkpoint/draft visibility;
 - safe failed-job requeue and ready-job consume actions;
+- explicit cleanup of failed/consumed import-job source snapshots;
 - route-level admin enforcement for import/ingest APIs when PostgreSQL auth is enabled.
 
 ## 7. Import and ChatGPT compiler
