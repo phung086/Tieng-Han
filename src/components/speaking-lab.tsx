@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Mic, MicOff, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
@@ -8,6 +8,8 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+
+const AUTO_ADVANCE_DELAY_MS = 1200;
 
 type RecognitionResultEvent = {
   results: {
@@ -63,6 +65,16 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const [finished, setFinished] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
   const recognitionRef = useRef<RecognitionLike | null>(null);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      if (autoAdvanceTimerRef.current) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
 
   const target = sentences[index] ?? "";
   const nextStep = getNextLessonFlowStep(lessonId, "speaking");
@@ -112,19 +124,23 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
     recognition.onresult = (event) => {
       const value = event.results[0]?.[0]?.transcript ?? "";
       const result = similarity(value, target);
+      const nextScores = [...scores];
+      nextScores[index] = result;
 
       setTranscript(value);
-      setScores((current) => {
-        const nextScores = [...current];
-        nextScores[index] = result;
-        return nextScores;
-      });
+      setScores(nextScores);
 
       recordAnswer(
         "speaking",
         result >= 75,
         "speak-" + lessonId + "-" + index,
       );
+
+      if (result >= 75) {
+        autoAdvanceTimerRef.current = window.setTimeout(() => {
+          next(nextScores);
+        }, AUTO_ADVANCE_DELAY_MS);
+      }
     };
     recognition.onend = () => setListening(false);
     recognition.onerror = () => setListening(false);
@@ -135,11 +151,20 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
     recognition.start();
   }
 
-  function next() {
+  function next(effectiveScores = scores) {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
     if (index === sentences.length - 1) {
-      const average = scores.length
+      const availableScores = effectiveScores.filter(
+        (item) => typeof item === "number",
+      );
+      const average = availableScores.length
         ? Math.round(
-            scores.reduce((sum, item) => sum + item, 0) / scores.length,
+            availableScores.reduce((sum, item) => sum + item, 0) /
+              availableScores.length,
           )
         : 0;
 
@@ -155,6 +180,10 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function restart() {
+    if (autoAdvanceTimerRef.current) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     setIndex(0);
     setTranscript("");
     setScores([]);
@@ -284,13 +313,20 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
             <RotateCcw size={16} /> {messages.speaking.retry}
           </button>
           <button
-            className="primary-button"
-            disabled={!unsupported && !transcript}
-            onClick={next}
+            className={
+              "primary-button" +
+              (transcript && score >= 75 ? " auto-advance-button-v3" : "")
+            }
+            disabled={!unsupported && (!transcript || score >= 75)}
+            onClick={() => next()}
           >
-            {index === sentences.length - 1
-              ? messages.common.finish
-              : messages.speaking.next}
+            {transcript && score >= 75
+              ? index === sentences.length - 1
+                ? "Đạt rồi · đang hoàn tất…"
+                : "Đạt rồi · tự chuyển…"
+              : index === sentences.length - 1
+                ? messages.common.finish
+                : messages.speaking.next}
           </button>
         </div>
       </section>
