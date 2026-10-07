@@ -250,7 +250,11 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
               </div>
 
               {checked ? (
-                <div className={isCorrect ? "reading-feedback-v5 good" : "reading-feedback-v5 bad"}>
+                <div
+                  aria-live="polite"
+                  role="status"
+                  className={isCorrect ? "reading-feedback-v5 good" : "reading-feedback-v5 bad"}
+                >
                   <strong>
                     {isCorrect ? "Chính xác!" : "Chưa đúng."}
                   </strong>
