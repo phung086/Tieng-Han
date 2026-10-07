@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { callVisionContentModel } from "@/lib/content-ai";
 
 type OcrPage = {
@@ -10,6 +11,9 @@ type OcrPage = {
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const body = (await request.json()) as { pages?: OcrPage[] };
     const pages = (body.pages ?? []).slice(0, 4);
