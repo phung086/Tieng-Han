@@ -1,3 +1,4 @@
+import { ActiveCourseChip } from "@/components/active-course-chip";
 import { StatsClient } from "@/components/stats-client";
 import { viMessages } from "@/i18n/vi";
 
@@ -11,6 +12,7 @@ export default function StatsPage() {
           <p>{viMessages.statsPage.intro}</p>
         </div>
       </header>
+      <ActiveCourseChip />
       <StatsClient />
     </div>
   );
