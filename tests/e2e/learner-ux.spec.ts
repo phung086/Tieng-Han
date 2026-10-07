@@ -96,6 +96,14 @@ const lesson = {
   media: [],
 };
 
+const lessonTwo = {
+  ...lesson,
+  id: 2,
+  title: "학교와 일상",
+  vi: "Trường học và sinh hoạt",
+  objective: "Mở rộng từ vựng và ngữ pháp sang bài tiếp theo.",
+};
+
 const questions = [
   {
     id: "q-1",
@@ -138,7 +146,7 @@ const makeCourse = (id: string, title: string, level: string) => ({
     pageCount: 380,
     importedAt: "2026-10-07T00:00:00.000Z",
   },
-  lessons: [lesson],
+  lessons: [lesson, lessonTwo],
   questions,
 });
 
@@ -235,6 +243,51 @@ test("course library keeps long titles readable and switches course cleanly", as
   await cards.nth(1).click();
   await expect(page.locator(".journey-title-v2 h1")).toHaveText(courses[1].title);
   await expectNoPageOverflow(page);
+});
+
+test("next lesson unlocks after vocabulary and grammar even when legacy progress is below 100", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "haneul-learning-state-v2:course-1",
+      JSON.stringify({
+        version: 2,
+        xp: 30,
+        streak: 1,
+        dailyGoal: 50,
+        todayXp: 30,
+        lastActiveDate: null,
+        lessonProgress: { "1": 33 },
+        skills: {
+          vocabulary: { correct: 1, total: 1 },
+          grammar: { correct: 1, total: 1 },
+          listening: { correct: 0, total: 0 },
+          speaking: { correct: 0, total: 0 },
+          reading: { correct: 0, total: 0 },
+          writing: { correct: 0, total: 0 },
+        },
+        completedActivities: [
+          "lesson:1:vocabulary",
+          "lesson:1:grammar",
+        ],
+        dailyStats: {},
+        mastery: {},
+      }),
+    );
+  });
+
+  await page.goto("/learn");
+
+  const lessonTwoCard = page.locator(".journey-stop-v2").filter({
+    hasText: "Bài 02",
+  });
+
+  await expect(lessonTwoCard).toHaveClass(/current/);
+  await expect(lessonTwoCard).toContainText("ĐANG CHỜ BẠN");
+  await expect(
+    lessonTwoCard.locator('a[href="/learn/2"]'),
+  ).toHaveCount(1);
 });
 
 test("correct quiz answers auto-advance while wrong answers keep feedback visible", async ({
