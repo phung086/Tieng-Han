@@ -11,6 +11,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
+import { ActiveCourseChip } from "@/components/active-course-chip";
 import { HaneulMascot } from "@/components/haneul-mascot";
 import { EmptyCourseState } from "@/components/empty-course-state";
 import { useContent } from "@/lib/content-store";
@@ -81,6 +82,7 @@ export default function DashboardPage() {
           <p>
             Một phiên ngắn hôm nay vẫn đủ để giữ nhịp và tiến gần hơn đến phản xạ tự nhiên.
           </p>
+          <ActiveCourseChip compact />
         </div>
 
         <div className="home-hud-v2" aria-label="Chỉ số học hôm nay">
