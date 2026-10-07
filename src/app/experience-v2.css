@@ -5371,3 +5371,53 @@ img {
   }
 }
 
+/* Profile avatar presets */
+.avatar-picker-v3 {
+  display: grid;
+  gap: 7px;
+}
+
+.avatar-picker-v3 > span {
+  color: #66728a;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.avatar-picker-v3 > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.avatar-choice-v3 {
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #e1e7ef;
+  border-radius: 13px;
+  color: #69758c;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.avatar-choice-v3:hover {
+  transform: translateY(-1px);
+  border-color: #cfc5ff;
+}
+
+.avatar-choice-v3.active {
+  color: #684fd6;
+  border-color: #bcaefa;
+  background: #f0ecff;
+  box-shadow: 0 3px 0 #ddd4ff;
+}
+
+.profile-avatar-v2 > svg {
+  filter: drop-shadow(0 2px 0 rgba(59,44,128,.14));
+}
+
