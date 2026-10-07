@@ -4,6 +4,7 @@ import {
   readFile,
   readdir,
   rename,
+  rm,
   unlink,
   writeFile,
 } from "node:fs/promises";
@@ -23,6 +24,7 @@ import {
   type ImportJob,
   type ImportJobPage,
   type ImportJobStatus,
+  canDeleteImportJob,
 } from "@/lib/import-jobs";
 
 const rootDir =
@@ -294,6 +296,26 @@ export async function claimImportJob(jobId: string) {
     };
   });
 }
+export async function deleteImportJob(jobId: string) {
+  const job = await requireImportJob(jobId);
+
+  if (!canDeleteImportJob(job.status)) {
+    throw new Error(
+      "Chỉ có thể xóa import job ở trạng thái failed hoặc consumed.",
+    );
+  }
+
+  await rm(jobDir(jobId), {
+    recursive: true,
+    force: false,
+  });
+
+  return {
+    id: job.id,
+    status: job.status,
+  };
+}
+
 export async function requeueImportJob(jobId: string) {
   const current = await requireImportJob(jobId);
 
