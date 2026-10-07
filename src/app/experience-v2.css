@@ -5421,3 +5421,21 @@ img {
   filter: drop-shadow(0 2px 0 rgba(59,44,128,.14));
 }
 
+.admin-import-actions-v3 {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-import-actions-v3 .text-button.danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #a44e5d;
+  background: #fff0f3;
+}
+
+.admin-import-actions-v3 .text-button.danger:hover {
+  color: #8f3c4c;
+  background: #fde4e9;
+}
+
