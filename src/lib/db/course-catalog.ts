@@ -261,3 +261,125 @@ export async function setUserRole(
 
   return result.rows[0] ?? null;
 }
+
+
+export async function setUserStatus(
+  userId: string,
+  status: "active" | "disabled",
+) {
+  const target = await dbQuery<{
+    id: string;
+    email: string;
+    name: string;
+    role: UserRole;
+    status: "active" | "disabled";
+  }>(
+    `
+      SELECT id, email, name, role, status
+      FROM haneul_users
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [userId],
+  );
+  const current = target.rows[0];
+
+  if (!current) return null;
+
+  if (
+    status === "disabled" &&
+    current.status === "active" &&
+    current.role === "admin"
+  ) {
+    const admins = await dbQuery<{ count: string }>(
+      `
+        SELECT COUNT(*)::text AS count
+        FROM haneul_users
+        WHERE role = 'admin' AND status = 'active'
+      `,
+    );
+
+    if (Number(admins.rows[0]?.count ?? 0) <= 1) {
+      throw new Error("Không thể vô hiệu hóa admin cuối cùng.");
+    }
+  }
+
+  const result = await dbQuery<{
+    id: string;
+    email: string;
+    name: string;
+    role: UserRole;
+    status: "active" | "disabled";
+  }>(
+    `
+      UPDATE haneul_users
+      SET status = $2, updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, email, name, role, status
+    `,
+    [userId, status],
+  );
+
+  if (status === "disabled") {
+    await dbQuery(
+      "DELETE FROM haneul_auth_sessions WHERE user_id = $1",
+      [userId],
+    );
+  }
+
+  return result.rows[0] ?? null;
+}
+
+export type AdminAuditEventRow = {
+  id: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  eventType: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: Date;
+};
+
+export async function getRecentAuditEvents(
+  limit = 30,
+): Promise<AdminAuditEventRow[]> {
+  const result = await dbQuery<{
+    id: string;
+    actor_user_id: string | null;
+    actor_name: string | null;
+    event_type: string;
+    entity_type: string | null;
+    entity_id: string | null;
+    metadata: Record<string, unknown>;
+    created_at: Date;
+  }>(
+    `
+      SELECT
+        a.id,
+        a.actor_user_id,
+        u.name AS actor_name,
+        a.event_type,
+        a.entity_type,
+        a.entity_id,
+        a.metadata,
+        a.created_at
+      FROM haneul_audit_events a
+      LEFT JOIN haneul_users u ON u.id = a.actor_user_id
+      ORDER BY a.created_at DESC
+      LIMIT $1
+    `,
+    [limit],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    actorUserId: row.actor_user_id,
+    actorName: row.actor_name,
+    eventType: row.event_type,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    metadata: row.metadata ?? {},
+    createdAt: row.created_at,
+  }));
+}
