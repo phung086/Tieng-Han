@@ -11,6 +11,10 @@ import {
 import { nextReviewIntervalDays } from "@/lib/review-schedule";
 import { useContent } from "@/lib/content-store";
 import { useAuth } from "@/lib/auth-client";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 export type SkillKey = "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
 type SkillStat = { correct: number; total: number };
@@ -45,7 +49,6 @@ type LearningContextValue = {
 
 const LEGACY_STORAGE_KEY = "haneul-learning-state-v2";
 const STORAGE_KEY_PREFIX = "haneul-learning-state-v2:";
-const ALL_SKILLS: SkillKey[] = ["vocabulary", "grammar", "listening", "speaking", "reading", "writing"];
 const DAY_MS = 86_400_000;
 
 function dateKey(date = new Date()) {
@@ -117,7 +120,7 @@ function withActiveDay(current: LearningState) {
 }
 
 export function LearningProvider({ children }: { children: React.ReactNode }) {
-  const { activeCourseId, hydrated: contentHydrated } = useContent();
+  const { activeCourseId, hydrated: contentHydrated, course } = useContent();
   const { user } = useAuth();
   const [state, setState] = useState(defaultState);
   const [hydrated, setHydrated] = useState(false);
@@ -338,27 +341,43 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
         const completedActivities = alreadyCompleted
           ? current.completedActivities
           : [...current.completedActivities, activityId];
-        const completedCount = ALL_SKILLS.filter((item) =>
-          completedActivities.includes(`lesson:${lessonId}:${item}`)
-        ).length;
-        const progress = Math.round((completedCount / ALL_SKILLS.length) * 100);
+        const lesson = course.lessons.find((item) => item.id === lessonId);
+        const requiredSkills = getRequiredCoreSkills({
+          hasVocabulary: Boolean(lesson?.vocabulary.length),
+          hasGrammar: Boolean(lesson?.grammar.length),
+        });
+        const progress = getCoreLessonProgress(
+          completedActivities,
+          lessonId,
+          requiredSkills,
+        );
 
         if (alreadyCompleted) {
           return {
             ...current,
-            lessonProgress: { ...current.lessonProgress, [String(lessonId)]: progress },
+            lessonProgress: {
+              ...current.lessonProgress,
+              [String(lessonId)]: progress,
+            },
           };
         }
 
         const active = withActiveDay(current);
-        const todayStat = active.state.dailyStats[active.today] ?? { attempts: 0, correct: 0, xp: 0 };
+        const todayStat = active.state.dailyStats[active.today] ?? {
+          attempts: 0,
+          correct: 0,
+          xp: 0,
+        };
 
         return {
           ...active.state,
           xp: active.state.xp + 15,
           todayXp: active.state.todayXp + 15,
           completedActivities,
-          lessonProgress: { ...active.state.lessonProgress, [String(lessonId)]: progress },
+          lessonProgress: {
+            ...active.state.lessonProgress,
+            [String(lessonId)]: progress,
+          },
           dailyStats: {
             ...active.state.dailyStats,
             [active.today]: { ...todayStat, xp: todayStat.xp + 15 },
@@ -388,7 +407,7 @@ export function LearningProvider({ children }: { children: React.ReactNode }) {
       }
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
-  }), [state, hydrated, activeCourseId]);
+  }), [state, hydrated, activeCourseId, course.lessons]);
 
   return <LearningContext.Provider value={value}>{children}</LearningContext.Provider>;
 }
