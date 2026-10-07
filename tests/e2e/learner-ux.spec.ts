@@ -371,8 +371,6 @@ test("account settings expose profile password and session controls without over
   await expect(page.getByDisplayValue("Người học Haneul")).toBeVisible();
   await expect(page.getByText(/Windows · Chrome · Thiết bị này/)).toBeVisible();
   await expect(page.getByText(/Android · Chrome/)).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Nhập giáo trình/ }),
-  ).toHaveCount(0);
+  await expect(page.locator('a[href="/import"]')).toHaveCount(0);
   await expectNoPageOverflow(page);
 });
