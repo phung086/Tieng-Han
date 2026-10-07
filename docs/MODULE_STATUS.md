@@ -68,6 +68,7 @@ Includes:
 - password change;
 - other-session revocation;
 - per-device session list;
+- opportunistic cleanup of expired sessions;
 - active/disabled account status;
 - learner/admin roles.
 
@@ -81,8 +82,8 @@ Status: complete for Phase Scale 1.
 Includes:
 
 - browser local fallback;
-- user + course enrollment;
-- user + course learning-state sync;
+- user + course enrollment with course-visibility enforcement;
+- user + course learning-state sync with the same access policy;
 - migration from local course-scoped progress;
 - cross-device server state after login.
 

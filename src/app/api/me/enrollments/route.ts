@@ -4,6 +4,7 @@ import {
   isSameOrigin,
 } from "@/lib/auth/server";
 import { dbQuery, isDatabaseConfigured } from "@/lib/db";
+import { getCourseAccess } from "@/lib/db/course-access";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -37,6 +38,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "courseId không hợp lệ." },
       { status: 400 },
+    );
+  }
+
+  const access = await getCourseAccess(user, parsed.data.courseId);
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: "Khóa học không khả dụng." },
+      { status: access.exists ? 403 : 404 },
     );
   }
 
