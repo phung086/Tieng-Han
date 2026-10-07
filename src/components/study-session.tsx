@@ -508,6 +508,8 @@ export function StudySession({
 
         {checked ? (
           <div
+            aria-live="polite"
+            role="status"
             className={
               "answer-coach-v3 " + (isCorrect ? "success" : "error")
             }
