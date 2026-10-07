@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,6 +17,8 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 
+const AUTO_ADVANCE_DELAY_MS = 900;
+
 export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
   const { getLesson, course } = useContent();
   const { recordAnswer } = useLearning();
@@ -27,6 +29,15 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
   const [showMeaning, setShowMeaning] = useState(true);
   const [role, setRole] = useState("");
   const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
 
   const dialogue = dialogues[dialogueIndex];
   const speakers = dialogue
@@ -61,8 +72,17 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
 
   function markPracticed() {
     if (completedIds.includes(dialogue.id)) return;
+
     setCompletedIds((current) => [...current, dialogue.id]);
     recordAnswer("speaking", true, "dialogue:" + dialogue.id);
+
+    if (dialogueIndex < dialogues.length - 1) {
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        setDialogueIndex((value) => value + 1);
+        setRole("");
+        autoAdvanceTimerRef.current = null;
+      }, AUTO_ADVANCE_DELAY_MS);
+    }
   }
 
   const practiced = completedIds.includes(dialogue.id);
@@ -89,6 +109,10 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
               className={index === dialogueIndex ? "active" : ""}
               key={item.id}
               onClick={() => {
+                if (autoAdvanceTimerRef.current) {
+                  window.clearTimeout(autoAdvanceTimerRef.current);
+                  autoAdvanceTimerRef.current = null;
+                }
                 setDialogueIndex(index);
                 setRole("");
               }}
@@ -215,7 +239,11 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
             onClick={markPracticed}
             type="button"
           >
-            {practiced ? "Đã luyện" : "Đã luyện xong"}
+            {practiced
+              ? dialogueIndex < dialogues.length - 1
+                ? "Đã luyện · tự chuyển…"
+                : "Đã luyện"
+              : "Đã luyện xong"}
           </button>
         </div>
       </section>
@@ -224,6 +252,10 @@ export function ConversationLab({ lessonId = 1 }: { lessonId?: number }) {
         <button
           className="text-button conversation-reset-v4"
           onClick={() => {
+            if (autoAdvanceTimerRef.current) {
+              window.clearTimeout(autoAdvanceTimerRef.current);
+              autoAdvanceTimerRef.current = null;
+            }
             setDialogueIndex(0);
             setRole("");
           }}
