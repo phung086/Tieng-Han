@@ -198,7 +198,11 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
 
         <div className="listening-footer">
           {checked ? (
-            <p className={selected === item.answer ? "good" : "bad"}>
+            <p
+              aria-live="polite"
+              role="status"
+              className={selected === item.answer ? "good" : "bad"}
+            >
               {selected === item.answer
                 ? messages.listening.correctFeedback
                 : messages.listening.answerPrefix + " " + item.answer}
