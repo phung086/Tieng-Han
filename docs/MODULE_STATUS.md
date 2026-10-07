@@ -64,6 +64,7 @@ Includes:
 - scrypt password hashing;
 - opaque PostgreSQL-backed sessions;
 - profile display-name update;
+- persisted preset avatar and account join date;
 - password change;
 - other-session revocation;
 - per-device session list;
