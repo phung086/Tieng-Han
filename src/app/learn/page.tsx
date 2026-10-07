@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -10,6 +11,8 @@ import {
   Trophy,
   LibraryBig,
   Layers3,
+  Search,
+  X,
 } from "lucide-react";
 import { EmptyCourseState } from "@/components/empty-course-state";
 import { useContent } from "@/lib/content-store";
@@ -18,6 +21,39 @@ import { useLearning } from "@/lib/learning-state";
 export default function LearnPage() {
   const { state } = useLearning();
   const { course, courses, selectCourse } = useContent();
+  const [courseQuery, setCourseQuery] = useState("");
+  const [levelFilter, setLevelFilter] = useState("all");
+
+  const courseLevels = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          courses
+            .map((item) => item.level.trim())
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "vi")),
+    [courses],
+  );
+
+  const visibleCourses = useMemo(() => {
+    const normalizedQuery = courseQuery.trim().toLocaleLowerCase("vi");
+    return courses.filter((item) => {
+      if (levelFilter !== "all" && item.level !== levelFilter) {
+        return false;
+      }
+
+      if (!normalizedQuery) return true;
+
+      return [
+        item.title,
+        item.level,
+        item.source?.fileName ?? "",
+      ].some((value) =>
+        value.toLocaleLowerCase("vi").includes(normalizedQuery),
+      );
+    });
+  }, [courseQuery, courses, levelFilter]);
 
   if (!course.lessons.length) {
     return (
@@ -62,8 +98,46 @@ export default function LearnPage() {
           </span>
         </div>
 
+        <div className="course-library-toolbar-v3">
+          <label className="course-library-search-v3">
+            <Search size={16} />
+            <input
+              aria-label="Tìm giáo trình"
+              onChange={(event) => setCourseQuery(event.target.value)}
+              placeholder="Tìm theo tên giáo trình hoặc file nguồn…"
+              type="search"
+              value={courseQuery}
+            />
+            {courseQuery ? (
+              <button
+                aria-label="Xóa tìm kiếm"
+                onClick={() => setCourseQuery("")}
+                type="button"
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </label>
+
+          <select
+            aria-label="Lọc theo cấp độ"
+            className="course-library-filter-v3"
+            onChange={(event) => setLevelFilter(event.target.value)}
+            value={levelFilter}
+          >
+            <option value="all">Tất cả cấp độ</option>
+            {courseLevels.map((level) => (
+              <option key={level} value={level}>{level}</option>
+            ))}
+          </select>
+
+          <span className="course-library-result-v3">
+            {visibleCourses.length}/{courses.length} giáo trình
+          </span>
+        </div>
+
         <div className="course-library-grid-v2">
-          {courses.map((item) => {
+          {visibleCourses.map((item) => {
             const active = item.id === course.id;
             return (
               <button
@@ -112,6 +186,12 @@ export default function LearnPage() {
             );
           })}
         </div>
+
+        {!visibleCourses.length ? (
+          <div className="course-library-empty-v3">
+            Không có giáo trình khớp bộ lọc hiện tại.
+          </div>
+        ) : null}
       </section>
 
       <section className="journey-hero-v2">
