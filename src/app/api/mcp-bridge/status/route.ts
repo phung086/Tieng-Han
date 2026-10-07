@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { getMcpEventSetupStatus } from "@/lib/mcp-events";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminApiAccess(request);
+  if (denied) return denied;
+
   try {
     return NextResponse.json(await getMcpEventSetupStatus());
   } catch (error) {
