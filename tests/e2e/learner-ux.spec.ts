@@ -322,6 +322,8 @@ test("account settings expose profile password and session controls without over
           email: "learner@example.com",
           name: "Người học Haneul",
           role: "learner",
+          avatarKey: "moon",
+          joinedAt: "2026-10-01T00:00:00.000Z",
         },
       }),
     });
@@ -369,6 +371,9 @@ test("account settings expose profile password and session controls without over
 
   await expect(page.getByText("Tài khoản Haneul")).toBeVisible();
   await expect(page.getByLabel("Tên hiển thị")).toHaveValue("Người học Haneul");
+  await expect(
+    page.getByRole("button", { name: "Chọn avatar Mặt trăng" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText(/Windows · Chrome · Thiết bị này/)).toBeVisible();
   await expect(page.getByText(/Android · Chrome/)).toBeVisible();
   await expect(page.locator('a[href="/import"]')).toHaveCount(0);

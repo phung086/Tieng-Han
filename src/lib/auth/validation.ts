@@ -27,12 +27,22 @@ export function normalizeEmail(email: string) {
 }
 
 
+export const avatarKeySchema = z.enum([
+  "cloud",
+  "star",
+  "moon",
+  "book",
+  "sparkles",
+  "leaf",
+]);
+
 export const updateProfileSchema = z.object({
   name: z
     .string()
     .trim()
     .min(2, "Tên phải có ít nhất 2 ký tự.")
     .max(80, "Tên quá dài."),
+  avatarKey: avatarKeySchema.optional(),
 });
 
 export const changePasswordSchema = z.object({

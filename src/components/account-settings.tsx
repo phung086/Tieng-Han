@@ -13,6 +13,11 @@ import {
   UserRound,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
+import {
+  avatarOptions,
+  UserAvatarGlyph,
+} from "@/components/user-avatar-glyph";
+import type { UserAvatarKey } from "@/lib/auth/types";
 
 type SessionView = {
   id: string;
@@ -62,6 +67,8 @@ export function AccountSettings() {
   const router = useRouter();
   const { configured, user, refresh } = useAuth();
   const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [avatarDraft, setAvatarDraft] =
+    useState<UserAvatarKey | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [sessions, setSessions] = useState<SessionView[]>([]);
@@ -75,6 +82,8 @@ export function AccountSettings() {
   );
 
   const name = nameDraft ?? user?.name ?? "";
+  const avatarKey =
+    avatarDraft ?? user?.avatarKey ?? "cloud";
 
   async function loadSessions() {
     if (!user) return;
@@ -130,7 +139,7 @@ export function AccountSettings() {
       const response = await fetch("/api/me/profile", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, avatarKey }),
       });
       const data = (await response.json()) as { error?: string };
 
@@ -141,7 +150,8 @@ export function AccountSettings() {
 
       await refresh();
       setNameDraft(null);
-      setMessage("Đã cập nhật tên hiển thị.");
+      setAvatarDraft(null);
+      setMessage("Đã cập nhật hồ sơ.");
     } catch {
       setError("Không thể kết nối máy chủ.");
     } finally {
@@ -317,11 +327,41 @@ export function AccountSettings() {
               value={name}
             />
           </label>
+
+          <div className="avatar-picker-v3">
+            <span>Avatar</span>
+            <div>
+              {avatarOptions.map((option) => (
+                <button
+                  aria-label={"Chọn avatar " + option.label}
+                  aria-pressed={avatarKey === option.key}
+                  className={
+                    avatarKey === option.key
+                      ? "avatar-choice-v3 active"
+                      : "avatar-choice-v3"
+                  }
+                  key={option.key}
+                  onClick={() => setAvatarDraft(option.key)}
+                  title={option.label}
+                  type="button"
+                >
+                  <UserAvatarGlyph
+                    avatarKey={option.key}
+                    size={19}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             className="secondary-button"
             disabled={
               pending === "profile" ||
-              name.trim() === user.name.trim()
+              (
+                name.trim() === user.name.trim() &&
+                avatarKey === (user.avatarKey ?? "cloud")
+              )
             }
             type="submit"
           >

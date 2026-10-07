@@ -7,7 +7,11 @@ import { cookies } from "next/headers";
 import { dbQuery, isDatabaseConfigured } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { normalizeEmail } from "@/lib/auth/validation";
-import type { AuthUser, UserRole } from "@/lib/auth/types";
+import type {
+  AuthUser,
+  UserAvatarKey,
+  UserRole,
+} from "@/lib/auth/types";
 
 const SESSION_COOKIE = "haneul_session";
 const SESSION_DAYS = 30;
@@ -19,6 +23,8 @@ type UserRow = {
   name: string;
   role: UserRole;
   password_hash: string;
+  avatar_key?: UserAvatarKey;
+  created_at?: Date;
 };
 
 export type UserSessionView = {
@@ -45,13 +51,18 @@ export class AuthError extends Error {
 }
 
 function publicUser(
-  row: Pick<UserRow, "id" | "email" | "name" | "role">,
+  row: Pick<
+    UserRow,
+    "id" | "email" | "name" | "role" | "avatar_key" | "created_at"
+  >,
 ): AuthUser {
   return {
     id: row.id,
     email: row.email,
     name: row.name,
     role: row.role,
+    avatarKey: row.avatar_key ?? "cloud",
+    joinedAt: row.created_at?.toISOString(),
   };
 }
 
@@ -99,7 +110,14 @@ export async function createUser(input: {
         INSERT INTO haneul_users
           (id, email, name, password_hash, role)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, email, name, role, password_hash
+        RETURNING
+          id,
+          email,
+          name,
+          role,
+          password_hash,
+          avatar_key,
+          created_at
       `,
       [id, email, input.name.trim(), passwordHash, role],
     );
@@ -135,7 +153,15 @@ export async function verifyUserCredentials(
   const email = normalizeEmail(emailInput);
   const result = await dbQuery<UserRow & { status: string }>(
     `
-      SELECT id, email, name, role, password_hash, status
+      SELECT
+        id,
+        email,
+        name,
+        role,
+        password_hash,
+        avatar_key,
+        created_at,
+        status
       FROM haneul_users
       WHERE email = $1
       LIMIT 1
@@ -223,6 +249,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         u.name,
         u.role,
         u.password_hash,
+        u.avatar_key,
+        u.created_at,
         s.id AS session_id
       FROM haneul_auth_sessions s
       JOIN haneul_users u ON u.id = s.user_id
@@ -269,16 +297,26 @@ export async function destroyCurrentSession() {
 
 export async function updateCurrentUserProfile(
   userId: string,
-  input: { name: string },
+  input: { name: string; avatarKey?: UserAvatarKey },
 ) {
   const result = await dbQuery<UserRow>(
     `
       UPDATE haneul_users
-      SET name = $2, updated_at = NOW()
+      SET
+        name = $2,
+        avatar_key = COALESCE($3, avatar_key),
+        updated_at = NOW()
       WHERE id = $1 AND status = 'active'
-      RETURNING id, email, name, role, password_hash
+      RETURNING
+        id,
+        email,
+        name,
+        role,
+        password_hash,
+        avatar_key,
+        created_at
     `,
-    [userId, input.name.trim()],
+    [userId, input.name.trim(), input.avatarKey ?? null],
   );
 
   return result.rows[0] ? publicUser(result.rows[0]) : null;

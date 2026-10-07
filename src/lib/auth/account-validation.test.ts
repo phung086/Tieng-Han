@@ -6,9 +6,21 @@ import {
 } from "@/lib/auth/validation";
 
 describe("account validation", () => {
-  it("accepts a trimmed learner display name", () => {
-    const parsed = updateProfileSchema.parse({ name: "  Hương  " });
+  it("accepts a trimmed learner display name and avatar preset", () => {
+    const parsed = updateProfileSchema.parse({
+      name: "  Hương  ",
+      avatarKey: "moon",
+    });
     expect(parsed.name).toBe("Hương");
+    expect(parsed.avatarKey).toBe("moon");
+  });
+
+  it("rejects unsupported avatar values", () => {
+    const parsed = updateProfileSchema.safeParse({
+      name: "Hương",
+      avatarKey: "custom-file",
+    });
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects short replacement passwords", () => {

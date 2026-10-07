@@ -45,7 +45,12 @@ export async function PATCH(request: Request) {
       eventType: "user.profile_updated",
       entityType: "user",
       entityId: current.id,
-      metadata: { nameChanged: current.name !== user.name },
+      metadata: {
+        nameChanged: current.name !== user.name,
+        avatarChanged:
+          (current.avatarKey ?? "cloud") !==
+          (user.avatarKey ?? "cloud"),
+      },
     });
 
     return NextResponse.json({ user });
