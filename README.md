@@ -32,7 +32,21 @@ git clone https://github.com/phung086/Tieng-Han.git
 cd Tieng-Han
 ```
 
-Bước tiếp theo của app là nối UI/API vào `curriculum/curriculum.json` và xây importer để tạo lesson/question data từ file nguồn.
+## Trạng thái ứng dụng
+
+Haneul hiện đã có:
+
+- multi-course Course Library, tìm kiếm/lọc theo cấp độ;
+- flow học 6 kỹ năng + Mastery Check, Practice Hub và Memory Garden;
+- tiến độ/XP/mastery theo từng giáo trình;
+- PostgreSQL authentication, learner/admin roles và server-side sessions;
+- profile, đổi mật khẩu và quản lý thiết bị đăng nhập;
+- admin course publishing, user access controls và audit trail;
+- PDF import -> MCP Events -> ChatGPT checkpoints -> finalized Course Bundle;
+- Playwright smoke tests trên desktop và mobile ngoài lint/typecheck/unit/build.
+
+Xem `docs/ARCHITECTURE.md`, `docs/LEARNER_MVP_BASELINE.md` và
+`docs/PHASE_SCALE_1_SETUP.md` để hiểu boundary hiện tại.
 
 
 ## Hướng dẫn nhập sách tự động
