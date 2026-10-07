@@ -24,6 +24,14 @@ import { useContent } from "@/lib/content-store";
 import { accuracy, useLearning, type SkillKey } from "@/lib/learning-state";
 import { productConfig } from "@/config/product";
 import { useAuth } from "@/lib/auth-client";
+import { UserAvatarGlyph } from "@/components/user-avatar-glyph";
+
+function formatJoinedAt(value?: string) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
 
 const skillLabels: Record<SkillKey, string> = {
   vocabulary: "Từ vựng",
@@ -40,6 +48,7 @@ export function ProfileClient() {
   const { state } = useLearning();
   const { configured, user, logout } = useAuth();
   const learnerName = user?.name ?? productConfig.defaultLearnerName;
+  const joinedAt = formatJoinedAt(user?.joinedAt);
 
   const totalAttempts = Object.values(state.skills).reduce(
     (sum, item) => sum + item.total,
@@ -103,7 +112,14 @@ export function ProfileClient() {
     <div className="profile-v2">
       <section className="profile-hero-v2">
         <div className="profile-avatar-v2">
-          <span>{learnerName.slice(0, 1).toUpperCase()}</span>
+          {user ? (
+            <UserAvatarGlyph
+              avatarKey={user.avatarKey ?? "cloud"}
+              size={38}
+            />
+          ) : (
+            <span>{learnerName.slice(0, 1).toUpperCase()}</span>
+          )}
           <i />
         </div>
 
@@ -124,6 +140,12 @@ export function ProfileClient() {
             </span>
             <span><BookOpenCheck size={14} /> {course.level || "Chưa có cấp độ"}</span>
             {user ? <span><Database size={14} /> {user.email}</span> : null}
+            {joinedAt ? (
+              <span>
+                <CalendarDays size={14} />
+                Tham gia {joinedAt}
+              </span>
+            ) : null}
           </div>
         </div>
 
