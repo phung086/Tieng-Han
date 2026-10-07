@@ -258,13 +258,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               </div>
 
               <div className="lesson-mission-actions-v3">
-                <Link
-                  className="primary-button"
-                  href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
-                >
+                <Link className="primary-button" href={primaryNextHref}>
                   <Sparkles size={17} />
-                  {completedMissions === missionSteps.length
-                    ? "Luyện lại bài"
+                  {coreComplete
+                    ? primaryNextLabel
                     : "Tiếp tục: " + (nextMission?.title ?? "Bài học nhanh")}
                 </Link>
                 <Link
