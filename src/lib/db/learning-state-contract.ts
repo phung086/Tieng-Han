@@ -1,15 +1,25 @@
 import { z } from "zod";
 
-const skillStatSchema = z.object({
-  correct: z.number().int().min(0),
-  total: z.number().int().min(0),
-});
+const skillStatSchema = z
+  .object({
+    correct: z.number().int().min(0),
+    total: z.number().int().min(0),
+  })
+  .refine((value) => value.correct <= value.total, {
+    message: "Số câu đúng không thể lớn hơn tổng số lượt.",
+    path: ["correct"],
+  });
 
-const dailyStatSchema = z.object({
-  attempts: z.number().int().min(0),
-  correct: z.number().int().min(0),
-  xp: z.number().int().min(0),
-});
+const dailyStatSchema = z
+  .object({
+    attempts: z.number().int().min(0),
+    correct: z.number().int().min(0),
+    xp: z.number().int().min(0),
+  })
+  .refine((value) => value.correct <= value.attempts, {
+    message: "Số câu đúng trong ngày không thể lớn hơn số lượt.",
+    path: ["correct"],
+  });
 
 const masteryItemSchema = z.object({
   strength: z.number().min(0).max(100),
