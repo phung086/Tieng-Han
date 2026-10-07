@@ -1,95 +1,109 @@
-# Architecture — Local First
+# Architecture — Haneul modular monolith
 
-## Quyết định
+## Current decision
 
-Giai đoạn hiện tại dùng **một ứng dụng Next.js** thay vì tách web/API/database service.
+Haneul remains a **single Next.js application** for the current scale, but the
+runtime is now split into explicit modules with stable boundaries:
 
-Lý do:
+- learner experience;
+- course library;
+- local/browser persistence;
+- PostgreSQL identity and progress sync;
+- admin/catalog controls;
+- PDF import and MCP/ChatGPT compilation.
 
-- đây là ứng dụng cá nhân;
-- cần thời gian phát triển tập trung vào nội dung và UX;
-- local phải chạy nhanh, ít dependency hạ tầng;
-- tách service sớm không tạo thêm giá trị cho bài toán học tập.
+This keeps local development simple while avoiding coupling the learning UI to
+the compiler.
 
-## Kiến trúc hiện tại
+## Runtime architecture
 
 ```text
 Browser
   |
 Next.js App Router
   |
-UI + local learning state
+  +-- Learner UI
+  |     +-- Course Library
+  |     +-- Lesson flow / six skills
+  |     +-- Practice / Review / Stats
+  |     +-- Profile / Settings
   |
-demo data / textbook seed
+  +-- Account API
+  |     +-- registration/login/logout
+  |     +-- profile/password/session management
+  |     +-- per-user course enrollment
+  |     +-- per-user/per-course learning state
+  |
+  +-- Admin API
+  |     +-- course publication
+  |     +-- user roles/status
+  |     +-- audit trail
+  |
+  +-- PostgreSQL
+  |     +-- users/sessions
+  |     +-- course catalog visibility
+  |     +-- enrollments
+  |     +-- learning states
+  |     +-- audit events
+  |
+  +-- File-backed compiled course library
+  |
+  +-- Import/MCP boundary
+        +-- PDF page snapshots
+        +-- import jobs
+        +-- MCP Events
+        +-- ChatGPT compilation checkpoints
+        +-- finalized Course Bundle
 ```
 
-Phase dữ liệu tiếp theo:
+## Persistence split
+
+Compiled course payloads remain file-backed in Phase Scale 1. PostgreSQL stores
+identity, permissions, visibility and learner state around those course
+payloads.
+
+This separation is intentional:
 
 ```text
-Next.js
-  |
-SQLite local file
-  |
-Course -> Book -> Unit -> Section
-                  |-> Vocabulary
-                  |-> Grammar
-                  |-> Reading
-                  |-> Listening
-                  |-> Exercise
-                  |-> Quiz
+Course content source of truth
+  -> compiled Course Bundle / .haneul course library
+
+Account + permission + progress source of truth
+  -> PostgreSQL
 ```
 
-## Production sau này
+The browser still keeps course-scoped local state as an offline/fallback
+migration source.
 
-Ưu tiên đường deploy đơn giản:
+## Protected compiler boundary
 
-```text
-1 Docker container
-+ 1 persistent volume cho SQLite/media
-+ backup định kỳ
-```
+Learner/admin development must not silently alter:
 
-Nếu nhu cầu thay đổi, tầng persistence sẽ được thay bằng Postgres/Turso mà không đổi luồng UI.
+- MCP Events subscription behavior;
+- import-job lifecycle;
+- `prepare_import_job`;
+- checkpoint / lesson-draft / finalize workflow;
+- sourceRef grounding;
+- Course Bundle runtime compatibility.
 
-## Nguyên tắc domain
+The compiler can evolve only through an explicit compiler-contract change.
+
+## Domain rules
 
 1. Giáo trình là source of truth.
-2. Mỗi nội dung phải có `sourceRef`.
-3. AI không tự quyết định curriculum.
-4. Quiz sinh tự động phải review được.
-5. Progress được lưu theo lesson + skill + knowledge item.
-6. Gamification hỗ trợ động lực, không che mất mục tiêu học.
+2. Mỗi knowledge item phải truy vết được về sourceRef.
+3. Derived practice chỉ dùng kiến thức đã mở khóa trong cùng lesson scope.
+4. Progress được lưu theo user + course + lesson/skill/item.
+5. Course publication is an admin concern, not a compiler concern.
+6. Gamification supports learning decisions; it must not obscure them.
+7. Learners only see published courses when PostgreSQL is enabled.
+8. Disabling an account revokes its server sessions.
 
+## Scaling path
 
-## MCP import bridge
+The current modular monolith can be deployed as one Next.js service plus
+PostgreSQL and persistent storage for `.haneul` course/import data.
 
-AI compilation được tách khỏi UI bằng một import-job protocol.
-
-```text
-Browser PDF ingestion
-  |
-  v
-Import Job Repository (.haneul/import-jobs)
-  |                         ^
-  v                         |
-MCP /mcp -------------------+
-  |
-ChatGPT / MCP client
-```
-
-Browser chịu trách nhiệm PDF extraction và giữ media local. MCP đọc page snapshots theo chunk và chỉ trả structured curriculum. Course bundle được kiểm fingerprint trước khi nhận.
-
-Repository hiện dùng filesystem local, nhưng interface được tách riêng để sau này thay bằng database/object storage mà không đổi MCP tools.
-
-## Language profiles
-
-Core import bridge dùng `LanguageProfile` thay vì giả định Korean-only:
-
-```text
-target language
-learner language
-speech locale
-script
-```
-
-Profiles ban đầu gồm Korean, English và Chinese với learner language là Vietnamese. Runtime UI hiện vẫn Korean-first; phần legacy storage được cô lập khỏi MCP protocol để migrate dần sang generic content schema.
+A later scale phase may move compiled course payloads/media to object storage
+or split workers/services, but the browser APIs and MCP contract should remain
+stable so that infrastructure changes do not rewrite the learning product.
