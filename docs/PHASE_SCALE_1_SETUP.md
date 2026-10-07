@@ -17,6 +17,7 @@ course compilation, Course Bundle validation, or the six-skill learning flow.
 - User/course enrollment tracking.
 - Per-user/per-course learning-state sync.
 - Profile display-name management.
+- Persisted preset avatar and account join date.
 - Password changes with optional revocation of other sessions.
 - Active-session/device management.
 - Admin account enable/disable controls with session revocation.
@@ -135,7 +136,8 @@ an admin publishes them explicitly.
 
 Signed-in users can open `/settings` to:
 
-- update their display name;
+- update their display name and avatar preset;
+- view their account join date on the profile page;
 - change their password;
 - view active sessions/devices;
 - revoke another session;
