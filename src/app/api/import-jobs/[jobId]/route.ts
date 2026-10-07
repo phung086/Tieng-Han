@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import {
   getImportJob,
   queueImportJob,
@@ -13,9 +14,12 @@ type RouteContext = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: RouteContext,
 ) {
+  const denied = await requireAdminApiAccess(request);
+  if (denied) return denied;
+
   try {
     const { jobId } = await context.params;
     const job = await getImportJob(jobId);
@@ -45,6 +49,9 @@ export async function PATCH(
   request: Request,
   context: RouteContext,
 ) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const { jobId } = await context.params;
     const body = (await request.json()) as { action?: string };
