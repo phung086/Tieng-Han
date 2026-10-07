@@ -203,6 +203,10 @@ export async function createSession(
     );
   }
 
+  await dbQuery(
+    "DELETE FROM haneul_auth_sessions WHERE expires_at <= NOW()",
+  );
+
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(
