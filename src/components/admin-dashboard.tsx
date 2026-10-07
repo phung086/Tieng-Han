@@ -16,6 +16,7 @@ import {
   RefreshCcw,
   RotateCcw,
   Shield,
+  Trash2,
   UserRoundX,
   Users,
 } from "lucide-react";
@@ -101,6 +102,7 @@ const eventLabels: Record<string, string> = {
   "user.role_changed": "Đổi vai trò",
   "user.status_changed": "Đổi trạng thái tài khoản",
   "course.status_changed": "Đổi trạng thái giáo trình",
+  "import_job.deleted": "Xóa hồ sơ import",
 };
 
 function formatDate(value: string | null) {
@@ -205,6 +207,45 @@ export function AdminDashboard({
       }
 
       await refreshImportJobs();
+    } finally {
+      setPendingKey("");
+    }
+  }
+
+  async function deleteTerminalImportJob(job: ImportJobRow) {
+    if (
+      !window.confirm(
+        "Xóa vĩnh viễn hồ sơ import cho “" +
+          job.title +
+          "”? Khóa học đã consume sẽ không bị xóa khỏi Course Library.",
+      )
+    ) {
+      return;
+    }
+
+    const pendingId = "import:" + job.id + ":delete";
+    setPendingKey(pendingId);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "/api/import-jobs/" + encodeURIComponent(job.id),
+        {
+          method: "DELETE",
+        },
+      );
+      const data = (await response.json()) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setError(data.error ?? "Không thể xóa import job.");
+        return;
+      }
+
+      setImportJobs((current) =>
+        current.filter((item) => item.id !== job.id),
+      );
     } finally {
       setPendingKey("");
     }
@@ -489,6 +530,27 @@ export function AdminDashboard({
                         {pendingKey === "import:" + job.id + ":consume"
                           ? "Đang nhập…"
                           : "Nhập vào thư viện"}
+                      </button>
+                    ) : null}
+
+                    {job.status === "failed" ||
+                    job.status === "consumed" ? (
+                      <button
+                        className="text-button danger"
+                        disabled={
+                          pendingKey ===
+                          "import:" + job.id + ":delete"
+                        }
+                        onClick={() =>
+                          void deleteTerminalImportJob(job)
+                        }
+                        type="button"
+                      >
+                        <Trash2 size={14} />
+                        {pendingKey ===
+                        "import:" + job.id + ":delete"
+                          ? "Đang xóa…"
+                          : "Xóa hồ sơ"}
                       </button>
                     ) : null}
 
