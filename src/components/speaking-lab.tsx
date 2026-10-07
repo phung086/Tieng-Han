@@ -287,7 +287,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
         ) : null}
 
         {transcript ? (
-          <div className="speech-result">
+          <div className="speech-result" aria-live="polite" role="status">
             <div>
               <span>{messages.speaking.heard}</span>
               <strong className="korean-text">{transcript}</strong>
