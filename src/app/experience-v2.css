@@ -4273,3 +4273,91 @@ body {
   }
 }
 
+/* Final responsive safeguards from cross-page UX audit */
+.app-main {
+  overflow-x: clip;
+}
+
+.page,
+.home-v2,
+.journey-page-v2,
+.practice-hub-v3,
+.review-v4,
+.profile-page-v2,
+.admin-page-v1,
+.settings-stack,
+.conversation-lab-v4,
+.pronunciation-lab-v4,
+.grammar-lab-v4,
+.vocab-lab-v4,
+.skill-lab {
+  max-width: 100%;
+}
+
+.lesson-tabs,
+.practice-head-stats-v3,
+.home-hud-v2,
+.conversation-tabs-v4 {
+  -webkit-overflow-scrolling: touch;
+}
+
+.lesson-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lesson-tabs button {
+  flex: 0 0 auto;
+}
+
+.bottom-item {
+  min-width: 0;
+}
+
+.bottom-item span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-topbar,
+.bottom-nav {
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
+
+img {
+  max-width: 100%;
+}
+
+@media (max-width: 420px) {
+  .bottom-nav {
+    left: 6px;
+    right: 6px;
+  }
+
+  .bottom-item {
+    font-size: 7px;
+  }
+
+  .bottom-item svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .home-hud-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .home-hud-pill-v2 {
+    min-height: 40px;
+  }
+
+  .profile-metrics-v2,
+  .admin-metrics-v1 {
+    grid-template-columns: 1fr;
+  }
+}
+
