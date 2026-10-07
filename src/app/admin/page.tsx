@@ -10,6 +10,7 @@ import {
   syncCourseCatalog,
 } from "@/lib/db/course-catalog";
 import { getCourseLibrary } from "@/lib/course-consumer";
+import { getAdminImportJobs } from "@/lib/admin/import-monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,14 @@ export default async function AdminPage() {
     })),
   );
 
-  const [overview, courses, users, auditEvents] = await Promise.all([
-    getAdminOverview(),
-    getAdminCourseCatalog(),
-    getAdminUsers(),
-    getRecentAuditEvents(24),
-  ]);
+  const [overview, courses, users, auditEvents, importJobs] =
+    await Promise.all([
+      getAdminOverview(),
+      getAdminCourseCatalog(),
+      getAdminUsers(),
+      getRecentAuditEvents(24),
+      getAdminImportJobs(16),
+    ]);
 
   return (
     <div className="page">
@@ -77,6 +80,7 @@ export default async function AdminPage() {
           metadata: event.metadata,
           createdAt: event.createdAt.toISOString(),
         }))}
+        initialImportJobs={importJobs}
       />
     </div>
   );

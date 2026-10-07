@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiAccess } from "@/lib/auth/api-guard";
-import { getMcpEventSetupStatus } from "@/lib/mcp-events";
+import { getAdminImportJobs } from "@/lib/admin/import-monitor";
 
 export const runtime = "nodejs";
 
@@ -9,17 +9,16 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   try {
-    return NextResponse.json(await getMcpEventSetupStatus());
+    return NextResponse.json({
+      jobs: await getAdminImportJobs(20),
+    });
   } catch (error) {
     return NextResponse.json(
       {
-        configured: false,
-        activeSubscriptions: 0,
-        nextRefreshBefore: null,
         error:
           error instanceof Error
             ? error.message
-            : "Không thể đọc trạng thái MCP automation.",
+            : "Không thể đọc trạng thái import.",
       },
       { status: 500 },
     );

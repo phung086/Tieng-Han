@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { callContentModel } from "@/lib/content-ai";
 import {
   defaultLanguageProfile,
@@ -14,6 +15,9 @@ type PageInput = {
 };
 
 export async function POST(request: Request) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const body = (await request.json()) as {
       pages?: PageInput[];

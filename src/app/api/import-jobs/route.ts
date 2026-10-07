@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { defaultLanguageProfile } from "@/lib/language-profile";
 import {
   createImportJob,
@@ -21,6 +22,9 @@ const statuses = new Set<ImportJobStatus>([
 ]);
 
 export async function GET(request: Request) {
+  const denied = await requireAdminApiAccess(request);
+  if (denied) return denied;
+
   try {
     const url = new URL(request.url);
     const rawStatus = url.searchParams.get("status");
@@ -51,6 +55,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const body = (await request.json()) as Partial<CreateImportJobInput>;
 

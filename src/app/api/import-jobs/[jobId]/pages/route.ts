@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { appendImportPages } from "@/lib/import-job-store";
 import type { ImportJobPage } from "@/lib/import-jobs";
 
@@ -12,6 +13,9 @@ export async function PUT(
   request: Request,
   context: RouteContext,
 ) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const { jobId } = await context.params;
     const body = (await request.json()) as {

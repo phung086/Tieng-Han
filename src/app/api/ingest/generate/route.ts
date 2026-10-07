@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { callContentModel, callVisionContentModel, type InputContent } from "@/lib/content-ai";
 import { ingestionConfig } from "@/config/ingestion";
 import {
@@ -16,6 +17,9 @@ type SourcePage = {
 };
 
 export async function POST(request: Request) {
+  const denied = await requireAdminApiAccess(request, { mutation: true });
+  if (denied) return denied;
+
   try {
     const body = (await request.json()) as {
       lessonId?: number;

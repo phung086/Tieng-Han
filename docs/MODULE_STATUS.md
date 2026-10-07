@@ -98,7 +98,10 @@ Includes:
 - protection for the final active admin;
 - session revocation when an account is disabled;
 - audit-event feed;
-- overview metrics.
+- overview metrics;
+- live import-pipeline monitor with checkpoint/draft visibility;
+- safe failed-job requeue and ready-job consume actions;
+- route-level admin enforcement for import/ingest APIs when PostgreSQL auth is enabled.
 
 ## 7. Import and ChatGPT compiler
 
