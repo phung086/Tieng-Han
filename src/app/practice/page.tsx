@@ -22,6 +22,7 @@ import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 import { EmptyCourseState } from "@/components/empty-course-state";
+import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
 
 const skillModes = [
   { path: "/vocabulary", key: "vocabulary", icon: Layers3, tone: "blue" },
@@ -55,15 +56,16 @@ export default function PracticePage() {
     (item) => item.dueAt <= today,
   ).length;
   const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
+  const practice = summarizeLessonPractice(current, course.questions);
 
   const modes = [
     {
       key: "guided",
       icon: Sparkles,
       eyebrow: "GỢI Ý CHO BẠN",
-      title: "Bài học nhanh",
-      desc: "8 câu trộn đều kỹ năng, vừa đủ cho một phiên 8–12 phút.",
-      meta: "Cân bằng · phản hồi ngay",
+      title: "Ôn đầy đủ theo sách",
+      desc: "Toàn bộ " + practice.totalQuestions + " câu luyện đã nhập và sinh từ nội dung bài. Không giới hạn số câu.",
+      meta: "Đầy đủ · theo từng bài",
       href: "/practice/quiz?lesson=" + current.id + "&mode=guided",
       tone: "violet",
     },
@@ -96,7 +98,7 @@ export default function PracticePage() {
           <span className="experience-kicker">PRACTICE LAB</span>
           <h1>Luyện đúng thứ bạn cần, đúng lúc.</h1>
           <p>
-            Chọn một phiên ngắn, luyện một kỹ năng riêng hoặc quay lại các điểm yếu.
+            Chọn luyện toàn bài, xem sổ bài tập gốc, học một kỹ năng hoặc ôn lại điểm yếu.
           </p>
           <ActiveCourseChip compact />
         </div>
@@ -124,8 +126,24 @@ export default function PracticePage() {
           className="primary-button"
           href={"/practice/quiz?lesson=" + current.id + "&mode=guided"}
         >
-          Bắt đầu phiên gợi ý <ArrowRight size={18} />
+          Luyện toàn bài ({practice.totalQuestions} câu) <ArrowRight size={18} />
         </Link>
+      </section>
+
+      <section className="lesson-content-card">
+        <div className="content-heading">
+          <div>
+            <span className="eyebrow">GIÁO TRÌNH GỐC · KHÔNG RÚT GỌN</span>
+            <h2>Sổ luyện nguồn của Bài {current.id}</h2>
+          </div>
+          <Link className="primary-button" href={"/practice/workbook?lesson=" + current.id}>
+            Xem từng mục trong sách <ArrowRight size={16} />
+          </Link>
+        </div>
+        <p>
+          Từ mới, ngữ pháp, câu ví dụ, hội thoại, nghe, đọc, viết và bài tập bổ sung;
+          cả các mục chưa có đáp án để chấm tự động vẫn được giữ để luyện.
+        </p>
       </section>
 
       <section className="practice-session-grid-v3">
