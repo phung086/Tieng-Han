@@ -1,13 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
 
+function readProgress(key: string, valid: Set<string>): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved: unknown = JSON.parse(window.localStorage.getItem(key) || "[]");
+    return Array.isArray(saved)
+      ? saved.filter((item): item is string => typeof item === "string" && valid.has(item))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function readDrafts(key: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw: unknown = JSON.parse(window.localStorage.getItem(key) || "{}");
+    return raw && typeof raw === "object" && !Array.isArray(raw)
+      ? Object.fromEntries(
+          Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+        )
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export function SourceWorkbook({ lessonId }: { lessonId: number }) {
+  const { course } = useContent();
+  // Remount when a server-loaded course replaces the initial empty course.
+  return <WorkbookContent key={course.id + ":" + lessonId} lessonId={lessonId} />;
+}
+
+function WorkbookContent({ lessonId }: { lessonId: number }) {
   const { getLesson, course } = useContent();
   const lesson = getLesson(lessonId);
   const items = useMemo(
@@ -15,19 +47,12 @@ export function SourceWorkbook({ lessonId }: { lessonId: number }) {
     [lesson, course.questions],
   );
   const storageKey = "haneul-source-workbook-v1:" + course.id + ":" + lessonId;
-  const [done, setDone] = useState<string[]>([]);
+  const draftKey = storageKey + ":drafts";
+  const [done, setDone] = useState<string[]>(() =>
+    readProgress(storageKey, new Set(items.map(item => item.id))),
+  );
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => readDrafts(draftKey));
   const [revealed, setRevealed] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const saved: unknown = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
-      const valid = new Set(items.map(item => item.id));
-      setDone(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string" && valid.has(id)) : []);
-    } catch {
-      setDone([]);
-    }
-    setRevealed([]);
-  }, [storageKey, items]);
 
   if (!lesson) {
     return (
@@ -59,8 +84,19 @@ export function SourceWorkbook({ lessonId }: { lessonId: number }) {
 
   function reset() {
     setDone([]);
+    setDrafts({});
     setRevealed([]);
-    try { window.localStorage.removeItem(storageKey); } catch { /* optional */ }
+    try {
+      window.localStorage.removeItem(storageKey);
+      window.localStorage.removeItem(draftKey);
+    } catch { /* optional */ }
+  }
+
+  function updateDraft(id: string, value: string) {
+    const next = { ...drafts, [id]: value };
+    setDrafts(next);
+    try { window.localStorage.setItem(draftKey, JSON.stringify(next)); }
+    catch { /* keep the session draft available */ }
   }
 
   function speak(text: string) {
@@ -136,6 +172,16 @@ export function SourceWorkbook({ lessonId }: { lessonId: number }) {
                     </div>
                   ) : null}
                   {item.hint ? <p>{item.hint}</p> : null}
+                  {(!item.answer || item.category === "Bài tập bổ sung") ? (
+                    <div className="writing-area">
+                      <textarea
+                        aria-label={"Bài làm cho " + item.title}
+                        placeholder="Viết câu trả lời, bản dịch hoặc ghi chú của bạn tại đây…"
+                        value={drafts[item.id] ?? ""}
+                        onChange={(event) => updateDraft(item.id, event.target.value)}
+                      />
+                    </div>
+                  ) : null}
                   {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
                   <div className="complete-actions">
                     {item.answer ? (
