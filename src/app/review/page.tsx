@@ -15,6 +15,7 @@ import { ActiveCourseChip } from "@/components/active-course-chip";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 
 type ReviewCatalogItem = {
   id: string;
@@ -97,7 +98,10 @@ export default function ReviewPage() {
     return [...vocabulary, ...listening, ...speaking, ...reading, ...writing];
   });
 
-  const questionCatalog: ReviewCatalogItem[] = course.questions.map((item) => ({
+  const practiceQuestions = course.lessons.flatMap(
+    (lesson) => buildLessonPracticeBank(lesson, course.questions),
+  );
+  const questionCatalog: ReviewCatalogItem[] = practiceQuestions.map((item) => ({
     id: item.id,
     title: item.prompt,
     subtitle:
