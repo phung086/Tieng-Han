@@ -166,6 +166,11 @@ export default function ReviewPage() {
             Haneul đưa đúng điểm yếu quay lại đúng lúc, thay vì bắt bạn học lại cả bài.
           </p>
           <ActiveCourseChip compact />
+          {course.lessons.length ? (
+            <Link className="secondary-button" href={"/practice/workbook?lesson=" + course.lessons[0].id}>
+              Sổ luyện nguồn từng bài
+            </Link>
+          ) : null}
         </div>
 
         <div className="review-head-stats-v4">
