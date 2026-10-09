@@ -11,6 +11,7 @@ import {
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
+import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 
 export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
   const { getLesson, course } = useContent();
@@ -24,9 +25,8 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
   const completed = state.completedActivities.includes(
     "lesson:" + lessonId + ":grammar",
   );
-  const questionCount = course.questions.filter(
-    (item) => item.lessonId === lessonId && item.skill === "grammar",
-  ).length;
+  const questionCount = buildLessonPracticeBank(lesson, course.questions)
+    .filter((item) => item.skill === "grammar").length;
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
