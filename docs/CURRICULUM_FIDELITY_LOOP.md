@@ -26,7 +26,7 @@ Never modify import-job lifecycle, MCP events, extraction, compilation schema, p
 
 The scheduled workflow runs every 15 minutes but selects one of every three UTC quarter-hour slots, giving a **nominal** 45-minute cadence. GitHub-hosted scheduled events can be delayed or dropped; it is not a guaranteed timer. The audit is **read-only**, does not call an AI worker, and cannot continuously fix issues or certify absent artifacts. A workflow_dispatch provides a manual run.
 
-The script audits local `.haneul/courses/*.json` and optionally `curriculum/source-inventory.json`. On a hosted runner, the local course library is absent unless an authorized artifact-provisioning stage is added. Missing source inventory returns `unverified`, never a false fidelity success. Set `HANEUL_REQUIRE_VERIFIED=1` for strict certification once both inputs are provisioned.
+The script audits local `.haneul/courses/*.json` and optionally `curriculum/source-inventory.json`. On a hosted runner, the local course library is absent unless an authorized artifact-provisioning stage is added. Missing source inventory returns `unverified`, never a false fidelity success. Set `HANEUL_REQUIRE_VERIFIED=1` for strict certification once both inputs are provisioned. Override `HANEUL_COURSE_LIBRARY`, `HANEUL_SOURCE_INVENTORY`, and `HANEUL_AUDIT_REPORT` to provide controlled fixtures. The recurring audit sets `HANEUL_AUDIT_NONBLOCKING=1`, whereas release checks omit it.
 
 Example independently validated inventory:
 
@@ -53,3 +53,21 @@ Numbers above are **illustrative**, not extracted counts for any real textbook. 
 ## Agent iteration (external runner required)
 
 A separately deployed agent with GitHub write credentials and compute budget can use audit gaps as its work queue: read the actual textbook/source inventory -> patch only the learning/practice domain -> test -> publish isolated PR -> wait for review and successful CI -> reevaluate. GitHub Actions by itself cannot supply an autonomous coding model or unlimited compute. Do not generate guessed textbook facts if source data is unavailable. Retain work queues until verified rather than declaring completion or attempting infinite self-retries.
+
+## Never-abort iteration policy
+
+**Blocked does not mean stop the development schedule; blocked does not mean pass the release gate.**
+
+- **Broken lesson/course JSON:** record the error code, course and affected item; continue with remaining files and lesson IDs. Preserve valid output and source files unchanged.
+- **Missing imported PDFs, inventory, or source evidence:** report `unverified` and a specific sourcing task. Never invent words or questions; other independent tasks (test coverage, practice logic, UI) remain eligible.
+- **Missing AI credentials/provider, exhausted quota, unavailable network:** record the dependency and prepare deterministic fixtures, regression tests, or other ready work; retry the blocked provider in a later iteration without repeated immediate requests.
+- **Git conflict or another agent's branch touching the same module:** defer the conflicting edit, fetch current main and open PRs, and work on a different scoped issue. Never force-push over a collaborator.
+- **Failed test, build or import regression:** report diagnostics, keep the PR in Draft, quarantine the change; continue other branches/cycles. Never bypass required CI to ship a broken build.
+- **Audit runner exception or GitHub API failure:** the GitHub Actions steps use `continue-on-error` / `always()` to attempt publishing reports and a rolling GitHub Issue. A future scheduled run can execute even when this run fails.
+- **Missing report file:** explicitly flag a runner fault; do not substitute a successful/green data-fidelity status.
+
+Each non-skipped scheduled cycle uploads its JSON report as a uniquely named, 30-day-retained GitHub Actions artifact and updates **one** reusable backlog Issue (only when the issue contents change). The report records severity, scope, error code and actionable next step. Repeat cycles never erase the underlying data deficiency merely to pass an audit. GitHub retention means artifacts are not a permanent audit database; provision durable external storage if long-term history becomes necessary.
+
+`node --test scripts/audit-curriculum-fidelity.test.mjs` exercises missing inventory, broken JSON isolation, continuing to a second file, count mismatch reporting and strict-vs-nonblocking behavior. Regression tests are nonblocking **for the recurring audit**, not evidence that the PR is safe to merge. Do not relax normal PR CI.
+
+**Limitations:** A GitHub scheduled workflow provides repeated checks but cannot do endless independent AI coding without an external coding agent and authorized runner. GitHub may delay/drop cron triggers; GitHub Actions is not an exact guaranteed 45-minute scheduler. Schedules run from the default branch, so this interval begins only after the workflow is merged. The rolling GitHub Issue is an actionable handoff queue, not an autonomous model.
