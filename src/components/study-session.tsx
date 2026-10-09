@@ -21,9 +21,9 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import {
   masteryPassed,
-  pickBalancedQuestions,
 } from "@/lib/study-session-plan";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -51,16 +51,16 @@ export function StudySession({
   const activeLessonId = lessonId ?? course.lessons[0]?.id ?? 1;
 
   const baseQuestions = useMemo(() => {
-    const all = course.questions.filter(
-      (item) =>
-        item.lessonId === activeLessonId &&
-        (!skill || item.skill === skill),
-    );
+    const lesson = course.lessons.find((item) => item.id === activeLessonId);
+    const bank = lesson
+      ? buildLessonPracticeBank(lesson, course.questions)
+      : course.questions.filter((item) => item.lessonId === activeLessonId);
+    const all = bank.filter((item) => !skill || item.skill === skill);
 
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
-    return pickBalancedQuestions(all, 8);
-  }, [course.questions, activeLessonId, mode, skill]);
+    return all; // Full guided practice: never silently cap textbook questions.
+  }, [course.lessons, course.questions, activeLessonId, mode, skill]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
   const questions = retryIds
@@ -121,9 +121,9 @@ export function StudySession({
 
   const modeCopy = {
     guided: {
-      label: "Bài học nhanh",
+      label: "Ôn toàn bộ giáo trình",
       title: "Học theo nhịp",
-      note: "Một phiên ngắn, trộn đều các kỹ năng.",
+      note: "Ôn toàn bộ câu hỏi của bài, không giới hạn số lượng.",
     },
     quick: {
       label: "Quick 5",

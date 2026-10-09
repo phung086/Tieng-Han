@@ -33,7 +33,8 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   const [known, setKnown] = useState(0);
   const [finished, setFinished] = useState(false);
 
-  const matchItems = deck.slice(0, Math.min(6, deck.length));
+  const [matchPage, setMatchPage] = useState(0);
+  const matchItems = deck.slice(matchPage * 6, (matchPage + 1) * 6);
   const [selectedTarget, setSelectedTarget] = useState("");
   const [selectedMeaning, setSelectedMeaning] = useState("");
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
@@ -55,7 +56,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   const card = deck[order[position]];
   const progress = Math.round(((position + 1) / order.length) * 100);
   const matchProgress = Math.round(
-    (matchedIds.length / Math.max(1, matchItems.length)) * 100,
+    (matchedIds.length / Math.max(1, deck.length)) * 100,
   );
   const nextStep = getNextLessonFlowStep(lessonId, "vocabulary");
 
@@ -101,6 +102,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
     setSelectedTarget("");
     setSelectedMeaning("");
     setMatchedIds([]);
+    setMatchPage(0);
     setMatchAttempts(0);
     setMatchMessage("Chọn một từ tiếng Hàn và nghĩa tương ứng.");
     setMatchFinished(false);
@@ -116,9 +118,12 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
         recordAnswer("vocabulary", true, targetId);
         setMatchMessage("Đúng rồi! Ghép tiếp cặp tiếp theo.");
 
-        if (nextMatched.length === matchItems.length) {
+        if (nextMatched.length === deck.length) {
           completeLessonSkill(lessonId, "vocabulary");
           setMatchFinished(true);
+        } else if (nextMatched.length % 6 === 0) {
+          setMatchPage((page) => page + 1);
+          setMatchMessage("Đã hoàn thành nhóm này! Tiếp tục với các từ tiếp theo.");
         }
       }
     } else {
@@ -176,14 +181,14 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
 
   if (matchFinished && mode === "match") {
     const accuracy = Math.round(
-      (matchItems.length / Math.max(matchItems.length, matchAttempts)) * 100,
+      (deck.length / Math.max(deck.length, matchAttempts)) * 100,
     );
 
     return (
       <div className="skill-complete-card vocab-match-complete-v4">
         <div className="complete-orb"><Sparkles size={32} /></div>
         <span className="eyebrow">GHÉP NHANH HOÀN TẤT</span>
-        <h1>{matchItems.length} cặp đã ghép</h1>
+        <h1>{deck.length} cặp đã ghép</h1>
         <p>
           Độ chính xác {accuracy}% · {matchAttempts} lượt chọn. Ghép từ và nghĩa giúp củng cố khả năng nhận diện nhanh.
         </p>
@@ -213,10 +218,13 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <p>
             {mode === "cards"
               ? "Nhớ trước khi lật: ép não tự gọi lại nghĩa thay vì chỉ đọc."
-              : "Ghép từ với nghĩa trong một mini game ngắn để tăng tốc độ nhận diện."}
+              : "Ghép lần lượt toàn bộ từ trong bài theo các nhóm 6 để không bỏ sót từ nào."}
           </p>
         </div>
 
+        <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}>
+          Sổ luyện toàn bộ bài
+        </Link>
         <div className="vocab-mode-switch-v4" role="tablist" aria-label="Chế độ luyện từ vựng">
           <button
             className={mode === "cards" ? "active" : ""}
@@ -315,7 +323,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           <div className="vocab-match-top-v4">
             <div>
               <span className="experience-kicker">MATCH SPRINT</span>
-              <h2>{matchedIds.length}/{matchItems.length} cặp</h2>
+              <h2>{matchedIds.length}/{deck.length} cặp · Nhóm {matchPage + 1}/{Math.ceil(deck.length / 6)}</h2>
             </div>
             <div className="vocab-match-progress-v4">
               <i style={{ width: matchProgress + "%" }} />
