@@ -73,6 +73,12 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
           Luyện ngữ pháp
           <ArrowRight size={17} />
         </Link>
+        <Link
+          className="secondary-button"
+          href={"/practice/workbook?lesson=" + lessonId}
+        >
+          Sổ luyện toàn bộ bài
+        </Link>
       </section>
 
       <section className="grammar-concept-grid-v4">
