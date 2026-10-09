@@ -25,18 +25,19 @@ Status: complete for the current six-skill baseline.
 Includes:
 
 - Home next-action dashboard;
-- staged lesson map;
+- staged lesson map with Vocabulary + Grammar as the unlock core;
 - Vocabulary;
 - Grammar;
-- Listening;
-- Speaking;
-- Reading;
-- Writing;
-- Mastery Check;
+- optional Listening;
+- optional Speaking;
+- optional Reading;
+- optional Writing;
+- optional Mastery Check;
 - Conversation and Pronunciation enrichment;
 - immediate answer feedback;
 - correct-answer auto advance where appropriate;
 - source-grounded explanations;
+- next lesson unlocks after the available Vocabulary + Grammar core is completed; optional skills never block progression;
 - responsive desktop/mobile behavior.
 
 ## 3. Practice and review

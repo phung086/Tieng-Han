@@ -17,6 +17,10 @@ import {
 import { EmptyCourseState } from "@/components/empty-course-state";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 export default function LearnPage() {
   const { state } = useLearning();
@@ -63,21 +67,31 @@ export default function LearnPage() {
     );
   }
 
+  const coreProgressFor = (lesson: (typeof course.lessons)[number]) => {
+    const requiredSkills = getRequiredCoreSkills({
+      hasVocabulary: lesson.vocabulary.length > 0,
+      hasGrammar: lesson.grammar.length > 0,
+    });
+    return getCoreLessonProgress(
+      state.completedActivities,
+      lesson.id,
+      requiredSkills,
+    );
+  };
+
   const completed = course.lessons.filter(
-    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
+    (lesson) => coreProgressFor(lesson) >= 100,
   ).length;
   const courseProgress = Math.round(
     course.lessons.reduce(
-      (sum, lesson) =>
-        sum + (state.lessonProgress[String(lesson.id)] ?? 0),
+      (sum, lesson) => sum + coreProgressFor(lesson),
       0,
     ) / Math.max(1, course.lessons.length),
   );
 
   const current =
-    course.lessons.find(
-      (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100,
-    ) ?? course.lessons[course.lessons.length - 1];
+    course.lessons.find((lesson) => coreProgressFor(lesson) < 100) ??
+    course.lessons[course.lessons.length - 1];
 
   const zones = Array.from(
     { length: Math.ceil(course.lessons.length / 5) },
@@ -223,7 +237,7 @@ export default function LearnPage() {
 
         <div className="journey-stat-v2">
           <strong>{courseProgress}%</strong>
-          <span>{completed}/{course.lessons.length} bài hoàn thành</span>
+          <span>{completed}/{course.lessons.length} bài đạt cốt lõi</span>
         </div>
       </section>
 
@@ -248,13 +262,10 @@ export default function LearnPage() {
               const globalIndex = course.lessons.findIndex(
                 (item) => item.id === lesson.id,
               );
-              const progress =
-                state.lessonProgress[String(lesson.id)] ?? 0;
+              const progress = coreProgressFor(lesson);
               const previousDone =
                 globalIndex === 0 ||
-                (state.lessonProgress[
-                  String(course.lessons[globalIndex - 1].id)
-                ] ?? 0) >= 100;
+                coreProgressFor(course.lessons[globalIndex - 1]) >= 100;
               const done = progress >= 100;
               const unlocked = done || previousDone;
               const currentLesson = unlocked && !done;
@@ -282,7 +293,7 @@ export default function LearnPage() {
                   <div className="journey-card-v2">
                     <span>
                       {done
-                        ? "ĐÃ HOÀN THÀNH"
+                        ? "ĐÃ NẮM CỐT LÕI"
                         : currentLesson
                           ? "ĐANG CHỜ BẠN"
                           : "CHƯA MỞ KHÓA"}
@@ -329,7 +340,7 @@ export default function LearnPage() {
           <div>
             <strong>{completed}/{course.lessons.length} bài hoàn thành</strong>
             <p>
-              Khi hoàn thành toàn bộ giáo trình, đây sẽ là cột mốc đầu tiên trong hành trình Haneul của bạn.
+              Chỉ cần nắm Từ vựng + Ngữ pháp để mở bài tiếp theo; các kỹ năng còn lại có thể quay lại luyện khi thuận tiện.
             </p>
           </div>
           <Link href="/stats" aria-label="Xem tiến độ">
