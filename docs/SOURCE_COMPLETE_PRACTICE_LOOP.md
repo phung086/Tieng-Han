@@ -29,3 +29,14 @@ Mỗi chu kỳ: refresh main -> đọc PR/file của nhánh khác -> chọn mộ
 Từng giáo trình đã nhập: original_inventory_count == imported_item_count (theo từng loại) và all required item IDs có bài ôn tương ứng; các câu gốc có mẫu thức đúng; câu không chắc nguồn không được tính đạt; mọi regression/CI pass; không ảnh hưởng import tự động. Nguồn mới upload phải kích hoạt kiểm kê và đối chiếu riêng, không cần sửa số lượng hardcode.
 
 Lưu ý: bản PR đầu tiên mới xóa cap 8 câu và thêm audit fail-closed cho bundle. Chưa có bản kiểm kê từng trang của PDF và chưa thể khẳng định các giáo trình đã nhập đạt 100%.
+
+
+## Không dừng vòng lặp khi gặp blocker (bắt buộc)
+- Một blocker chỉ khóa **hạng mục liên quan**, không khóa toàn bộ vòng lặp.
+- Ghi blocker với thời điểm, bước tái hiện, lỗi thực tế, file/PR liên quan, mức độ ảnh hưởng và điều kiện gỡ; nếu được quyền, liên kết issue/PR để các AI khác phối hợp.
+- Sau khi ghi lỗi, **chuyển ngay sang backlog không phụ thuộc**: regression test, coverage audit, mô hình inventory, đối chiếu dữ liệu có sẵn, pagination/resume, hoặc UI không thay đổi import.
+- Nếu CI lỗi: không được thông báo đã pass; sửa có kiểm chứng hoặc tiếp tục việc độc lập ở nhánh khác. Nếu thiếu PDF: không đoán số mục hay tạo nội dung nguồn giả; triển khai validator/schema/fixture hợp lệ.
+- Nếu file đã bị AI khác sửa: tránh cập nhật chồng hoặc force push, chuyển file/module hoặc mở PR riêng. Không ghi đè logic của nhánh khác.
+- Kết thúc mỗi lượt bằng nhật ký **đã làm / blocker / đã chuyển hướng / test thực tế / việc kế tiếp**, để lượt sau tiếp tục xử lý và tái kiểm chứng blocker.
+- Không tự dừng lịch vì đã xong một PR hoặc vướng blocker. Khi tất cả tiêu chí đạt, chuyển sang hardening, regression và kiểm tra các nguồn nhập mới. Chỉ người dùng quyết định dừng lịch.
+- Khi không còn hạng mục có thể sửa an toàn, chỉ lập báo cáo và chuẩn bị bước kế tiếp; không lách xác thực, tạo commit vô nghĩa hoặc khẳng định thành công giả.
