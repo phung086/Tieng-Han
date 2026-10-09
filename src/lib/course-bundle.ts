@@ -662,9 +662,9 @@ export function getCompilationContract(language: LanguageProfile) {
     principles: [
       "The uploaded textbook is the curriculum source of truth.",
       "Preserve lesson order and source page references.",
-      "Cover vocabulary, grammar, dialogue, pronunciation, culture, notes, exercises and special sections when present.",
-      "Create practice for vocabulary, grammar, listening, speaking, reading and writing without introducing unsupported curriculum.",
-      "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>.",
+      "Inventory and preserve every source item in lesson order: vocabulary entries and examples, grammar patterns and examples, dialogue lines, listening and reading items, pronunciation, culture, notes, and original exercises. Never silently sample source content.",
+      "Create source-grounded practice for all six skills without introducing unsupported curriculum. Preserve each original exercise instruction and its motif; do not replace every task with multiple choice.",
+      "Derived exercises must use only knowledge from the same lesson, carry the most specific available sourceRef (prefer item-level anchors), and never count several drills for one item as coverage of a different item.",
       "Do not invent unreadable source content; record uncertainty instead.",
       "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
       "Treat job.courseHint as a hint only. Infer the actual course title, level and edition from the textbook source when the source supports them, and pass those values to finalize_course_bundle instead of preserving a guessed/default level.",
@@ -682,18 +682,18 @@ export function getCompilationContract(language: LanguageProfile) {
         "Keep explanations concise enough for self-study and preserve textbook terminology.",
       ],
       practiceVolume:
-        "Target roughly 12-20 StudyQuestion items per normal lesson, scaled down for short lessons and up only when the source is dense. Never pad the count with unsupported content.",
+        "Do not use a fixed count, maximum, or sampling ratio for StudyQuestion items. Inventory every source item and retain every original exercise; generate as many grounded practice items as needed for the actual lesson. Keep open-ended or ungradable tasks in source learning content instead of inventing answer keys. Never pad with unsupported content.",
       practiceBalance: [
-        "Vocabulary: about 25-35% of generated questions when vocabulary is present.",
-        "Grammar: about 20-30% when grammar points are present.",
-        "Listening and reading: together about 20-30%, derived from source-grounded sentences or passages.",
-        "Speaking and writing: use short productive prompts and input/reorder checks where they make pedagogical sense.",
+        "Vocabulary: cover every source entry and example with answerable practice where the source supports it.",
+        "Grammar: preserve every pattern and example; match the original source exercise motif.",
+        "Listening and reading: retain every original task, prompt, passage and question without quota-based sampling.",
+        "Speaking and writing: retain every original prompt and its instructional intent; use input or reorder checks only when source-grounded and objectively gradable.",
       ],
       reviewDesign: [
         "Prefer retrieval over repeated explanation.",
         "Reuse the same knowledge across different modalities without copying the exact same question wording.",
         "Wrong-answer distractors must remain plausible but must not introduce facts or grammar outside the lesson.",
-        "Mark every derived practice item with a sourceRef pointing to the source pages it was derived from.",
+        "Mark every derived practice item with a sourceRef to the source page and, where available, its unique item anchor; report missing or ambiguous anchors rather than claiming verified coverage.",
       ],
     },
     checkpointWorkflow: [
