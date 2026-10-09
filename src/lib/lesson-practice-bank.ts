@@ -15,12 +15,17 @@ function optionsFor(
   correct: string,
   alternatives: string[],
   maxOptions = 4,
+  offset = 0,
 ): string[] {
-  const unique = Array.from(new Set([correct, ...alternatives].map(nonEmpty)))
-    .filter(Boolean);
-  if (unique.length < 2) return [];
-  // Stable across remounts: never select arbitrary distractors or shuffle.
-  return unique.slice(0, maxOptions);
+  const distractors = Array.from(new Set(alternatives.map(nonEmpty)))
+    .filter((item) => item && item !== correct)
+    .slice(0, maxOptions - 1);
+  if (!distractors.length) return [];
+  // Rotate the correct answer across positions, deterministically per source index.
+  const position = offset % (distractors.length + 1);
+  const choices = [...distractors];
+  choices.splice(position, 0, correct);
+  return choices;
 }
 
 export function buildLessonPracticeBank(
@@ -44,7 +49,7 @@ export function buildLessonPracticeBank(
     const meaning = nonEmpty(word.learnerMeaning || word.vi);
     if (!target || !meaning) return;
     const sourceRef = word.sourceRef ?? lesson.sourceRef;
-    const meaningOptions = optionsFor(meaning, words.map((w) => w.learnerMeaning || w.vi));
+    const meaningOptions = optionsFor(meaning, words.map((w) => w.learnerMeaning || w.vi), 4, index);
     add({
       id: stableId(lesson.id, "vocab-meaning", index),
       lessonId: lesson.id,
@@ -57,7 +62,7 @@ export function buildLessonPracticeBank(
       explanation: target + " — " + meaning,
       sourceRef,
     });
-    const targetOptions = optionsFor(target, words.map((w) => w.targetText || w.ko));
+    const targetOptions = optionsFor(target, words.map((w) => w.targetText || w.ko), 4, index + 1);
     add({
       id: stableId(lesson.id, "vocab-recall", index),
       lessonId: lesson.id,
