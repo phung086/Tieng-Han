@@ -222,6 +222,9 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </p>
         </div>
 
+        <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}>
+          Sổ luyện toàn bộ bài
+        </Link>
         <div className="vocab-mode-switch-v4" role="tablist" aria-label="Chế độ luyện từ vựng">
           <button
             className={mode === "cards" ? "active" : ""}
