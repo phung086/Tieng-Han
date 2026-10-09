@@ -306,9 +306,14 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
                 <span className="eyebrow">LUYỆN TẬP THEO GIÁO TRÌNH</span>
                 <h2>Không giới hạn số câu ôn</h2>
               </div>
-              <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId + "&mode=guided"}>
-                Luyện hết {practice.totalQuestions} câu
-              </Link>
+              <div className="complete-actions">
+                <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}>
+                  Sổ luyện nguồn
+                </Link>
+                <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId + "&mode=guided"}>
+                  Luyện hết {practice.totalQuestions} câu
+                </Link>
+              </div>
             </div>
             <p>
               {practice.sourceQuestions} câu từ ngân hàng nhập · {practice.derivedQuestions} lượt luyện
