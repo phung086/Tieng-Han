@@ -11,6 +11,7 @@ export type PracticeCheckpoint = {
 type PersistedPracticeCheckpoint = PracticeCheckpoint & {
   version: 1;
   questionIds: string[];
+  contentSignature: string;
   savedAt: number;
 };
 
@@ -27,6 +28,17 @@ export function practiceCheckpointKey(
   return ["haneul-practice-checkpoint-v1", encodeURIComponent(courseId), lessonId, mode, skill ?? "all"].join(":");
 }
 
+function questionContentSignature(questions: StudyQuestion[]): string {
+  const content = JSON.stringify(
+    questions.map(question => [question.id, question.prompt, question.answer, question.type, question.choices]),
+  );
+  let hash = 2166136261;
+  for (let i = 0; i < content.length; i++) {
+    hash = Math.imul(hash ^ content.charCodeAt(i), 16777619);
+  }
+  return String(hash >>> 0);
+}
+
 export function serializePracticeCheckpoint(
   questions: StudyQuestion[],
   data: PracticeCheckpoint,
@@ -34,6 +46,7 @@ export function serializePracticeCheckpoint(
   const saved: PersistedPracticeCheckpoint = {
     version: 1,
     questionIds: questions.map(question => question.id),
+    contentSignature: questionContentSignature(questions),
     index: data.index,
     correctCount: data.correctCount,
     mistakeIds: data.mistakeIds,
@@ -56,6 +69,7 @@ export function parsePracticeCheckpoint(
   const data = row as Partial<PersistedPracticeCheckpoint>;
   if (data.version !== 1 || !Array.isArray(data.questionIds)) return null;
   if (data.questionIds.length !== questions.length) return null;
+  if (data.contentSignature !== questionContentSignature(questions)) return null;
   if (!questions.every((question, index) => question.id === data.questionIds?.[index])) return null;
   if (!Number.isSafeInteger(data.index) || (data.index ?? -1) < 1 || (data.index ?? Infinity) >= questions.length) return null;
   if (!Number.isSafeInteger(data.correctCount) || (data.correctCount ?? -1) < 0 || (data.correctCount ?? Infinity) > (data.index ?? 0)) return null;
