@@ -49,6 +49,18 @@ Xem `docs/ARCHITECTURE.md`, `docs/LEARNER_MVP_BASELINE.md` và
 `docs/PHASE_SCALE_1_SETUP.md` để hiểu boundary hiện tại.
 
 
+## Vở bài tập — translation fidelity
+
+Luồng Haneul Vở bài tập phải ưu tiên nội dung của chính worksheet thay vì
+diễn giải tự nhiên bằng kiến thức ngoài nguồn.
+
+- Contract: `docs/WORKSHEET_TRANSLATION_CONTRACT.md`
+- Worker prompt: `docs/WORKSHEET_WORKER_PROMPT.md`
+- Regression fixture Bài 1: `docs/WORKSHEET_BAI_1_REGRESSION.md`
+
+Hai tài liệu này quy định glossary lock, entity/addressee preservation và QA
+bắt buộc trước khi gọi `submit_worksheet`.
+
 ## Hướng dẫn nhập sách tự động
 
 Xem `docs/AUTO_IMPORT_GUIDE.md` để cấu hình và vận hành luồng PDF -> MCP -> ChatGPT Work -> checkpoint -> course hoàn chỉnh.
