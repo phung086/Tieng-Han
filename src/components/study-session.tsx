@@ -21,7 +21,6 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import {
   masteryPassed,
-  pickBalancedQuestions,
 } from "@/lib/study-session-plan";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
@@ -59,7 +58,7 @@ export function StudySession({
 
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
-    return pickBalancedQuestions(all, 8);
+    return all;
   }, [course.questions, activeLessonId, mode, skill]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
@@ -121,9 +120,9 @@ export function StudySession({
 
   const modeCopy = {
     guided: {
-      label: "Bài học nhanh",
-      title: "Học theo nhịp",
-      note: "Một phiên ngắn, trộn đều các kỹ năng.",
+      label: "Ôn tập đầy đủ",
+      title: "Ôn toàn bộ bài",
+      note: "Toàn bộ câu hỏi đã biên soạn của bài, không giới hạn 8 câu.",
     },
     quick: {
       label: "Quick 5",
