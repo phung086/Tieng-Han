@@ -71,3 +71,54 @@ Each non-skipped scheduled cycle uploads its JSON report as a uniquely named, 30
 `node --test scripts/audit-curriculum-fidelity.test.mjs` exercises missing inventory, broken JSON isolation, continuing to a second file, count mismatch reporting and strict-vs-nonblocking behavior. Regression tests are nonblocking **for the recurring audit**, not evidence that the PR is safe to merge. Do not relax normal PR CI.
 
 **Limitations:** A GitHub scheduled workflow provides repeated checks but cannot do endless independent AI coding without an external coding agent and authorized runner. GitHub may delay/drop cron triggers; GitHub Actions is not an exact guaranteed 45-minute scheduler. Schedules run from the default branch, so this interval begins only after the workflow is merged. The rolling GitHub Issue is an actionable handoff queue, not an autonomous model.
+
+## Implementation delivered before PDF parity verification
+
+**Full-length practice from imported runtime lesson content** lives in
+`src/lib/lesson-practice-bank.ts`. Every request constructs a deterministic,
+read-only set of extra learning questions from the active course, preserving
+all original `course.questions` first:
+
+- vocabulary: recall the meaning, recall the target-language spelling,
+  and retype each available source example;
+- grammar: recall every documented pattern and practise every example;
+- listening: use each imported original prompt and its actual answer;
+- reading: include each imported reading-comprehension question;
+- dialogues: practice every bilingual speaker turn with its actual meaning;
+- speaking and pronunciation: read and retype every available source utterance;
+- writing: practise the specific target vocabulary of the writing task.
+
+The full guided/mastery quiz uses this entire bank per lesson, **not eight
+fixed questions**. Quick 5 remains an explicitly optional warm-up.
+`src/lib/lesson-practice-bank.test.ts` includes a 73-word regression.
+
+**Unanswered source exercises are not silently dropped.** The separate
+`/practice/workbook?lesson=<id>` learner route uses
+`src/lib/source-workbook.ts` to display every available source item
+as individually completable lessons, including vocabulary examples, grammar
+examples, listening, speaking, reading passage, reading questions, free
+writing, dialogue turns, pronunciation, culture, all `extraSections.content`
+lines, and original imported questions. Original media is available in the
+lesson media gallery. Exercises without a known answer receive a persisted
+free-form response box; learners can track their own progress without
+fabricated auto-grades. Course-scoped progress and drafts use localStorage.
+The existing automatic PDF import process remains unmodified.
+
+**Build-first backlog (independent of audit readiness):**
+1. Support typed book exercise subtypes in an additive versioned runtime
+   mapping (fill blank, listening selection, matching, reordering, translation,
+   role play, extended writing). Preserve the original imported text if no
+   subtype/answer is available.
+2. Extend learner-side review to cover newly mapped subtype-specific items,
+   with progress persistence and resumed large sessions.
+3. Introduce per-book source-item IDs and relation tables, then verify
+   parity against all source pages once the PDFs and import snapshots
+   are accessible to the audit environment.
+4. Add visual and keyboard-accessibility regressions before final merge.
+
+**Scope caution:** Source-derived *copying/typing exercises* are practice
+opportunities, not a proof of comprehension. The workbook is complete relative
+to available imported runtime items, **not** independently proven complete
+relative to every page of the PDF. Original book-specific exercise mechanics
+cannot always be reconstructed from unstructured `extraSections.content`.
+Those remain manual practice tasks until a typed, sourced version exists.
