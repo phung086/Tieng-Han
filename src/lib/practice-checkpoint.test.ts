@@ -44,6 +44,7 @@ describe("long textbook practice checkpoint", () => {
     const raw = serializePracticeCheckpoint(questions, state);
     expect(parsePracticeCheckpoint(raw, [...questions, { ...questions[0], id: "new-word" }])).toBeNull();
     expect(parsePracticeCheckpoint(raw, questions.toReversed())).toBeNull();
+    expect(parsePracticeCheckpoint(raw, questions.map((q, i) => i === 0 ? { ...q, answer: "đáp án đã thay đổi" } : q))).toBeNull();
     expect(parsePracticeCheckpoint(raw, [])).toBeNull();
   });
 
