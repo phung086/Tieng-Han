@@ -24,6 +24,7 @@ import {
 } from "@/lib/study-session-plan";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
+import { parsePracticeCheckpoint, practiceCheckpointKey, serializePracticeCheckpoint } from "@/lib/practice-checkpoint";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -35,15 +36,28 @@ const normalize = (value: string) =>
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
 
-export function StudySession({
-  lessonId,
-  mode = "guided",
-  skill,
-}: {
+type StudySessionProps = {
   lessonId?: number;
   mode?: StudySessionMode;
   skill?: SkillKey;
-}) {
+};
+
+export function StudySession(props: StudySessionProps) {
+  const { course } = useContent();
+  const lessonId = props.lessonId ?? course.lessons[0]?.id ?? 1;
+  return (
+    <StudySessionBody
+      key={[course.id, lessonId, props.mode ?? "guided", props.skill ?? "all"].join(":")}
+      {...props}
+    />
+  );
+}
+
+function StudySessionBody({
+  lessonId,
+  mode = "guided",
+  skill,
+}: StudySessionProps) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
@@ -62,25 +76,39 @@ export function StudySession({
     return all; // Full guided practice: never silently cap textbook questions.
   }, [course.lessons, course.questions, activeLessonId, mode, skill]);
 
+  const storageKey = practiceCheckpointKey(course.id, activeLessonId, mode, skill);
+  const [restored] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return parsePracticeCheckpoint(
+        window.localStorage.getItem(storageKey),
+        baseQuestions,
+      );
+    } catch {
+      return null;
+    }
+  });
+  const [resumed, setResumed] = useState(Boolean(restored));
+
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
   const questions = retryIds
     ? baseQuestions.filter((item) => retryIds.includes(item.id))
     : baseQuestions;
 
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(restored?.index ?? 0);
   const [answer, setAnswer] = useState("");
   const [tokens, setTokens] = useState<string[]>([]);
   const [checked, setChecked] = useState(false);
-  const [correctCount, setCorrectCount] = useState(0);
+  const [correctCount, setCorrectCount] = useState(restored?.correctCount ?? 0);
   const [finished, setFinished] = useState(false);
-  const [mistakeIds, setMistakeIds] = useState<string[]>([]);
+  const [mistakeIds, setMistakeIds] = useState<string[]>(restored?.mistakeIds ?? []);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
   const [focus, setFocus] = useState(3);
   const [showHint, setShowHint] = useState(false);
   const [skillStats, setSkillStats] = useState<
     Partial<Record<SkillKey, { correct: number; total: number }>>
-  >({});
+  >(restored?.skillStats ?? {});
   const autoAdvanceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -147,6 +175,8 @@ export function StudySession({
     }
 
     if (index === questions.length - 1) {
+      try { window.localStorage.removeItem(storageKey); }
+      catch { /* optional local persistence */ }
       if (
         skill &&
         masteryPassed(effectiveCorrectCount, questions.length)
@@ -165,6 +195,21 @@ export function StudySession({
       return;
     }
 
+    if (!retryIds) {
+      try {
+        window.localStorage.setItem(
+          storageKey,
+          serializePracticeCheckpoint(baseQuestions, {
+            index: index + 1,
+            correctCount: effectiveCorrectCount,
+            mistakeIds,
+            skillStats: effectiveSkillStats,
+          }),
+        );
+      } catch {
+        // Continue learning even if storage is unavailable.
+      }
+    }
     setIndex((value) => value + 1);
     setAnswer("");
     setTokens([]);
@@ -223,6 +268,9 @@ export function StudySession({
   }
 
   function resetSession(nextRetryIds: string[] | null) {
+    try { window.localStorage.removeItem(storageKey); }
+    catch { /* optional local persistence */ }
+    setResumed(false);
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
@@ -355,6 +403,9 @@ export function StudySession({
             {skillLabel} · {messages.common.lesson} {activeLessonId}
           </span>
           <small>{modeCopy.note}</small>
+          {resumed ? (
+            <small>Đã khôi phục bài luyện đang dở: tiếp tục từ câu {index + 1}/{questions.length}.</small>
+          ) : null}
         </div>
 
         <h1>{question.title}</h1>
