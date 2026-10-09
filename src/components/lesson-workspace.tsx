@@ -20,7 +20,6 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
-import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
 
 type LessonTabKey = "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
 const tabKeys: LessonTabKey[] = ["overview", "vocabulary", "grammar", "reading", "supplement"];
@@ -45,7 +44,6 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     );
   }
 
-  const practice = summarizeLessonPractice(lesson, course.questions);
   const dialogues = lesson.dialogues ?? [];
   const pronunciation = lesson.pronunciation ?? [];
   const culture = lesson.culture ?? [];
@@ -296,36 +294,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             <div className="lesson-coach-stats-v3">
               <span><strong>{lesson.vocabulary.length}</strong> từ</span>
               <span><strong>{lesson.grammar.length}</strong> mẫu câu</span>
-              <span><strong>{practice.totalQuestions}</strong> lượt luyện</span>
+              <span><strong>{course.questions.filter((q) => q.lessonId === lessonId).length}</strong> câu luyện</span>
             </div>
           </aside>
-
-          <section className="lesson-content-card">
-            <div className="content-heading">
-              <div>
-                <span className="eyebrow">LUYỆN TẬP THEO GIÁO TRÌNH</span>
-                <h2>Không giới hạn số câu ôn</h2>
-              </div>
-              <div className="complete-actions">
-                <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}>
-                  Sổ luyện nguồn
-                </Link>
-                <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId + "&mode=guided"}>
-                  Luyện hết {practice.totalQuestions} câu
-                </Link>
-              </div>
-            </div>
-            <p>
-              {practice.sourceQuestions} câu từ ngân hàng nhập · {practice.derivedQuestions} lượt luyện
-              bổ sung từ nội dung bài. Gồm {practice.vocabulary} mục từ vựng,
-              {practice.grammarExamples} câu mẫu ngữ pháp,
-              {practice.dialogueLines} dòng hội thoại, {practice.reading} câu đọc hiểu.
-            </p>
-            <p>
-              Bài viết tự do, nội dung bổ trợ và những bài không có đáp án mẫu
-              vẫn được giữ nguyên tại các phần học tương ứng, không tự tạo đáp án giả.
-            </p>
-          </section>
 
           {dialogues.length || pronunciation.length ? (
             <section className="lesson-immersion-v4">
