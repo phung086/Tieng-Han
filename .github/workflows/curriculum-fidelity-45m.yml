@@ -1,0 +1,38 @@
+name: Curriculum fidelity audit (45-minute slots)
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: curriculum-fidelity-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select approximate 45-minute slot
+        id: slot
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || (( ( $(date -u +%s) / 900 ) % 3 == 0 )); then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.slot.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.slot.outputs.run == 'true'
+        with:
+          node-version: '22'
+      - name: Check source fidelity (report, do not mutate imports)
+        if: steps.slot.outputs.run == 'true'
+        run: node scripts/audit-curriculum-fidelity.mjs
+      - name: Explain audit scope
+        if: steps.slot.outputs.run == 'true'
+        run: |
+          echo "Scheduled checkout contains no production .haneul course files." >> "$GITHUB_STEP_SUMMARY"
+          echo "Source-by-source certification requires imported course artifacts and verified source-inventory.json." >> "$GITHUB_STEP_SUMMARY"
+          echo "This job does not autonomously generate changes or merge pull requests." >> "$GITHUB_STEP_SUMMARY"
