@@ -222,6 +222,9 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </p>
         </div>
 
+        <Link className="secondary-button" href={"/practice/drills?lesson=" + lessonId}>
+          Điền từ · Nghe chép
+        </Link>
         <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}>
           Sổ luyện toàn bộ bài
         </Link>
