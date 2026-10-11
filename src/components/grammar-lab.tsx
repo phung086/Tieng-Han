@@ -75,6 +75,12 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
         </Link>
         <Link
           className="secondary-button"
+          href={"/practice/drills?lesson=" + lessonId}
+        >
+          Điền từ · Nghe chép · Luyện dịch
+        </Link>
+        <Link
+          className="secondary-button"
           href={"/practice/workbook?lesson=" + lessonId}
         >
           Sổ luyện toàn bộ bài
