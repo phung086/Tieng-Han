@@ -7,6 +7,7 @@ import {
   BookOpenText,
   Flame,
   Home,
+  PencilLine,
   RotateCcw,
   Shield,
   Sparkles,
@@ -69,6 +70,14 @@ function ShellContent({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <Link
+          className={pathname.startsWith("/practice/drills") ? "nav-item active" : "nav-item"}
+          href="/practice/drills"
+        >
+          <PencilLine size={20} strokeWidth={2.1} />
+          <span>Luyện theo dạng bài</span>
+        </Link>
 
         {user?.role === "admin" ? (
           <Link
@@ -140,6 +149,13 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         <Link className="mobile-brand" href="/">
           <span className="brand-mark">{productConfig.mark}</span>
           <strong>{productConfig.name}</strong>
+        </Link>
+        <Link
+          className="mobile-library"
+          href="/practice/drills"
+          aria-label="Luyện theo dạng bài"
+        >
+          <PencilLine size={20} />
         </Link>
         <Link
           className="mobile-library"
