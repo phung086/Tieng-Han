@@ -70,6 +70,8 @@ export type DialogueItem = {
     ko: string;
     /** Legacy runtime alias for learnerMeaning. */
     vi?: string;
+    /** Stable item-level anchor for this dialogue line, when available. */
+    sourceRef?: string;
   }>;
   sourceRef?: string;
 };
