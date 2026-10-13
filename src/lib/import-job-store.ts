@@ -449,9 +449,9 @@ export async function saveWorkCheckpoint(
               : undefined,
         }
       : undefined,
-    notes: (input.notes ?? []).map(String).slice(0, 100),
+    notes: (input.notes ?? []).map(String),
     partialLesson: input.partialLesson,
-    partialQuestions: input.partialQuestions?.slice(0, 100),
+    partialQuestions: input.partialQuestions,
   };
 
   await writeJsonAtomic(
