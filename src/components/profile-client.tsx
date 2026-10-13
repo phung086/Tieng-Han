@@ -25,6 +25,10 @@ import { accuracy, useLearning, type SkillKey } from "@/lib/learning-state";
 import { productConfig } from "@/config/product";
 import { useAuth } from "@/lib/auth-client";
 import { UserAvatarGlyph } from "@/components/user-avatar-glyph";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 function formatJoinedAt(value?: string) {
   if (!value) return null;
@@ -62,16 +66,28 @@ export function ProfileClient() {
     ? Math.round((totalCorrect / totalAttempts) * 100)
     : 0;
 
+  const coreProgressFor = (lesson: (typeof course.lessons)[number]) => {
+    const requiredSkills = getRequiredCoreSkills({
+      hasVocabulary: lesson.vocabulary.length > 0,
+      hasGrammar: lesson.grammar.length > 0,
+    });
+    return getCoreLessonProgress(
+      state.completedActivities,
+      lesson.id,
+      requiredSkills,
+    );
+  };
+
   const inProgressLessons = course.lessons
     .map((lesson) => ({
       ...lesson,
-      progress: state.lessonProgress[String(lesson.id)] ?? 0,
+      progress: coreProgressFor(lesson),
     }))
     .filter((lesson) => lesson.progress > 0 && lesson.progress < 100)
     .slice(0, 3);
 
   const completedLessons = course.lessons.filter(
-    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
+    (lesson) => coreProgressFor(lesson) >= 100,
   ).length;
 
   const levelNumber = Math.max(1, Math.floor(state.xp / 500) + 1);
@@ -93,7 +109,7 @@ export function ProfileClient() {
       title: "Người chinh phục",
       detail:
         completedLessons > 0
-          ? completedLessons + " bài đã hoàn thành"
+          ? completedLessons + " bài đã đạt phần cốt lõi"
           : "Hoàn thành bài đầu tiên để mở huy hiệu",
       unlocked: completedLessons > 0,
     },
@@ -174,7 +190,7 @@ export function ProfileClient() {
         </article>
         <article>
           <span className="metric-icon-v2 blue"><CalendarDays size={19} /></span>
-          <div><strong>{completedLessons}</strong><small>Bài hoàn thành</small></div>
+          <div><strong>{completedLessons}</strong><small>Bài đạt cốt lõi</small></div>
         </article>
       </section>
 
@@ -193,7 +209,7 @@ export function ProfileClient() {
               ? inProgressLessons
               : course.lessons.slice(0, 2).map((lesson) => ({
                   ...lesson,
-                  progress: state.lessonProgress[String(lesson.id)] ?? 0,
+                  progress: coreProgressFor(lesson),
                 }))
             ).map((lesson) => (
               <Link className="recent-lesson-v2" href={"/learn/" + lesson.id} key={lesson.id}>

@@ -22,6 +22,10 @@ import {
   type SkillKey,
 } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 const skillTone: Record<SkillKey, string> = {
   vocabulary: "purple",
@@ -46,27 +50,36 @@ export default function DashboardPage() {
   }
 
   const today = todayKey();
+  const coreProgressFor = (lesson: (typeof course.lessons)[number]) => {
+    const requiredSkills = getRequiredCoreSkills({
+      hasVocabulary: lesson.vocabulary.length > 0,
+      hasGrammar: lesson.grammar.length > 0,
+    });
+    return getCoreLessonProgress(
+      state.completedActivities,
+      lesson.id,
+      requiredSkills,
+    );
+  };
   const current =
-    course.lessons.find(
-      (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100,
-    ) ?? course.lessons[course.lessons.length - 1];
+    course.lessons.find((lesson) => coreProgressFor(lesson) < 100) ??
+    course.lessons[course.lessons.length - 1];
 
-  const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
+  const currentProgress = coreProgressFor(current);
   const completedLessons = course.lessons.filter(
-    (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) >= 100,
+    (lesson) => coreProgressFor(lesson) >= 100,
   ).length;
   const courseProgress = Math.round(
     course.lessons.reduce(
-      (sum, lesson) =>
-        sum + (state.lessonProgress[String(lesson.id)] ?? 0),
+      (sum, lesson) => sum + coreProgressFor(lesson),
       0,
     ) / Math.max(1, course.lessons.length),
   );
   const dueCount = Object.values(state.mastery).filter(
     (item) => item.dueAt <= today,
   ).length;
-  const completedCurrentSkills = state.completedActivities.filter((id) =>
-    id.startsWith("lesson:" + current.id + ":"),
+  const completedCoreSkills = ["vocabulary", "grammar"].filter((skill) =>
+    state.completedActivities.includes("lesson:" + current.id + ":" + skill),
   ).length;
   const goalProgress = Math.min(
     100,
@@ -136,7 +149,7 @@ export default function DashboardPage() {
             <span className="adventure-orbit-v2" />
             <HaneulMascot size="lg" />
             <div className="current-badge-v2">
-              Bài {current.id} · {completedCurrentSkills}/6 kỹ năng
+              Bài {current.id} · {completedCoreSkills}/2 cốt lõi
             </div>
           </div>
         </article>
@@ -179,7 +192,7 @@ export default function DashboardPage() {
               <Trophy size={23} />
             </div>
             <div>
-              <strong>{completedLessons}/{course.lessons.length} bài</strong>
+              <strong>{completedLessons}/{course.lessons.length} bài đạt cốt lõi</strong>
               <p>
                 Tổng tiến độ giáo trình hiện tại: {courseProgress}%.
               </p>
@@ -195,7 +208,7 @@ export default function DashboardPage() {
         <div className="section-head-v2">
           <div>
             <span className="experience-kicker">SKILL CONSTELLATION</span>
-            <h2>6 kỹ năng trên cùng một bầu trời</h2>
+            <h2>2 kỹ năng cốt lõi, 4 kỹ năng luyện thêm</h2>
           </div>
           <Link href="/stats">
             Xem hiệu suất

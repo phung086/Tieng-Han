@@ -20,6 +20,10 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 type LessonTabKey = "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
 const tabKeys: LessonTabKey[] = ["overview", "vocabulary", "grammar", "reading", "supplement"];
@@ -31,7 +35,6 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const messages = useMessages();
   const { getLesson, course } = useContent();
   const lesson = getLesson(lessonId);
-  const progress = state.lessonProgress[String(lessonId)] ?? 0;
 
   if (!lesson) {
     return (
@@ -43,6 +46,17 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       </div>
     );
   }
+
+  const requiredCoreSkills = getRequiredCoreSkills({
+    hasVocabulary: lesson.vocabulary.length > 0,
+    hasGrammar: lesson.grammar.length > 0,
+  });
+  const progress = getCoreLessonProgress(
+    state.completedActivities,
+    lessonId,
+    requiredCoreSkills,
+  );
+  const coreComplete = progress >= 100;
 
   const dialogues = lesson.dialogues ?? [];
   const pronunciation = lesson.pronunciation ?? [];
@@ -59,6 +73,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const missionSteps = [
     {
       skill: "vocabulary",
+      required: true,
       ko: "어휘",
       title: "Khởi động từ vựng",
       desc: lesson.vocabulary.length + " từ/cụm từ trọng tâm",
@@ -67,6 +82,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     },
     {
       skill: "grammar",
+      required: true,
       ko: "문법",
       title: "Nắm mẫu câu",
       desc: lesson.grammar.length + " điểm ngữ pháp + câu luyện trộn",
@@ -75,6 +91,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     },
     {
       skill: "listening",
+      required: false,
       ko: "듣기",
       title: "Nghe và bắt ý",
       desc: lesson.listening.length + " lượt nghe có phản hồi",
@@ -83,6 +100,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     },
     {
       skill: "speaking",
+      required: false,
       ko: "말하기",
       title: "Nói thành phản xạ",
       desc: lesson.speaking.length + " câu shadowing",
@@ -91,6 +109,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     },
     {
       skill: "reading",
+      required: false,
       ko: "읽기",
       title: "Đọc trong ngữ cảnh",
       desc: lesson.reading ? "1 bài đọc + câu hỏi hiểu bài" : "Chưa có bài đọc",
@@ -99,6 +118,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     },
     {
       skill: "writing",
+      required: false,
       ko: "쓰기",
       title: "Dùng ngôn ngữ để viết",
       desc: lesson.writing ? "1 nhiệm vụ viết có checklist" : "Chưa có bài viết",
@@ -109,15 +129,31 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
   const isMissionDone = (skill: string) =>
     state.completedActivities.includes("lesson:" + lessonId + ":" + skill);
-  const completedMissions = missionSteps.filter((step) =>
-    isMissionDone(step.skill),
+  const completedCoreMissions = missionSteps.filter(
+    (step) => step.required && isMissionDone(step.skill),
+  ).length;
+  const optionalCompleted = missionSteps.filter(
+    (step) => !step.required && isMissionDone(step.skill),
   ).length;
   const nextMission =
-    missionSteps.find((step) => !isMissionDone(step.skill)) ??
-    missionSteps[0];
+    missionSteps.find(
+      (step) => step.required && !isMissionDone(step.skill),
+    ) ?? missionSteps.find((step) => !isMissionDone(step.skill)) ?? missionSteps[0];
   const lessonIndex = course.lessons.findIndex((item) => item.id === lessonId);
   const nextLesson =
     lessonIndex >= 0 ? course.lessons[lessonIndex + 1] : undefined;
+  const primaryNextHref = coreComplete
+    ? nextLesson
+      ? "/learn/" + nextLesson.id
+      : "/review"
+    : nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided");
+  const primaryNextLabel = coreComplete
+    ? nextLesson
+      ? "Sang Bài " + nextLesson.id
+      : "Ôn lại giáo trình"
+    : progress
+      ? "Tiếp tục phần cốt lõi"
+      : "Bắt đầu bài học";
 
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
@@ -149,23 +185,23 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           <span className="lesson-progress-pill">{progress}% {messages.lesson.completed}</span>
           <Link
             className="primary-button"
-            href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
+            href={primaryNextHref}
           >
-            <Play size={17} /> {progress ? "Tiếp tục bài" : "Bắt đầu bài học"}
+            <Play size={17} /> {primaryNextLabel}
           </Link>
         </div>
       </header>
 
-      {progress >= 100 ? (
+      {coreComplete ? (
         <section className="lesson-complete-banner-v4">
           <div className="lesson-complete-icon-v4">
             <CheckCircle2 size={28} />
           </div>
           <div>
-            <span className="experience-kicker">LESSON COMPLETE</span>
-            <h2>Bạn đã hoàn thành Bài {lessonId}.</h2>
+            <span className="experience-kicker">CORE COMPLETE</span>
+            <h2>Bạn đã nắm phần cốt lõi của Bài {lessonId}.</h2>
             <p>
-              Sáu kỹ năng cốt lõi đã đủ. Bạn có thể làm Mastery Check để củng cố hoặc đi tiếp sang bài mới.
+              Từ vựng + Ngữ pháp đã đủ để mở bài tiếp theo. Nghe, Nói, Đọc và Viết là phần luyện thêm — có thể bỏ qua lúc chưa thuận tiện và quay lại sau.
             </p>
           </div>
           <div className="lesson-complete-actions-v4">
@@ -210,8 +246,8 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <span className="experience-kicker">LESSON MISSION</span>
               <h2>{lesson.objective}</h2>
               <p>
-                Học theo từng chặng ngắn: nhận biết → hiểu → luyện → dùng → ôn lại.
-                Bạn có thể dừng bất cứ lúc nào và quay lại đúng bước đang học.
+                Tập trung ghi nhớ Từ vựng và Ngữ pháp trước. Khi hai phần này đã đạt,
+                bạn có thể sang bài mới; Nghe/Nói/Đọc/Viết được giữ như phần luyện thêm.
               </p>
 
               <div className="lesson-mission-progress-v3">
@@ -222,13 +258,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               </div>
 
               <div className="lesson-mission-actions-v3">
-                <Link
-                  className="primary-button"
-                  href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
-                >
+                <Link className="primary-button" href={primaryNextHref}>
                   <Sparkles size={17} />
-                  {completedMissions === missionSteps.length
-                    ? "Luyện lại bài"
+                  {coreComplete
+                    ? primaryNextLabel
                     : "Tiếp tục: " + (nextMission?.title ?? "Bài học nhanh")}
                 </Link>
                 <Link
@@ -241,16 +274,19 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             </div>
 
             <div className="lesson-mission-score-v3">
-              <span>MISSION</span>
-              <strong>{completedMissions}/{missionSteps.length}</strong>
-              <small>chặng đã hoàn thành</small>
+              <span>CORE</span>
+              <strong>{completedCoreMissions}/{requiredCoreSkills.length}</strong>
+              <small>{optionalCompleted} chặng tùy chọn đã làm</small>
             </div>
           </article>
 
           <div className="lesson-road-v3">
             {missionSteps.map((step, index) => {
               const done = isMissionDone(step.skill);
-              const current = !done && nextMission?.skill === step.skill;
+              const current =
+                !done &&
+                step.required &&
+                nextMission?.skill === step.skill;
 
               return (
                 <Link
@@ -275,7 +311,13 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
                     <p>{step.desc}</p>
                   </div>
                   <div className="lesson-road-status-v3">
-                    {done ? "Xong" : current ? "Tiếp theo" : <Circle size={12} />}
+                    {done
+                      ? "Xong"
+                      : current
+                        ? "Tiếp theo"
+                        : step.required
+                          ? <Circle size={12} />
+                          : "Tùy chọn"}
                   </div>
                 </Link>
               );
