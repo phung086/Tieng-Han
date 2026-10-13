@@ -69,6 +69,11 @@ type DocumentMap = {
 type GeneratedPayload = {
   lesson?: LessonContent;
   questions?: StudyQuestion[];
+  validationParts?: Array<{
+    pages: SourcePageInput[];
+    lesson: LessonContent;
+    questions: StudyQuestion[];
+  }>;
 };
 
 function dedupeStarts(starts: LessonStart[]) {
@@ -199,7 +204,14 @@ async function requestGeneratedLesson(
   }
 
   const merged = mergeGeneratedLessonChunks(lessonId, outputs);
-  return merged as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
+  return {
+    ...merged,
+    validationParts: outputs.map((output, i) => ({
+      pages: chunks[i],
+      lesson: normalizeLessonContent(output.lesson),
+      questions: output.questions ?? [],
+    })),
+  } as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
 }
 
 async function validateGeneratedLesson(
@@ -208,25 +220,50 @@ async function validateGeneratedLesson(
   pages: SourcePageInput[],
   copy: ImportCopy,
   language: LanguageProfile,
+  validationParts?: GeneratedPayload["validationParts"],
 ) {
-  const response = await fetch("/api/ingest/validate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      lesson,
-      questions,
-      pages,
-      language,
-    }),
-  });
+  // QA every source chunk. Never evaluate only the first 75k characters of a
+  // 300-page textbook and present that score as coverage of the whole lesson.
+  const parts = validationParts?.length
+    ? validationParts
+    : [{ lesson, questions, pages }];
+  const results: ValidationPayload[] = [];
 
-  const result = (await response.json()) as ValidationPayload;
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+    const response = await fetch("/api/ingest/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lesson: part.lesson,
+        questions: part.questions,
+        pages: part.pages,
+        language,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(result.error || copy.validateError);
+    const result = (await response.json()) as ValidationPayload;
+    if (!response.ok) {
+      throw new Error(
+        copy.validateError + " · phần " + (index + 1) +
+        "/" + parts.length + ": " + (result.error || response.status),
+      );
+    }
+    results.push(result);
   }
 
-  return result;
+  return {
+    // A weak or unverified page batch cannot be masked by strong earlier ones.
+    coverageScore: Math.min(...results.map(result => result.coverageScore)),
+    groundingScore: Math.min(...results.map(result => result.groundingScore)),
+    issues: results.flatMap((result, index) =>
+      result.issues.map(issue => "Phần " + (index + 1) + ": " + issue),
+    ),
+    missingTopics: results.flatMap((result, index) =>
+      result.missingTopics.map(topic => "Phần " + (index + 1) + ": " + topic),
+    ),
+    pass: results.every(result => result.pass),
+  };
 }
 
 export function IngestionStudio() {
@@ -996,6 +1033,7 @@ export function IngestionStudio() {
           sourcePages,
           copy,
           language,
+          payload.validationParts,
         );
 
         if (!validation.pass) {
@@ -1023,6 +1061,7 @@ export function IngestionStudio() {
             sourcePages,
             copy,
             language,
+            payload.validationParts,
           );
         }
 
