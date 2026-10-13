@@ -23,6 +23,7 @@ import {
 } from "@/lib/pdf-extractor";
 import { useContent, type RuntimeCourse } from "@/lib/content-store";
 import { buildLessonMedia } from "@/lib/lesson-media";
+import { chunkSourcePages, mergeGeneratedLessonChunks } from "@/lib/source-chunk-compilation";
 import { ingestionConfig } from "@/config/ingestion";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
@@ -159,31 +160,46 @@ async function requestGeneratedLesson(
   language: LanguageProfile,
   revisionNotes: string[] = [],
 ) {
-  const response = await fetch("/api/ingest/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      lessonId,
-      pages,
-      revisionNotes,
-      language,
-    }),
-  });
+  // Never submit one oversized lesson and silently lose its later PDF pages.
+  // Each model request stays bounded; the browser iterates over EVERY batch.
+  const chunks = chunkSourcePages(
+    pages,
+    45_000,
+    ingestionConfig.lesson.maxVisionPagesPerLesson,
+  );
+  const outputs: GeneratedPayload[] = [];
 
-  const payload = (await response.json()) as GeneratedPayload & { error?: string };
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    const response = await fetch("/api/ingest/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lessonId,
+        pages: chunks[chunkIndex],
+        revisionNotes,
+        language,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(payload.error || copy.generateErrorPrefix + " " + copy.lessonLabel + " " + lessonId + ".");
+    const payload = (await response.json()) as GeneratedPayload & { error?: string };
+    if (!response.ok) {
+      throw new Error(
+        "Biên soạn phần " + (chunkIndex + 1) + "/" + chunks.length +
+        " của Bài " + lessonId + " thất bại: " +
+        (payload.error || copy.generateErrorPrefix),
+      );
+    }
+    if (!isGeneratedLesson(payload.lesson) || !Array.isArray(payload.questions)) {
+      throw new Error(
+        copy.invalidGeneratedPrefix + " " + copy.lessonLabel + " " +
+        lessonId + " · phần " + (chunkIndex + 1) + "/" + chunks.length,
+      );
+    }
+    outputs.push(payload);
   }
 
-  if (!isGeneratedLesson(payload.lesson)) {
-    throw new Error(copy.invalidGeneratedPrefix + " " + copy.lessonLabel + " " + lessonId + ".");
-  }
-
-  return {
-    ...payload,
-    lesson: normalizeLessonContent(payload.lesson),
-  } as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
+  const merged = mergeGeneratedLessonChunks(lessonId, outputs);
+  return merged as Required<Pick<GeneratedPayload, "lesson">> & GeneratedPayload;
 }
 
 async function validateGeneratedLesson(
