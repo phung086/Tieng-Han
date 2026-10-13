@@ -52,7 +52,7 @@ Includes:
 - mistake retention;
 - item mastery strength;
 - due-date review queue;
-- course-scoped XP/streak/accuracy.
+- course-scoped XP/streak/accuracy;\n- learner analytics for daily-goal progress, 7-day activity/accuracy trend, skill strength, lesson completion and due-review pressure;\n- direct practice/review recommendations derived from existing learner state.
 
 ## 4. Account and authentication
 
