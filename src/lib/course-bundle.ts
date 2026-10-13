@@ -673,6 +673,10 @@ export function getCompilationContract(language: LanguageProfile) {
       "After finishing and checking each lesson, call save_lesson_draft immediately. Saving the lesson clears its mid-lesson work checkpoint.",
       "Before source reading in any new or resumed run, call get_compilation_progress. Resume activeWork from its sourceCursor/phase, skip completedLessonIds, and never restart verified work unless deliberate correction is required.",
       "Use finalize_course_bundle after all real textbook lessons are checkpointed. Detected lesson candidates are hints and may contain false positives.",
+      "Never reduce a long textbook lesson to a fixed 10/12/20-question summary. Compile ALL source vocabulary entries, examples, dialogue turns, reading/listening items, writing tasks and exercise subparts; page by page.",
+      "For every source exercise preserve its original prompt, options, order and answer when available; use the supported question type for graded work, or preserve ungraded exercises verbatim under extraSections. Never manufacture answers.",
+      "For large lessons checkpoint and continue in page batches until the complete source range is processed. Checkpoint partialQuestions is unlimited and must not drop later items.",
+      "Prepare a per-lesson source inventory: every extracted word, sample sentence, exercise and subpart must have an explicit destination in vocabulary, grammar, dialogues, reading, listening, writing, questions or extraSections. Missing evidence is recorded as uncertainty, not silently skipped.",
     ],
     pedagogy: {
       lessonFlow: [
@@ -682,12 +686,12 @@ export function getCompilationContract(language: LanguageProfile) {
         "Keep explanations concise enough for self-study and preserve textbook terminology.",
       ],
       practiceVolume:
-        "Target roughly 12-20 StudyQuestion items per normal lesson, scaled down for short lessons and up only when the source is dense. Never pad the count with unsupported content.",
+        "NO FIXED QUIZ CAP. Question count scales with the actual source: cover every sourced vocabulary entry and every textbook exercise/subpart, plus every available grammar pattern/example, dialogue sentence, reading/listening prompt, speaking and writing activity. A lesson with 80 words must not be reduced to 10 or 20 questions. Keep ungraded source activities in extraSections when a trustworthy answer is unavailable; do not invent content.",
       practiceBalance: [
-        "Vocabulary: about 25-35% of generated questions when vocabulary is present.",
-        "Grammar: about 20-30% when grammar points are present.",
-        "Listening and reading: together about 20-30%, derived from source-grounded sentences or passages.",
-        "Speaking and writing: use short productive prompts and input/reorder checks where they make pedagogical sense.",
+        "Vocabulary: cover ALL source words and their available examples; never sample only a few.",
+        "Grammar: cover ALL source grammar patterns and each available example or original textbook exercise.",
+        "Listening and reading: retain EVERY transcript, comprehension question and subpart from the actual source; add grounded practice only where suitable.",
+        "Speaking, dialogue, pronunciation, writing, culture and supplements: retain ALL original activities and lines; use source-text questions when answerable, or retain prompts in lesson sections without fabricated grades.",
       ],
       reviewDesign: [
         "Prefer retrieval over repeated explanation.",
