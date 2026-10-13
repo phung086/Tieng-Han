@@ -110,6 +110,8 @@ export function mergeGeneratedLessonChunks(
   });
 
   const first = chunks[0].lesson;
+  const primaryReadingChunk = chunks.findIndex(chunk => Boolean(chunk.lesson.reading));
+  const primaryWritingChunk = chunks.findIndex(chunk => Boolean(chunk.lesson.writing));
   const extraSections: NonNullable<LessonContent["extraSections"]> = [];
   const vocabulary: LessonContent["vocabulary"] = [];
   const grammar: LessonContent["grammar"] = [];
@@ -133,7 +135,7 @@ export function mergeGeneratedLessonChunks(
     media.push(...idPrefix(lesson.media ?? [], index));
     extraSections.push(...idPrefix(lesson.extraSections ?? [], index));
 
-    if (index > 0 && lesson.reading) {
+    if (index !== primaryReadingChunk && lesson.reading) {
       extraSections.push({
         id: "chunk" + (index + 1) + ":reading",
         kind: "reading",
@@ -150,7 +152,7 @@ export function mergeGeneratedLessonChunks(
         sourceRef: lesson.reading.sourceRef || lesson.sourceRef,
       });
     }
-    if (index > 0 && lesson.writing) {
+    if (index !== primaryWritingChunk && lesson.writing) {
       extraSections.push({
         id: "chunk" + (index + 1) + ":writing",
         kind: "writing",
@@ -184,8 +186,8 @@ export function mergeGeneratedLessonChunks(
       extraSections,
       media,
       // Preserve every section; the first passage remains in the native reading field.
-      reading: first.reading,
-      writing: first.writing,
+      reading: primaryReadingChunk < 0 ? null : chunks[primaryReadingChunk].lesson.reading,
+      writing: primaryWritingChunk < 0 ? null : chunks[primaryWritingChunk].lesson.writing,
       objective: unique(chunks.map(x => x.lesson.objective)).join(" · "),
     },
     questions,
