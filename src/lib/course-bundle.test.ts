@@ -191,6 +191,15 @@ describe("parseCourseBundle", () => {
     );
   });
 
+  it("requires exhaustive practice rather than 8-20 quiz samples in the MCP compiler contract", () => {
+    const contract = getCompilationContract(sampleLanguage);
+    expect(contract.pedagogy.practiceVolume).toContain("NO FIXED QUIZ CAP");
+    expect(contract.pedagogy.practiceVolume).toContain("80 words");
+    expect(contract.pedagogy.practiceBalance.join(" ")).toContain("ALL source words");
+    expect(contract.principles.join(" ")).toContain("every source exercise");
+    expect(contract.principles.join(" ")).toContain("page batches");
+  });
+
   /* ---- 3. Contract matches submit_course_bundle validation ---- */
   it("matches the contract: a minimal valid bundle passes validation", () => {
     const bundle = parseCourseBundle(validBundleJson());
