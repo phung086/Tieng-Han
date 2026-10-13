@@ -40,7 +40,11 @@ export async function POST(request: Request) {
     let source = "";
     for (const page of pages) {
       const next = `[SOURCE: ${page.fileName} · p.${page.pageNumber}]\n${page.text}\n\n`;
-      if ((source + next).length > 90_000) break;
+      if ((source + next).length > 90_000) {
+        return NextResponse.json({
+          error: "Một lượt biên nhận quá nhiều văn bản. Hãy chia trang thành từng batch để biên đủ cả bài; không được cắt bỏ trang nguồn.",
+        }, { status: 413 });
+      }
       source += next;
     }
 
@@ -186,12 +190,14 @@ export async function POST(request: Request) {
       "5. Distractor có thể được tạo để làm MCQ nhưng không được giới thiệu kiến thức mới.",
       "6. Với listening: ưu tiên transcript/câu nghe có trong nguồn. Nếu PDF chỉ có hội thoại/ví dụ mà không có transcript audio, được phép tạo bài nghe TTS từ CHÍNH các câu có trong nguồn; không sáng tác cấu trúc mới.",
       "7. ỨNG DỤNG BẮT BUỘC có practice cho đủ 6 kỹ năng. Nếu nguồn không có mục Đọc/Viết riêng, hãy tạo một bài practice NGẮN chỉ từ từ vựng, ngữ pháp, hội thoại hoặc câu ví dụ đã có trong nguồn. Không thêm chủ đề/kiến thức mới. sourceRef phải ghi rõ Derived from <nguồn trang>.",
-      "8. Cố gắng bao phủ TOÀN BỘ từ vựng và điểm ngữ pháp của bài, không chỉ lấy vài ví dụ.",
+      "8. BẮT BUỘC liệt kê ĐẦY ĐỦ từng từ vựng, ví dụ, điểm ngữ pháp và câu đọc mẫu ở mọi trang SOURCE trong batch; không chỉ lấy vài ví dụ.",
       "9. speaking phải có các câu/prompt luyện nói lấy nguyên hoặc biến đổi tối thiểu từ câu có trong nguồn; tuyệt đối không thêm mẫu ngữ pháp ngoài bài.",
       "10. BẮT BUỘC giữ các phần khác của sách nếu có: hội thoại, phát âm, văn hóa, ghi chú, luyện tập hoặc mục đặc biệt.",
       "11. Giữ nguyên text ngôn ngữ đích trong targetTitle/targetText và viết giải thích, meaning, learnerTitle bằng ngôn ngữ người học.",
       "12. Dùng canonical fields targetTitle, learnerTitle, targetText, learnerMeaning. Không hardcode field theo tên một ngôn ngữ cụ thể.",
-      "13. Sinh 8-20 questions tùy lượng nội dung, phân bố nhiều dạng choice/input/reorder và ưu tiên đủ các skill có thể kiểm tra bằng quiz.",
+      "13. KHÔNG GIỚI HẠN 8/10/20 CÂU. Với mỗi từ vựng và mỗi bài tập/câu hỏi hoặc ý nhỏ xuất hiện trong batch, tạo mục luyện hoặc giữ nguyên nội dung gốc trong extraSections. Bài có 80 từ thì phải lưu đủ 80 mục từ và tạo đủ lượt ôn nguồn, không chỉ biên 10 câu.",
+      "14. Giữ đúng MÔ TÍP bài tập sách (chọn đáp án, điền từ, sắp xếp, dịch, nghe, đọc, viết); dùng choice/input/reorder nếu có đáp án chắc chắn. Những bài không có đáp án phải được giữ nguyên đề, thứ tự các ý và lựa chọn trong extraSections, không tự chế đáp án.",
+      "15. Trong batch này, tuyệt đối không được bỏ qua trang hoặc ý cuối. Thêm sourceRef cho từng mục; tên file, trang và phần phải khớp marker SOURCE.",
       "Trả về DUY NHẤT một JSON object, không markdown.",
       "Hình dạng JSON tham chiếu:",
       revisionNotes.length
