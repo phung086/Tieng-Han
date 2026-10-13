@@ -1,6 +1,7 @@
 "use client";
 
 import { ingestionConfig } from "@/config/ingestion";
+import { composePdfPageText } from "@/lib/pdf-text-layout";
 
 export type EmbeddedPdfImage = {
   id: string;
@@ -293,10 +294,13 @@ export async function extractPdf(
       page.getAnnotations({ intent: "display" }),
     ]);
 
-    const lines = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .filter(Boolean)
-      .join(" ");
+    const lines = composePdfPageText(
+      textContent.items.map((item) =>
+        "str" in item
+          ? { str: item.str, hasEOL: "hasEOL" in item && Boolean(item.hasEOL) }
+          : { str: "", hasEOL: false },
+      ),
+    );
 
     const externalLinks = extractAnnotationLinks(annotations);
     const hasRasterVisual = operatorList.fnArray.some((operation) =>
