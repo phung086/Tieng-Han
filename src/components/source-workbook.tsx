@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
+import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
 function readProgress(key: string, valid: Set<string>): string[] {
   if (typeof window === "undefined") return [];
@@ -149,7 +150,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
           Dấu hoàn thành là tự đánh giá, không thay cho bài kiểm tra.
         </p>
       </section>
-      {course.source?.curriculumCoverage?.status !== "complete" ? <section className="source-evidence-panel">
+      {!isCurrentCompleteCoverage(course.source?.curriculumCoverage) ? <section className="source-evidence-panel">
         <p>Bản biên soạn chưa được xác nhận bao phủ đầy đủ giáo trình. Số mục luyện chỉ tính nội dung đã nhập; bản chép nguyên trang không được tính vào tiến độ luyện.</p>
         <Link className="secondary-button" href="/sources">Đối chiếu toàn bộ giáo trình gốc</Link>
       </section> : null}

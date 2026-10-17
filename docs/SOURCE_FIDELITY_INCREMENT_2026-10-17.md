@@ -16,6 +16,8 @@ source comparison confirmed that the earlier material was incomplete.
   page requires an explicit reason. Merely checking pages as reviewed is
   insufficient. Independent direct-generation lessons continue after a failure;
   saved valid lessons are explicitly partial, with the failed lessons listed.
+  Publication also requires the current audit version; cached complete reports
+  produced under older rules cannot authorize a new publication.
 - `/sources` exposes every declared original import page, including appendices,
   with full extracted text, saved page images, embedded images and links. Missing
   or damaged pages remain visible failures. Access follows course visibility;
@@ -61,8 +63,8 @@ review bundle is stored locally for continuation, not publication.
 ## Verification
 
 - ESLint, TypeScript and production build passed.
-- Vitest: 169 passed, one private-data test skipped by default. With the actual
-  isolated four-course library enabled: all 170 tests passed.
+- Vitest: 170 passed, one private-data test skipped by default. With the actual
+  isolated four-course library enabled: all 171 tests passed.
 - Audit CLI regression: 3 passed.
 - HTTP: all 1,171 declared page snapshots returned intact; lesson, workbook and
   source comparison routes returned 200.

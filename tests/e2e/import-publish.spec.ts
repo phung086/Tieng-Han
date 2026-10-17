@@ -49,6 +49,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const consumed = await consume.json();
   expect(consumed.job.status).toBe("consumed");
   expect(consumed.course.source.curriculumCoverage.status).toBe("complete");
+  expect(consumed.course.source.curriculumCoverage.auditVersion).toBe(2);
   const library = await (await request.get("/api/courses")).json();
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");

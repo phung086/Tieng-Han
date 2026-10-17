@@ -1,5 +1,6 @@
 import { dbQuery, getDbPool } from "@/lib/db";
 import type { AuthUser, UserRole } from "@/lib/auth/types";
+import { CURRICULUM_AUDIT_VERSION } from "@/lib/curriculum-coverage";
 
 export type CoursePublicationStatus =
   | "draft"
@@ -112,10 +113,13 @@ export async function setCourseStatus(
           ELSE published_at
         END
       WHERE course_id = $1
-        AND ($2 <> 'published' OR metadata->'source'->'curriculumCoverage'->>'status' = 'complete')
+        AND ($2 <> 'published' OR (
+          metadata->'source'->'curriculumCoverage'->>'status' = 'complete'
+          AND metadata->'source'->'curriculumCoverage'->>'auditVersion' = $3::text
+        ))
       RETURNING *
     `,
-    [courseId, status],
+    [courseId, status, CURRICULUM_AUDIT_VERSION],
   );
 
   return result.rows[0] ?? null;

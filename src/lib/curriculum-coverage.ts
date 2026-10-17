@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
+export const CURRICULUM_AUDIT_VERSION = 2;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -21,6 +22,7 @@ export const sourceInventorySchema = z.object({
 export type SourceInventory = z.infer<typeof sourceInventorySchema>;
 export type CoverageRatio = { covered: number; total: number; percent: number | null };
 export type CurriculumCoverage = {
+  auditVersion?: number;
   status: "unverified" | "partial" | "blocked" | "complete";
   basis: string;
   sourceCoverage: CoverageRatio;
@@ -29,6 +31,9 @@ export type CurriculumCoverage = {
   derivedContent: number;
   issues: string[];
 };
+export function isCurrentCompleteCoverage(coverage: CurriculumCoverage | undefined) {
+  return coverage?.auditVersion === CURRICULUM_AUDIT_VERSION && coverage.status === "complete";
+}
 const ratio = (covered: number, total: number): CoverageRatio => ({ covered, total, percent: total ? covered / total * 100 : null });
 
 function resolvePointer(root: unknown, pointer: string): unknown {
@@ -48,7 +53,7 @@ const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([file
  */
 export function auditCurriculumCoverage(bundle: CompiledCourseBundle): CurriculumCoverage {
   const derivedContent = bundle.course.questions.filter(question => question.origin === "derived").length;
-  const empty = { sourceCoverage: ratio(0, 0), practiceCoverage: ratio(0, 0), validationCoverage: ratio(0, 0), derivedContent };
+  const empty = { auditVersion: CURRICULUM_AUDIT_VERSION, sourceCoverage: ratio(0, 0), practiceCoverage: ratio(0, 0), validationCoverage: ratio(0, 0), derivedContent };
   if (!bundle.sourceInventory) return { ...empty, status: "unverified", basis: "No independent source inventory", issues: ["Chưa có kiểm kê nguồn được đối chiếu độc lập."] };
   const inventory = sourceInventorySchema.parse(bundle.sourceInventory);
   const issues: string[] = [];
@@ -124,6 +129,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const total = inventory.items.length;
   if (!total) issues.push("Inventory rỗng không chứng minh độ đầy đủ.");
   return {
+    auditVersion: CURRICULUM_AUDIT_VERSION,
     status: !issues.length ? "complete" : represented ? "partial" : "blocked",
     basis: "Reconciled against submitted reviewed inventory; not automatic PDF semantic verification",
     sourceCoverage: { ...ratio(represented, total), percent: allPagesReviewed ? ratio(represented, total).percent : null },
