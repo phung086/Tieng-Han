@@ -104,6 +104,22 @@ describe("exhaustive deterministic practice", () => {
 });
 
 describe("full-fidelity source workbook", () => {
+  it("keeps recovered textbook sections in their source skills and OCR outside authored practice", () => {
+    const input = lesson();
+    input.extraSections = [
+      { id: "source-writing", kind: "original-writing", title: "Source writing", content: Array.from({ length: 123 }, (_, i) => "Original task " + i), sourceRef: "Synthetic p.1" },
+      { id: "source-task", kind: "original-activities", title: "Source tasks", content: ["Source task"], sourceRef: "Synthetic p.2" },
+      { id: "source-key", kind: "original-appendix", title: "Source appendix", content: ["Source key"], sourceRef: "Synthetic p.3" },
+      { id: "ocr", kind: "source-transcript", title: "OCR pending review", content: ["Unreviewed OCR"], sourceRef: "Synthetic p.4" },
+    ];
+    const items = buildSourceWorkbook(input, []);
+    expect(items.filter(item => item.title.startsWith("Source writing"))).toHaveLength(123);
+    expect(items.find(item => item.prompt === "Original task 122")?.category).toBe("Viết");
+    expect(items.find(item => item.prompt === "Source task")?.category).toBe("Bài tập gốc");
+    expect(items.find(item => item.prompt === "Source key")?.category).toBe("Phụ lục gốc");
+    expect(items.find(item => item.prompt === "Unreviewed OCR")?.category).toBe("Nguồn dự phòng · chưa tính là bài biên soạn");
+    expect(items.find(item => item.prompt === "Source task")?.answer).toBeUndefined();
+  });
   it("includes every source entry, sample, dialogue line, original question and extra line", () => {
     const items = buildSourceWorkbook(lesson(73), original);
     const count = (category: string) => items.filter(q => q.category === category).length;

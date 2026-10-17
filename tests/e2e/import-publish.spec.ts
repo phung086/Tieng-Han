@@ -54,6 +54,10 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");
   await expect(page.getByRole("heading", { name: "학생", exact: true })).toBeVisible();
+  await expect(page.locator(".lesson-coach-stats-v3")).toContainText("7 câu luyện");
+  await page.getByRole("link", { name: "Luyện toàn bộ nội dung bài", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Luyện đủ từng mục trong bài", exact: true })).toBeVisible();
+  await page.goto("/learn/1");
   await page.getByText("Nội dung đã nhập · Đã đối chiếu inventory", { exact: false }).click();
   await expect(page.getByText("Kết quả dưới đây đối chiếu với inventory", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "Đối chiếu toàn bộ giáo trình gốc" }).click();

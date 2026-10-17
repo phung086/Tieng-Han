@@ -8,6 +8,9 @@ kiểm tra toàn bộ bài/ngữ pháp và phân biệt chế độ local với 
 Hướng dẫn PDF/DOCX, inventory nguồn và cổng xuất bản:
 [SOURCE_INVENTORY.md](docs/SOURCE_INVENTORY.md).
 
+Khôi phục và đối chiếu toàn bộ bài từ PDF gốc:
+[ALL_LESSON_RECOVERY.md](docs/ALL_LESSON_RECOVERY.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp

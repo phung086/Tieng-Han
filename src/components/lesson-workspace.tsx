@@ -65,6 +65,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const evidence = auditLessonPracticeCoverage(lesson, course.questions);
   const contentCounts = summarizeLessonPractice(lesson, course.questions);
   const curriculumCoverage = course.source?.curriculumCoverage;
+  const hasInventoriedUnits = (curriculumCoverage?.sourceCoverage.total ?? 0) > 0;
 
   const dialogues = lesson.dialogues ?? [];
   const pronunciation = lesson.pronunciation ?? [];
@@ -201,11 +202,12 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       </header>
 
       <p><Link className="secondary-button" href={"/sources?page=" + (lesson.sourceRef?.match(/\bpp?\.(\d+)/)?.[1] ?? 1)}><BookOpen size={17} /> Đối chiếu toàn bộ giáo trình gốc</Link></p>
+      <p><Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}><PenLine size={17} /> Luyện toàn bộ nội dung bài</Link></p>
 
       <details className="source-evidence-panel">
         <summary>Nội dung đã nhập · {isCurrentCompleteCoverage(curriculumCoverage) ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>
-        <p>Tiến độ học và số câu luyện không chứng minh sách đã được biên soạn đầy đủ. {curriculumCoverage && curriculumCoverage.status !== "unverified" ? "Kết quả dưới đây đối chiếu với inventory nguồn đã cung cấp; nội dung nguồn vẫn cần người kiểm tra." : "Tổng số mục trong giáo trình gốc chưa được kiểm kê độc lập."}</p>
-        {curriculumCoverage && curriculumCoverage.status !== "unverified" ? <p>
+        <p>Tiến độ học và số câu luyện không chứng minh sách đã được biên soạn đầy đủ. {hasInventoriedUnits ? "Kết quả dưới đây đối chiếu với inventory nguồn đã cung cấp; nội dung nguồn vẫn cần người kiểm tra." : "Tổng số mục trong giáo trình gốc chưa được kiểm kê độc lập."}</p>
+        {curriculumCoverage && hasInventoriedUnits ? <p>
           Nội dung nguồn: {curriculumCoverage.sourceCoverage.covered}/{curriculumCoverage.sourceCoverage.total} ·
           Có cách ôn: {curriculumCoverage.practiceCoverage.covered}/{curriculumCoverage.practiceCoverage.total} ·
           Đã kiểm chứng: {curriculumCoverage.validationCoverage.covered}/{curriculumCoverage.validationCoverage.total}.
@@ -368,7 +370,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             <div className="lesson-coach-stats-v3">
               <span><strong>{lesson.vocabulary.length}</strong> từ</span>
               <span><strong>{lesson.grammar.length}</strong> mẫu câu</span>
-              <span><strong>{course.questions.filter((q) => q.lessonId === lessonId).length}</strong> câu luyện</span>
+              <span><strong>{contentCounts.totalQuestions}</strong> câu luyện</span>
             </div>
           </aside>
 

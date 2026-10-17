@@ -4,6 +4,7 @@ out
 coverage
 *.tsbuildinfo
 *.log
+__pycache__/
 .DS_Store
 
 .env
