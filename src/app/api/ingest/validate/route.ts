@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { callContentModel, callVisionContentModel, type InputContent } from "@/lib/content-ai";
 import { ingestionConfig } from "@/config/ingestion";
+import { acceptsFullSourceValidation, prepareSourceRequest } from "@/lib/source-request";
 import {
   defaultLanguageProfile,
   type LanguageProfile,
@@ -34,12 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Thiếu lesson hoặc source pages." }, { status: 400 });
     }
 
-    let source = "";
-    for (const page of pages) {
-      const next = `[SOURCE: ${page.fileName} · p.${page.pageNumber}]\n${page.text}\n\n`;
-      if ((source + next).length > 75_000) break;
-      source += next;
-    }
+    const { source, visualPages } = prepareSourceRequest(pages, 75_000, ingestionConfig.lesson.maxVisionPagesPerLesson);
 
     const instructions = [
       "Bạn là QA validator cho dữ liệu học ngôn ngữ sinh từ giáo trình.",
@@ -58,7 +54,7 @@ export async function POST(request: Request) {
       "- coverageScore: dữ liệu đã bao phủ từ vựng, ngữ pháp, nghe/nói, đọc/viết, hội thoại, phát âm, văn hóa và các mục/hoạt động quan trọng của nguồn đến đâu.",
       "- groundingScore: các nội dung generated có thực sự được hỗ trợ bởi nguồn hay có hallucination.",
       "Câu hỏi luyện tập mới được phép paraphrase/tạo distractor, nhưng đáp án/kiến thức phải bám nguồn.",
-      "Kiểm tra thêm tính sẵn sàng học: lesson cần có vocabulary/grammar theo nguồn và practice đủ Nghe, Nói, Đọc, Viết. Phần Đọc/Viết được phép derived từ chính nội dung nguồn nếu sách không có section riêng, nhưng không được thêm curriculum mới.",
+      "Kiểm kê từng đơn vị và từng ý nhỏ trên TẤT CẢ trang nguồn. Bất kỳ từ, ví dụ, hội thoại, đề bài, lựa chọn, bài đọc, nhiệm vụ, phát âm, văn hóa hoặc hình/bảng học tập nào bị thiếu đều phải nằm trong missingTopics; không được cho pass khi thiếu dù chỉ một mục. Bản chép nguyên trang là bản dự phòng nguồn, không phải bằng chứng mục đó đã được biên soạn thành kiến thức/bài tập. Không yêu cầu kỹ năng không có trong nguồn.",
       "Không coi field legacy ko/vi là bằng chứng ngôn ngữ; chúng chỉ là alias runtime. Đánh giá nội dung theo language profile và source.",
       "Trả JSON duy nhất:",
       '{"coverageScore":0,"groundingScore":0,"issues":["..."],"missingTopics":["..."],"pass":true}',
@@ -76,10 +72,6 @@ export async function POST(request: Request) {
       JSON.stringify(body.lesson) +
       "\n\nGENERATED QUESTIONS:\n" +
       JSON.stringify(body.questions ?? []);
-
-    const visualPages = pages
-      .filter((page) => Boolean(page.imageDataUrl))
-      .slice(0, ingestionConfig.lesson.maxVisionPagesPerLesson);
 
     let result: unknown;
 
@@ -115,14 +107,12 @@ export async function POST(request: Request) {
     }
 
     const raw = result as Record<string, unknown>;
-    const coverageScore = Math.max(0, Math.min(100, Number(raw.coverageScore) || 0));
-    const groundingScore = Math.max(0, Math.min(100, Number(raw.groundingScore) || 0));
-    const issues = Array.isArray(raw.issues) ? raw.issues.map(String).slice(0, 20) : [];
-    const missingTopics = Array.isArray(raw.missingTopics) ? raw.missingTopics.map(String).slice(0, 20) : [];
-    const pass =
-      Boolean(raw.pass) &&
-      coverageScore >= ingestionConfig.validation.passCoverage &&
-      groundingScore >= ingestionConfig.validation.passGrounding;
+    const validScore = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+    const coverageScore = validScore(raw.coverageScore) ? raw.coverageScore : 0;
+    const groundingScore = validScore(raw.groundingScore) ? raw.groundingScore : 0;
+    const issues = Array.isArray(raw.issues) ? raw.issues.map(String) : ["QA không trả danh sách issues hợp lệ."];
+    const missingTopics = Array.isArray(raw.missingTopics) ? raw.missingTopics.map(String) : ["QA không trả kiểm kê phần thiếu hợp lệ."];
+    const pass = acceptsFullSourceValidation({ pass: raw.pass === true, coverageScore, groundingScore, issues, missingTopics });
 
     return NextResponse.json({
       coverageScore,
@@ -134,7 +124,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Không thể validate nội dung." },
-      { status: 500 },
+      { status: error instanceof RangeError ? 413 : 500 },
     );
   }
 }

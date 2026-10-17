@@ -74,6 +74,21 @@ export function formatSourcePages(pages: SourcePageSlice[]): string {
 }
 
 type GeneratedChunk = { lesson: LessonContent; questions: StudyQuestion[] };
+
+/** Keep the entire extracted source as a separately labelled fallback, never as
+ * evidence that the model has authored or verified every knowledge unit. */
+export function retainSourceTranscripts(lessonId: number, value: unknown, pages: SourcePageSlice[]): GeneratedChunk {
+  const parsed = mergeGeneratedLessonChunks(lessonId, [value]);
+  const existing = parsed.lesson.extraSections ?? [];
+  parsed.lesson.extraSections = [...existing, ...pages.map((page, index) => ({
+    id: "source-transcript:" + index,
+    kind: "source-transcript",
+    title: "Bản trích xuất nguyên trang · " + (page.sourceLocation ?? "trang PDF " + page.pageNumber) + (page.part ? " · phần " + page.part : ""),
+    content: [page.text || "Trang không có văn bản trích xuất; cần đối chiếu ảnh nguồn."],
+    sourceRef: page.fileName + " · " + (page.sourceLocation ?? "p." + page.pageNumber) + (page.part ? " · part " + page.part : ""),
+  }))];
+  return parsed;
+}
 const unique = (items: string[]) => [...new Set(items.map(x => x.trim()).filter(Boolean))];
 
 function idPrefix<T extends { id: string }>(items: T[], chunk: number): T[] {

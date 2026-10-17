@@ -35,6 +35,16 @@ afterEach(async () => {
 });
 
 describe("source import integrity and recovery", () => {
+  it("reads exact declared pages and rejects missing, out-of-range or mismatched snapshots", async () => {
+    const job = await store.createImportJob(input());
+    await store.appendImportPages(job.id, [page(2)]);
+    expect((await store.readImportPage(job.id, "doc-1", 2)).text).toBe(page(2).text);
+    await expect(store.readImportPage(job.id, "../private", 2)).rejects.toThrow();
+    await expect(store.readImportPage(job.id, "doc-1", 3)).rejects.toThrow();
+    await expect(store.readImportPage(job.id, "doc-1", 1)).rejects.toThrow();
+    await writeFile(path.join(root, job.id, "pages", "doc-1-00002.json"), JSON.stringify(page(1)));
+    await expect(store.readImportPage(job.id, "doc-1", 2)).rejects.toThrow("khớp");
+  });
   it("validates document fingerprints and duplicate identities at job creation", async () => {
     await expect(store.createImportJob({ ...input(), documents: [{ ...input().documents[0], pageCount: 3 }] })).rejects.toThrow("khớp");
     await expect(store.createImportJob({ ...input(), sourceManifest: [...manifest, ...manifest], documents: [...input().documents, ...input().documents] })).rejects.toThrow();

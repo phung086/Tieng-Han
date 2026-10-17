@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
+import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
 function readProgress(key: string, valid: Set<string>): string[] {
   if (typeof window === "undefined") return [];
@@ -34,7 +35,8 @@ function readDrafts(key: string): Record<string, string> {
 }
 
 export function SourceWorkbook({ lessonId }: { lessonId: number }) {
-  const { course } = useContent();
+  const { course, hydrated } = useContent();
+  if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
   // Remount when a server-loaded course replaces the initial empty course.
   return <WorkbookContent key={course.id + ":" + lessonId} lessonId={lessonId} />;
 }
@@ -64,7 +66,9 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
   }
 
   const completed = new Set(done);
-  const countDone = items.filter(item => completed.has(item.id)).length;
+  const fallbackCategory = "Nguồn dự phòng · chưa tính là bài biên soạn";
+  const practiceItems = items.filter(item => item.category !== fallbackCategory);
+  const countDone = practiceItems.filter(item => completed.has(item.id)).length;
   const grouped = new Map<string, typeof items>();
   for (const item of items) {
     const list = grouped.get(item.category) ?? [];
@@ -121,7 +125,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
           </p>
         </div>
         <div className="lesson-header-actions">
-          <span className="lesson-progress-pill">{countDone}/{items.length} mục đã luyện</span>
+          <span className="lesson-progress-pill">{countDone}/{practiceItems.length} mục đã luyện</span>
           <Link className="primary-button" href={"/practice/quiz?lesson=" + lessonId + "&mode=guided"}>
             Làm quiz toàn bài
           </Link>
@@ -130,15 +134,15 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
       <section className="lesson-content-card">
         <div className="content-heading">
           <div>
-            <span className="eyebrow">SỔ BÀI TẬP ĐẦY ĐỦ</span>
-            <h2>{grouped.size} nhóm · {items.length} mục</h2>
+            <span className="eyebrow">SỔ BÀI TẬP ĐÃ NHẬP</span>
+            <h2>{grouped.size} nhóm · {practiceItems.length} mục luyện</h2>
           </div>
           <button className="secondary-button" type="button" onClick={reset}>
             <RotateCcw size={15} /> Làm lại từ đầu
           </button>
         </div>
         <div className="lab-progress" aria-label="Tiến độ sổ bài tập">
-          <span style={{ width: (items.length ? (100 * countDone) / items.length : 0) + "%" }} />
+          <span style={{ width: (practiceItems.length ? (100 * countDone) / practiceItems.length : 0) + "%" }} />
         </div>
         <p>
           Mỗi mục được giữ riêng để không bị bỏ sót. Các mục chưa có đáp án trong dữ liệu nguồn
@@ -146,12 +150,17 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
           Dấu hoàn thành là tự đánh giá, không thay cho bài kiểm tra.
         </p>
       </section>
+      {!isCurrentCompleteCoverage(course.source?.curriculumCoverage) ? <section className="source-evidence-panel">
+        <p>Bản biên soạn chưa được xác nhận bao phủ đầy đủ giáo trình. Số mục luyện chỉ tính nội dung đã nhập; bản chép nguyên trang không được tính vào tiến độ luyện.</p>
+        <Link className="secondary-button" href="/sources">Đối chiếu toàn bộ giáo trình gốc</Link>
+      </section> : null}
       {Array.from(grouped.entries()).map(([category, entries]) => {
+        const isFallback = category === fallbackCategory;
         const doneCount = entries.filter(item => completed.has(item.id)).length;
         return (
           <details className="lesson-content-card" key={category} open={doneCount !== entries.length}>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: "1.1rem" }}>
-              {category} · {doneCount}/{entries.length} mục
+              {category} · {isFallback ? entries.length + " bản lưu" : doneCount + "/" + entries.length + " mục"}
             </summary>
             <div className="supplement-stack">
               {entries.map((item) => (
@@ -172,7 +181,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                     </div>
                   ) : null}
                   {item.hint ? <p>{item.hint}</p> : null}
-                  {(!item.answer || item.category === "Bài tập bổ sung") ? (
+                  {!isFallback && (!item.answer || item.category === "Bài tập bổ sung") ? (
                     <div className="writing-area">
                       <textarea
                         aria-label={"Bài làm cho " + item.title}
@@ -198,13 +207,13 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                     <button type="button" className="secondary-button" onClick={() => speak(item.prompt)}>
                       Nghe câu nguồn
                     </button>
-                    <button
+                    {!isFallback ? <button
                       className={completed.has(item.id) ? "secondary-button" : "primary-button"}
                       type="button"
                       onClick={() => toggleDone(item.id)}
                     >
                       {completed.has(item.id) ? "Đánh dấu chưa luyện" : "Đã luyện mục này"}
-                    </button>
+                    </button> : null}
                   </div>
                   {revealed.includes(item.id) && item.answer ? (
                     <p className="question-translation" style={{ whiteSpace: "pre-wrap" }}>

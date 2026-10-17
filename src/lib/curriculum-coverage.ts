@@ -2,11 +2,13 @@ import { z } from "zod";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
+export const CURRICULUM_AUDIT_VERSION = 2;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
     fileName: nonempty, pageNumber: z.number().int().positive(),
     status: z.enum(["reviewed", "unavailable"]), reason: nonempty.optional(),
+    classification: z.enum(["learning-content", "non-learning"]).optional(),
   })),
   items: z.array(z.object({
     id: nonempty, lessonId: z.number().int().positive(), kind: nonempty,
@@ -20,6 +22,7 @@ export const sourceInventorySchema = z.object({
 export type SourceInventory = z.infer<typeof sourceInventorySchema>;
 export type CoverageRatio = { covered: number; total: number; percent: number | null };
 export type CurriculumCoverage = {
+  auditVersion?: number;
   status: "unverified" | "partial" | "blocked" | "complete";
   basis: string;
   sourceCoverage: CoverageRatio;
@@ -28,6 +31,9 @@ export type CurriculumCoverage = {
   derivedContent: number;
   issues: string[];
 };
+export function isCurrentCompleteCoverage(coverage: CurriculumCoverage | undefined) {
+  return coverage?.auditVersion === CURRICULUM_AUDIT_VERSION && coverage.status === "complete";
+}
 const ratio = (covered: number, total: number): CoverageRatio => ({ covered, total, percent: total ? covered / total * 100 : null });
 
 function resolvePointer(root: unknown, pointer: string): unknown {
@@ -47,7 +53,7 @@ const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([file
  */
 export function auditCurriculumCoverage(bundle: CompiledCourseBundle): CurriculumCoverage {
   const derivedContent = bundle.course.questions.filter(question => question.origin === "derived").length;
-  const empty = { sourceCoverage: ratio(0, 0), practiceCoverage: ratio(0, 0), validationCoverage: ratio(0, 0), derivedContent };
+  const empty = { auditVersion: CURRICULUM_AUDIT_VERSION, sourceCoverage: ratio(0, 0), practiceCoverage: ratio(0, 0), validationCoverage: ratio(0, 0), derivedContent };
   if (!bundle.sourceInventory) return { ...empty, status: "unverified", basis: "No independent source inventory", issues: ["Chưa có kiểm kê nguồn được đối chiếu độc lập."] };
   const inventory = sourceInventorySchema.parse(bundle.sourceInventory);
   const issues: string[] = [];
@@ -67,6 +73,16 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     else issues.push("Trang bất khả dụng: " + key + ": " + (page.reason ?? "chưa ghi lý do"));
   }
   for (const key of expectedPages) if (!reviewedPages.has(key)) issues.push("Trang chưa được đối chiếu: " + key);
+  for (const page of inventory.pages) {
+    if (page.status !== "reviewed") continue;
+    const key = sourceKey(page.fileName, page.pageNumber);
+    const pageItems = inventory.items.filter(item => item.fileName === page.fileName && item.pageNumber === page.pageNumber);
+    if (page.classification === "non-learning") {
+      if (!page.reason || pageItems.length) issues.push("Trang loại khỏi nội dung học phải có lý do và không có item: " + key);
+    } else if (page.classification !== "learning-content" || !pageItems.length) {
+      issues.push("Trang chưa có kiểm kê đơn vị nội dung (không được chỉ đánh dấu đã đọc): " + key);
+    }
+  }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
@@ -87,7 +103,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const repeatedDestination = destinations.has(destination);
     destinations.add(destination);
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
-    const hasContent = isContentPath && !repeatedDestination && content !== undefined && content !== null &&
+    const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
+    const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
+    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
       (typeof content !== "string" || Boolean(content.trim())) &&
       (!Array.isArray(content) || content.length > 0);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
@@ -111,6 +129,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const total = inventory.items.length;
   if (!total) issues.push("Inventory rỗng không chứng minh độ đầy đủ.");
   return {
+    auditVersion: CURRICULUM_AUDIT_VERSION,
     status: !issues.length ? "complete" : represented ? "partial" : "blocked",
     basis: "Reconciled against submitted reviewed inventory; not automatic PDF semantic verification",
     sourceCoverage: { ...ratio(represented, total), percent: allPagesReviewed ? ratio(represented, total).percent : null },

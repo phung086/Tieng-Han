@@ -13,7 +13,7 @@ function fixture(): CompiledCourseBundle {
     }], questions: [{ id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Fixture", prompt: "học sinh", answer: "학생", explanation: "Fixture", sourceRef: "synthetic.pdf · p.1 · v1", origin: "derived" }] } }));
 }
 function inventory(): SourceInventory {
-  return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed" })), items: [
+  return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", practiceQuestionIds: ["q1"], verified: true },
     { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
@@ -21,6 +21,26 @@ function inventory(): SourceInventory {
   ] };
 }
 describe("source, practice and validation coverage are independent release evidence", () => {
+  it("refuses an unchecked page inventory even if the author claims every page was reviewed", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items.pop();
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage.percent).toBeNull();
+    expect(report.issues.join(" ")).toContain("Trang chưa có kiểm kê");
+  });
+  it("requires a reason to exclude a non-learning page and never counts raw transcripts as authoring", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items.pop();
+    bundle.sourceInventory.pages[1].classification = "non-learning";
+    expect(auditCurriculumCoverage(bundle).status).toBe("partial");
+    bundle.sourceInventory.pages[1].reason = "Blank reverse cover, independently reviewed";
+    expect(auditCurriculumCoverage(bundle).status).toBe("complete");
+    bundle.course.lessons[0].extraSections![0].kind = "source-transcript";
+    bundle.sourceInventory = inventory();
+    expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
+    expect(auditCurriculumCoverage(bundle).status).toBe("partial");
+  });
   it("never substitutes quiz quantity or self-reported quality for missing inventory", () => {
     const bundle = fixture();
     const report = auditCurriculumCoverage(bundle);

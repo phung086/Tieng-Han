@@ -27,7 +27,7 @@ items, destinations, or question mappings produce diagnostics.
 {
   "version": 1,
   "pages": [
-    { "fileName": "synthetic.pdf", "pageNumber": 1, "status": "reviewed" }
+    { "fileName": "synthetic.pdf", "pageNumber": 1, "status": "reviewed", "classification": "learning-content" }
   ],
   "items": [
     {
@@ -49,6 +49,16 @@ items, destinations, or question mappings produce diagnostics.
 This is a synthetic shape example, not a textbook fixture. Every source page
 must appear exactly once. An unavailable page uses `status: "unavailable"`
 and a reason; it keeps the report incomplete instead of being dropped.
+Every reviewed learning page must use `classification: "learning-content"` and
+have its individual source units inventoried. A page genuinely containing no
+learning content uses `classification: "non-learning"` and an explicit review
+reason. Merely marking hundreds of pages `reviewed` with no unit inventory can
+no longer yield complete coverage. Legacy inventories without classification
+remain readable but require review before publication.
+Coverage reports carry `auditVersion: 2`. The publication API and database guard
+require the current audit version as well as `complete`; a cached success report
+from older rules cannot authorize a new publication. Existing published course
+statuses are not changed by this guard.
 
 `contentPointer` is a JSON pointer relative to the lesson. Supported roots are
 the runtime learning sections and the lesson's filtered `questions` array.
@@ -63,6 +73,30 @@ The three coverage ratios measure representation, practice availability, and
 reviewed items independently. A complete report means structural reconciliation
 with the **submitted reviewed inventory**. It does not prove that an incomplete
 inventory magically contains every fact in the book.
+
+## Full original source and strict authoring batches
+
+`/sources` reads the active course's original import snapshots one declared page
+at a time. All declared pages, including appendices, remain addressable; missing
+or corrupt snapshots are displayed as unavailable, never skipped. PDF indices
+are physical file positions and may differ from printed page numbers. DOCX uses
+logical block labels. Images, extracted text, embedded images and resource links
+are retained separately from authored knowledge. Database-backed access follows
+the course publication rules; local testing uses the existing local-first mode.
+
+Both generation and QA reject oversized text/image requests with HTTP 413.
+Callers must split and process subsequent batches; neither API slices away the
+final pages or images. Every QA finding is retained. QA must report 100 for both
+scores, no missing units, no issues, and `pass: true`; the client enforces the
+same rule after repair. AI scores alone still leave the course unverified.
+Independent source inventory remains necessary for publication.
+
+Generated batches retain every extracted source character in labelled
+`extraSections` of kind `source-transcript`. These are fallback copies, excluded
+from authored-item coverage. Independent direct-generation lessons continue if
+another lesson fails; valid results remain a partial draft with explicit errors.
+No source-less lesson is silently omitted. This does not provide a distributed
+authoring worker or durable direct-generation checkpoints.
 
 ## PDF and DOCX
 

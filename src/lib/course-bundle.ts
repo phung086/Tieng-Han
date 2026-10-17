@@ -691,7 +691,7 @@ export function getCompilationContract(language: LanguageProfile) {
       format: COURSE_BUNDLE_FORMAT,
       version: COURSE_BUNDLE_VERSION,
       sourceManifest: "Copy exactly from job.sourceManifest.",
-      sourceInventory: "Optional independently reviewed {version:1,pages:[{fileName,pageNumber,status:reviewed|unavailable,reason?}],items:[{id,lessonId,kind,fileName,pageNumber,sourceRef,contentPointer,practiceMethod:questions|workbook,practiceQuestionIds:string[],verified:boolean}]}. Missing inventory is unverified; never fabricate totals or review flags.",
+      sourceInventory: "Optional independently reviewed {version:1,pages:[{fileName,pageNumber,status:reviewed|unavailable,classification:learning-content|non-learning,reason?}],items:[{id,lessonId,kind,fileName,pageNumber,sourceRef,contentPointer,practiceMethod:questions|workbook,practiceQuestionIds:string[],verified:boolean}]}. Every learning-content page requires its complete unit inventory; non-learning requires a specific exclusion reason. A raw source-transcript is a fallback, never authored-item coverage. Missing inventory is unverified; never fabricate totals or review flags.",
     },
     language,
     principles: [

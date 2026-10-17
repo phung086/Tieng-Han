@@ -97,6 +97,7 @@ export function buildRuntimeCourseFromBundle(
     level: bundle.course.level.trim() || "General",
     language,
     source: {
+      importJobId: jobId,
       fileName: sourceFiles[0],
       fileNames: sourceFiles,
       importedAt,

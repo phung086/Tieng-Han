@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAdminApiAccess } from "@/lib/auth/api-guard";
 import { callContentModel, callVisionContentModel, type InputContent } from "@/lib/content-ai";
 import { ingestionConfig } from "@/config/ingestion";
+import { prepareSourceRequest } from "@/lib/source-request";
+import { retainSourceTranscripts } from "@/lib/source-chunk-compilation";
 import {
   defaultLanguageProfile,
   type LanguageProfile,
@@ -31,22 +33,13 @@ export async function POST(request: Request) {
     const lessonId = Number(body.lessonId);
     const language = body.language ?? defaultLanguageProfile;
     const pages = body.pages ?? [];
-    const revisionNotes = (body.revisionNotes ?? []).map(String).slice(0, 20);
+    const revisionNotes = (body.revisionNotes ?? []).map(String);
 
     if (!lessonId || !pages.length) {
       return NextResponse.json({ error: "Thiếu lessonId hoặc nội dung nguồn." }, { status: 400 });
     }
 
-    let source = "";
-    for (const page of pages) {
-      const next = `[SOURCE: ${page.fileName} · p.${page.pageNumber}]\n${page.text}\n\n`;
-      if ((source + next).length > 90_000) {
-        return NextResponse.json({
-          error: "Một lượt biên nhận quá nhiều văn bản. Hãy chia trang thành từng batch để biên đủ cả bài; không được cắt bỏ trang nguồn.",
-        }, { status: 413 });
-      }
-      source += next;
-    }
+    const { source, visualPages, pages: sourcePages } = prepareSourceRequest(pages, 90_000, ingestionConfig.lesson.maxVisionPagesPerLesson);
 
     const schema = {
       lesson: {
@@ -161,6 +154,7 @@ export async function POST(request: Request) {
           tokens: ["..."],
           answer: "...",
           explanation: "...",
+          origin: "source|derived",
           sourceRef: "file · p.1",
         },
       ],
@@ -189,7 +183,7 @@ export async function POST(request: Request) {
       "4. Có thể tạo câu hỏi luyện tập mới nhưng kiến thức và đáp án phải suy ra trực tiếp từ nguồn.",
       "5. Distractor có thể được tạo để làm MCQ nhưng không được giới thiệu kiến thức mới.",
       "6. Với listening: ưu tiên transcript/câu nghe có trong nguồn. Nếu PDF chỉ có hội thoại/ví dụ mà không có transcript audio, được phép tạo bài nghe TTS từ CHÍNH các câu có trong nguồn; không sáng tác cấu trúc mới.",
-      "7. ỨNG DỤNG BẮT BUỘC có practice cho đủ 6 kỹ năng. Nếu nguồn không có mục Đọc/Viết riêng, hãy tạo một bài practice NGẮN chỉ từ từ vựng, ngữ pháp, hội thoại hoặc câu ví dụ đã có trong nguồn. Không thêm chủ đề/kiến thức mới. sourceRef phải ghi rõ Derived from <nguồn trang>.",
+      "7. Chỉ tạo các phần phù hợp với nguồn thực tế. Bảo toàn đầy đủ toàn bộ bài đọc, bài viết và các ý nhỏ; không thay nhiều bài gốc bằng một bài practice ngắn. Bài tạo thêm phải có origin: derived và sourceRef: Derived from <nguồn trang>; bài gốc có origin: source.",
       "8. BẮT BUỘC liệt kê ĐẦY ĐỦ từng từ vựng, ví dụ, điểm ngữ pháp và câu đọc mẫu ở mọi trang SOURCE trong batch; không chỉ lấy vài ví dụ.",
       "9. speaking phải có các câu/prompt luyện nói lấy nguyên hoặc biến đổi tối thiểu từ câu có trong nguồn; tuyệt đối không thêm mẫu ngữ pháp ngoài bài.",
       "10. BẮT BUỘC giữ các phần khác của sách nếu có: hội thoại, phát âm, văn hóa, ghi chú, luyện tập hoặc mục đặc biệt.",
@@ -206,10 +200,6 @@ export async function POST(request: Request) {
         : "Không có feedback vòng trước.",
       JSON.stringify(schema),
     ].join("\n");
-
-    const visualPages = pages
-      .filter((page) => Boolean(page.imageDataUrl))
-      .slice(0, ingestionConfig.lesson.maxVisionPagesPerLesson);
 
     let result: unknown;
 
@@ -244,11 +234,11 @@ export async function POST(request: Request) {
       result = await callContentModel(instructions, source);
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(retainSourceTranscripts(lessonId, result, sourcePages));
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Không thể sinh nội dung bài học." },
-      { status: 500 },
+      { status: error instanceof RangeError ? 413 : 500 },
     );
   }
 }

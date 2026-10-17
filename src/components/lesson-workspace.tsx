@@ -22,6 +22,7 @@ import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
 import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
 import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
+import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 import {
   getCoreLessonProgress,
   getRequiredCoreSkills,
@@ -35,8 +36,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const [tab, setTab] = useState<LessonTabKey>("overview");
   const { state } = useLearning();
   const messages = useMessages();
-  const { getLesson, course } = useContent();
+  const { getLesson, course, hydrated } = useContent();
   const lesson = getLesson(lessonId);
+
+  if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
 
   if (!lesson) {
     return (
@@ -197,8 +200,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         </div>
       </header>
 
+      <p><Link className="secondary-button" href={"/sources?page=" + (lesson.sourceRef?.match(/\bpp?\.(\d+)/)?.[1] ?? 1)}><BookOpen size={17} /> Đối chiếu toàn bộ giáo trình gốc</Link></p>
+
       <details className="source-evidence-panel">
-        <summary>Nội dung đã nhập · {curriculumCoverage?.status === "complete" ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>
+        <summary>Nội dung đã nhập · {isCurrentCompleteCoverage(curriculumCoverage) ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>
         <p>Tiến độ học và số câu luyện không chứng minh sách đã được biên soạn đầy đủ. {curriculumCoverage && curriculumCoverage.status !== "unverified" ? "Kết quả dưới đây đối chiếu với inventory nguồn đã cung cấp; nội dung nguồn vẫn cần người kiểm tra." : "Tổng số mục trong giáo trình gốc chưa được kiểm kê độc lập."}</p>
         {curriculumCoverage && curriculumCoverage.status !== "unverified" ? <p>
           Nội dung nguồn: {curriculumCoverage.sourceCoverage.covered}/{curriculumCoverage.sourceCoverage.total} ·

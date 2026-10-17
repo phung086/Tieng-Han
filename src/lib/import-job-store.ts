@@ -272,6 +272,19 @@ export async function listImportJobs(
   return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Read one declared physical page without scanning or sampling the book. */
+export async function readImportPage(jobId: string, documentId: string, pageNumber: number) {
+  const job = await requireImportJob(jobId);
+  const document = job.documents.find(item => item.documentId === documentId);
+  if (!document || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > document.pageCount) {
+    throw new RangeError("Trang không thuộc tài liệu nguồn đã khai báo.");
+  }
+  const page = await readJson<ImportJobPage>(pageFile(jobId, { documentId, pageNumber }));
+  validateImportPage(job, page);
+  if (page.documentId !== documentId || page.pageNumber !== pageNumber) throw new Error("Snapshot không khớp trang được yêu cầu.");
+  return page;
+}
+
 export async function readImportPages(input: {
   jobId: string;
   fileName?: string;
