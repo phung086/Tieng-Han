@@ -1,5 +1,10 @@
 # Tiếng Hàn
 
+Chạy bản học local bằng `pnpm local` (hoặc `Start-Haneul.cmd` trên Windows).
+Giao diện và backend API chạy cùng một ứng dụng; không cần backend riêng để
+học thư viện đã nhập. Xem [LOCAL_RUN.md](docs/LOCAL_RUN.md) để chọn đúng dữ liệu,
+kiểm tra toàn bộ bài/ngữ pháp và phân biệt chế độ local với PostgreSQL.
+
 Hướng dẫn PDF/DOCX, inventory nguồn và cổng xuất bản:
 [SOURCE_INVENTORY.md](docs/SOURCE_INVENTORY.md).
 
