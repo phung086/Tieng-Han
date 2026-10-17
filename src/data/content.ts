@@ -143,4 +143,6 @@ export type StudyQuestion = {
   answer: string;
   explanation: string;
   sourceRef?: string;
+  /** Explicitly distinguishes textbook tasks from added practice; absent on legacy bundles. */
+  origin?: "source" | "derived";
 };

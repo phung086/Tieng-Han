@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
 import {
   Activity,
   AlertTriangle,
@@ -61,6 +62,7 @@ type AuditEventRow = {
 };
 
 type ImportJobRow = {
+  curriculumCoverage?: CurriculumCoverage;
   id: string;
   status: ImportStatus;
   title: string;
@@ -494,6 +496,7 @@ export function AdminDashboard({
                         </span>
                       ) : null}
                       <span>Cập nhật {formatDate(job.updatedAt)}</span>
+                      <span>Đối chiếu nguồn: {job.curriculumCoverage?.status ?? "unverified"}</span>
                     </div>
 
                     {job.error ? (

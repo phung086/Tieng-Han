@@ -21,6 +21,7 @@ import {
   type SkillKey,
 } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
+import { useContent } from "@/lib/content-store";
 
 function previousNDays(count: number) {
   const recent = lastNDays(count);
@@ -37,6 +38,7 @@ function previousNDays(count: number) {
 
 export function StatsClient() {
   const { state } = useLearning();
+  const { course } = useContent();
   const messages = useMessages();
   const total = Object.values(state.skills).reduce(
     (sum, item) => sum + item.total,
@@ -54,6 +56,7 @@ export function StatsClient() {
     todayKey(),
     recentKeys,
     previousNDays(7),
+    course.lessons.map(lesson => lesson.id),
   );
 
   const days = recentKeys.map((key) => {
@@ -163,7 +166,7 @@ export function StatsClient() {
             <span className="eyebrow">TIẾN ĐỘ KHÓA HỌC</span>
             <strong>{analytics.averageLessonProgress}% trung bình</strong>
             <small>
-              {analytics.completedLessons} bài đã hoàn thành 100%.
+              {analytics.completedLessons} bài đã hoàn thành phần cốt lõi.
             </small>
           </div>
         </article>

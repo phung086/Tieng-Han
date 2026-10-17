@@ -14,13 +14,14 @@ import {
   WandSparkles,
 } from "lucide-react";
 import {
-  extractPdf,
   localLessonStarts,
   lowTextRatio,
   ocrLowTextPages,
   pagesForLesson,
   type ExtractedDocument,
 } from "@/lib/pdf-extractor";
+import { extractDocument } from "@/lib/document-extractor";
+import { auditCurriculumCoverage } from "@/lib/curriculum-coverage";
 import { useContent, type RuntimeCourse } from "@/lib/content-store";
 import { buildLessonMedia } from "@/lib/lesson-media";
 import { chunkSourcePages, mergeGeneratedLessonChunks } from "@/lib/source-chunk-compilation";
@@ -418,7 +419,7 @@ export function IngestionStudio() {
       ingestionConfig.autoImport.learnerLanguage,
     );
     let nextCourseTitle =
-      sourceFiles[0]?.name.replace(/\.pdf$/i, "") || copy.genericCourseTitle;
+      sourceFiles[0]?.name.replace(/\.(pdf|docx)$/i, "") || copy.genericCourseTitle;
     let nextLevel = level.trim();
     let nextEdition = edition.trim();
 
@@ -430,9 +431,9 @@ export function IngestionStudio() {
       setOcrSkipped(false);
 
       for (let index = 0; index < sourceFiles.length; index += 1) {
-        let document = await extractPdf(sourceFiles[index], index);
+        let document = await extractDocument(sourceFiles[index], index);
 
-        if (lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
+        if (document.pagination !== "logical-blocks" && lowTextRatio(document) >= ingestionConfig.pdf.ocrTriggerRatio) {
           if (aiStatus?.configured) {
             setOcrUsed(true);
             setMessage(
@@ -646,7 +647,7 @@ export function IngestionStudio() {
           Date.now() - new Date(job.updatedAt).getTime() >
             ingestionConfig.autoImport.staleJobMinutes * 60 * 1000
         ) {
-          job = await requeueMcpImportJob(jobId);
+          job = await requeueMcpImportJob(jobId, true);
           setHandoffNote(copy.mcpAutoRequeued);
         }
 
@@ -914,6 +915,7 @@ export function IngestionStudio() {
             undefined,
           coverImageDataUrl:
             sourceDocuments[0]?.pages[0]?.previewImageDataUrl,
+          curriculumCoverage: auditCurriculumCoverage(bundle),
         },
         lessons,
         questions: bundle.course.questions,
@@ -997,6 +999,7 @@ export function IngestionStudio() {
           pageNumber: page.pageNumber,
           text: page.text,
           imageDataUrl: page.previewImageDataUrl,
+          sourceLocation: page.sourceLocation,
         }));
 
         const lessonMedia = buildLessonMedia(lessonPages);
@@ -1209,7 +1212,7 @@ export function IngestionStudio() {
             </strong>
             <span>{copy.autoPrimaryHint}</span>
             <input
-              accept="application/pdf,.pdf"
+              accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
               multiple
               onChange={(event) => {
                 const selected = Array.from(event.target.files ?? []);
@@ -1236,6 +1239,19 @@ export function IngestionStudio() {
               type="file"
             />
           </label>
+          <p>DOCX dùng chỉ mục khối nội dung để truy nguồn; số khối không phải số trang in.</p>
+          {documents.some(document => document.pages.some(page => page.extractionIssues?.length)) ? (
+            <details className="ingest-warning">
+              <summary>Nội dung nguồn cần kiểm tra lại</summary>
+              <ul>{documents.flatMap(document => document.pages.flatMap(page =>
+                (page.extractionIssues ?? []).map((issue, index) => (
+                  <li key={`${document.id}-${page.pageNumber}-${index}`}>
+                    {document.fileName} · {page.sourceLocation ?? `p.${page.pageNumber}`}: {issue}
+                  </li>
+                )),
+              ))}</ul>
+            </details>
+          ) : null}
 
           {files.length ? (
             <div className="file-stack">

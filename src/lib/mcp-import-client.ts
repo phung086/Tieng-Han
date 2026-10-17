@@ -58,6 +58,7 @@ export async function queueMcpImportJob(input: QueueInput) {
         documentId: document.id,
         fileName: document.fileName,
         pageCount: document.pageCount,
+        pagination: document.pagination,
       })),
       detectedMaps: input.maps,
     }),
@@ -73,9 +74,11 @@ export async function queueMcpImportJob(input: QueueInput) {
       fileName: page.fileName,
       pageNumber: page.pageNumber,
       text: page.text,
+      sourceLocation: page.sourceLocation,
+      extractionIssues: page.extractionIssues,
       hasVisual: page.hasVisual,
       previewImageDataUrl: page.previewImageDataUrl,
-      embeddedImages: [],
+      embeddedImages: page.embeddedImages,
       externalLinks: page.externalLinks,
     })),
   );
@@ -131,13 +134,13 @@ export async function consumeMcpImportJob(jobId: string) {
   return await jsonResponse<{ job: ImportJob; course?: import("@/lib/content-store").RuntimeCourse }>(response);
 }
 
-export async function requeueMcpImportJob(jobId: string) {
+export async function requeueMcpImportJob(jobId: string, automatic = false) {
   const response = await fetch(
     "/api/import-jobs/" + encodeURIComponent(jobId),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "requeue" }),
+      body: JSON.stringify({ action: "requeue", automatic }),
     },
   );
   return (await jsonResponse<{ job: ImportJob }>(response)).job;

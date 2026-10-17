@@ -46,7 +46,7 @@ function sampleBundle() {
           size: 100,
           lastModified: 1,
           pageCount: 10,
-          sha256: "abc",
+          sha256: "a".repeat(64),
         },
       ],
       course: {

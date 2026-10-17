@@ -130,5 +130,8 @@ describe("merging full textbook content", () => {
     expect(() => mergeGeneratedLessonChunks(3, [
       { lesson: lesson(1), questions: [] }, { lesson: null, questions: [] },
     ])).toThrow("chunk 2");
+    expect(() => mergeGeneratedLessonChunks(3, [
+      { lesson: { ...lesson(1), dialogues: "malformed but previously discarded" }, questions: [] },
+    ])).toThrow("dialogues");
   });
 });

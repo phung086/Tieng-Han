@@ -79,6 +79,7 @@ export function buildLearningAnalytics(
   today: string,
   recentDayKeys: string[],
   previousDayKeys: string[],
+  lessonIds?: number[],
 ): LearningAnalytics {
   const recent = summarizeDays(state.dailyStats, recentDayKeys);
   const previous = summarizeDays(state.dailyStats, previousDayKeys);
@@ -116,7 +117,9 @@ export function buildLearningAnalytics(
       )[0]
     : null;
 
-  const lessonProgress = Object.values(state.lessonProgress);
+  const lessonProgress = lessonIds
+    ? lessonIds.map(id => state.lessonProgress[String(id)] ?? 0)
+    : Object.values(state.lessonProgress);
   const averageLessonProgress = lessonProgress.length
     ? Math.round(
         lessonProgress.reduce((sum, value) => sum + value, 0) /

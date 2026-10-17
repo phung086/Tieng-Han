@@ -44,6 +44,11 @@ function state(
 }
 
 describe("buildLearningAnalytics", () => {
+  it("includes unstarted lessons and ignores progress for removed lessons", () => {
+    const report = buildLearningAnalytics(state({ lessonProgress: { "1": 100, "99": 100 } }), "2026-10-17", [], [], [1, 2, 3, 4]);
+    expect(report.averageLessonProgress).toBe(25);
+    expect(report.completedLessons).toBe(1);
+  });
   it("summarizes goals, weekly activity, mastery and lesson progress", () => {
     const analytics = buildLearningAnalytics(
       state(),

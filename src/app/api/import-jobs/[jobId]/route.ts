@@ -59,7 +59,7 @@ export async function PATCH(
 
   try {
     const { jobId } = await context.params;
-    const body = (await request.json()) as { action?: string };
+    const body = (await request.json()) as { action?: string; automatic?: boolean };
 
     if (body.action === "queue") {
       return NextResponse.json({
@@ -77,7 +77,7 @@ export async function PATCH(
 
     if (body.action === "requeue") {
       return NextResponse.json({
-        job: await requeueImportJob(jobId),
+        job: await requeueImportJob(jobId, { automatic: body.automatic === true }),
       });
     }
 

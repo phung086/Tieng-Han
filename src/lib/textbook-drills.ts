@@ -110,7 +110,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           answer: korean,
           context: "Viết lại câu tiếng Hàn theo bản gốc giáo trình.",
           hint: "Đối chiếu nguyên văn với câu trong sách; không chấm ngữ nghĩa các cách diễn đạt khác.",
-          sourceRef: ref(dialogue.sourceRef),
+          sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
         });
       }
       if (korean) {
@@ -123,7 +123,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           answer: korean,
           audioText: korean,
           hint: vietnamese || "Đọc lại đoạn hội thoại trong bài.",
-          sourceRef: ref(dialogue.sourceRef),
+          sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
         });
       }
     });

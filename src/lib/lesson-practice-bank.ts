@@ -40,7 +40,7 @@ export function buildLessonPracticeBank(
     if (!nonEmpty(item.answer) || !nonEmpty(item.prompt) || ids.has(item.id)) return;
     if (item.type === "choice" && (!item.choices?.includes(item.answer) || (item.choices?.length ?? 0) < 2)) return;
     ids.add(item.id);
-    generated.push(item);
+    generated.push({ ...item, origin: "derived" });
   }
 
   const words = lesson.vocabulary ?? [];
@@ -172,7 +172,7 @@ export function buildLessonPracticeBank(
         prompt: (line.speaker ? line.speaker + ": " : "") + meaning + " — Hãy viết câu tiếng Hàn tương ứng.",
         answer: target,
         explanation: target + " — " + meaning,
-        sourceRef: dialogue.sourceRef ?? lesson.sourceRef,
+        sourceRef: line.sourceRef ?? dialogue.sourceRef ?? lesson.sourceRef,
       });
     });
   });

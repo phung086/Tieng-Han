@@ -172,6 +172,47 @@ function getValidationErrors(rawJson: string): BundleValidationError[] {
 /* ================================================================== */
 
 describe("parseCourseBundle", () => {
+  it("preserves line-level dialogue provenance through normalization", () => {
+    const lesson = minimalLesson();
+    const ref = "book.pdf · p.35 · dialogue-1/line-1";
+    Object.assign(lesson.dialogues[0].lines[0], { sourceRef: ref });
+    const bundle = parseCourseBundle(validBundleJson({ course: { title: "Test", level: "L1", lessons: [lesson], questions: [] } }));
+    expect(bundle.course.lessons[0].dialogues?.[0].lines[0].sourceRef).toBe(ref);
+  });
+
+  it.each([null, { name: "bad.pdf" }, { ...sampleSourceManifest[0], pageCount: -1 }])("rejects a malformed manifest row without silently dropping it: %j", row => {
+    expect(() => parseCourseBundle(validBundleJson({ sourceManifest: [sampleSourceManifest[0], row] }))).toThrow(CourseBundleValidationError);
+  });
+
+  it("rejects duplicate manifests, lesson IDs, item IDs and question IDs", () => {
+    expect(() => parseCourseBundle(validBundleJson({ sourceManifest: [...sampleSourceManifest, ...sampleSourceManifest] }))).toThrow("duplicate");
+    const lesson = minimalLesson();
+    lesson.vocabulary.push({ ...lesson.vocabulary[0] });
+    const errors = getValidationErrors(validBundleJson({ course: {
+      title: "Test", level: "L1", lessons: [lesson, minimalLesson()], questions: [minimalQuestion(), minimalQuestion()],
+    } }));
+    for (const path of ["lesson[0].vocabulary[1].id", "lesson[1].id", "question[1].id"]) {
+      expect(errors).toContainEqual(expect.objectContaining({ path, reason: expect.stringContaining("duplicate") }));
+    }
+  });
+
+  it.each([0, -1, 1.5, null, "1"])("rejects an unstable lesson identifier: %j", id => {
+    expect(() => parseCourseBundle(validBundleJson({ course: { title: "Test", level: "L1", lessons: [minimalLesson({ id })], questions: [] } }))).toThrow("positive safe integer");
+  });
+
+  it("diagnoses malformed nested sections before UI rendering", () => {
+    const errors = getValidationErrors(validBundleJson({ course: { title: "Test", level: "L1", lessons: [minimalLesson({
+      reading: { title: "Read", text: "본문", translation: "bài đọc", questions: [null] },
+      writing: { prompt: "Viết", hint: "", targetWords: [42] },
+      dialogues: [{ id: "d1", lines: [null] }], speaking: [42],
+      extraSections: [{ id: "e1", kind: "exercise", title: "Bài tập", content: null }],
+    })], questions: [] } }));
+    for (const path of ["reading.questions[0]", "writing.targetWords[0]", "dialogues[0].lines[0]", "speaking[0]", "extraSections[0].content"]) {
+      expect(errors.some(error => error.path.endsWith(path))).toBe(true);
+    }
+    expect(errors.find(error => error.path.endsWith("speaking[0]"))?.actual).toBe("number");
+  });
+
   /* ---- 1. get_compilation_contract exposes lesson schema ---- */
   it("exposes detailed lesson schema in get_compilation_contract", () => {
     const contract = getCompilationContract(sampleLanguage);

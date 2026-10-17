@@ -1,0 +1,1157 @@
+{
+  "auditedMain": "75c520909453962e85ae2ee137f323791d505074",
+  "remoteBranchCount": 48,
+  "pullRequests": 31,
+  "openPullRequests": [
+    29,
+    27,
+    26,
+    25
+  ],
+  "branches": [
+    {
+      "branch": "chore/learner-mvp-hardening",
+      "commit": "228c362d0422300ecafb1267121e08a4d6d0f071",
+      "features": "chore: freeze and harden learner MVP baseline",
+      "files": [
+        "docs/LEARNER_MVP_BASELINE.md",
+        "src/components/ingestion-studio.tsx"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/15",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "chore/production-baseline-cleanup",
+      "commit": "d20ea55eef4826915def1e87240632b46dcc8720",
+      "features": "chore: remove obsolete demo runtime and refresh import docs",
+      "files": [
+        "docs/CHATGPT_ASSISTED_IMPORT.md",
+        "src/components/quiz-demo.tsx",
+        "src/data/content.ts",
+        "src/data/demo.ts"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/21",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/continuous-lesson-flow",
+      "commit": "d4a79fdb99bf4235f062036a59ea6dd86e4d497d",
+      "features": "feat(learn): complete continuous lesson progression",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/components/lesson-workspace.tsx",
+        "src/components/listening-lab.tsx",
+        "src/components/reading-lab.tsx",
+        "src/components/speaking-lab.tsx",
+        "src/components/study-session.tsx",
+        "src/components/vocabulary-lab.tsx",
+        "src/components/writing-lab.tsx",
+        "src/lib/lesson-flow.test.ts",
+        "src/lib/lesson-flow.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/lesson-flow.test.ts"
+      ],
+      "overlap": [
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/13",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/course-library-multilevel",
+      "commit": "b4f1271240d8c303405d7be4d10e5e7706e5332d",
+      "features": "feat(course): preserve multi-level course library",
+      "files": [
+        "src/app/api/courses/route.ts",
+        "src/app/experience-v2.css",
+        "src/app/learn/page.tsx",
+        "src/components/ingestion-studio.tsx",
+        "src/lib/content-store.tsx",
+        "src/lib/course-consumer.test.ts",
+        "src/lib/course-consumer.ts",
+        "src/lib/learning-state.tsx"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-consumer.test.ts"
+      ],
+      "overlap": [
+        "src/lib/learning-state.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/9",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/curriculum-fidelity-audit-45m",
+      "commit": "9a4d970959944d14addcaeb7b6994c8daaad8994",
+      "features": "feat(practice): full guided coverage and 45-minute fidelity audit",
+      "files": [
+        ".github/workflows/curriculum-fidelity-45m.yml",
+        "docs/CURRICULUM_FIDELITY_LOOP.md",
+        "scripts/audit-curriculum-fidelity.mjs",
+        "scripts/audit-curriculum-fidelity.test.mjs",
+        "src/app/practice/workbook/page.tsx",
+        "src/app/review/page.tsx",
+        "src/components/grammar-lab.tsx",
+        "src/components/source-workbook.tsx",
+        "src/components/study-session.tsx",
+        "src/components/vocabulary-lab.tsx",
+        "src/lib/lesson-practice-bank.test.ts",
+        "src/lib/lesson-practice-bank.ts",
+        "src/lib/source-workbook.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "scripts/audit-curriculum-fidelity.test.mjs",
+        "src/lib/lesson-practice-bank.test.ts"
+      ],
+      "overlap": [
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/28",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/flexible-core-progression",
+      "commit": "4937c972bf682969923f7cd1a0c2d0d55ca6f6ee",
+      "features": "feat(learn): unlock next lessons from vocabulary and grammar core",
+      "files": [
+        "docs/LEARNER_MVP_BASELINE.md",
+        "docs/MODULE_STATUS.md",
+        "src/app/learn/page.tsx",
+        "src/app/page.tsx",
+        "src/app/practice/page.tsx",
+        "src/components/lesson-workspace.tsx",
+        "src/components/profile-client.tsx",
+        "src/lib/learning-state.tsx",
+        "src/lib/lesson-completion.test.ts",
+        "src/lib/lesson-completion.ts",
+        "src/lib/lesson-flow.test.ts",
+        "src/lib/lesson-flow.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/lesson-completion.test.ts",
+        "src/lib/lesson-flow.test.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "overlap": [
+        "src/components/lesson-workspace.tsx",
+        "src/lib/learning-state.tsx"
+      ],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked #26; retained all optional learning content",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/26",
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "feat/full-practice-session-resume",
+      "commit": "92d85eb278f458f3e60d33702560c651fb733a19",
+      "features": "feat(practice): resume long source-grounded study sessions",
+      "files": [
+        "src/components/study-session.tsx",
+        "src/lib/practice-checkpoint.test.ts",
+        "src/lib/practice-checkpoint.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/practice-checkpoint.test.ts"
+      ],
+      "overlap": [
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/31",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/grammar-lab-flow",
+      "commit": "093793a1927362420d29a7a29a89d8dde435632a",
+      "features": "feat(grammar): complete first-class grammar learning flow",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/app/grammar/page.tsx",
+        "src/app/practice/page.tsx",
+        "src/app/practice/quiz/page.tsx",
+        "src/components/grammar-lab.tsx",
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx",
+        "src/i18n/vi.ts"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/12",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/haneul-bufopia-ui",
+      "commit": "38a9c48314095616628a930c4c7065356aa1dd47",
+      "features": "feat(ui): gamified Haneul learning experience",
+      "files": [
+        ".github/workflows/ci.yml",
+        "src/app/game-theme.css",
+        "src/app/layout.tsx",
+        "src/app/learn/page.tsx",
+        "src/app/page.tsx",
+        "src/components/haneul-mascot.tsx",
+        "src/lib/course-consumer.test.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-consumer.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/3",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/haneul-experience-v2",
+      "commit": "5901852420064e9d0a05ceb434fc015b63a36188",
+      "features": "feat(ui): Haneul experience v2",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/app/layout.tsx",
+        "src/app/learn/page.tsx",
+        "src/app/page.tsx",
+        "src/app/profile/page.tsx",
+        "src/components/app-shell.tsx",
+        "src/components/profile-client.tsx"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/6",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/immersion-labs",
+      "commit": "f0c1ba96d35a845c36f3b2dfa39e0498789d9640",
+      "features": "feat(immerse): add conversation and pronunciation labs",
+      "files": [
+        "src/app/conversation/page.tsx",
+        "src/app/experience-v2.css",
+        "src/app/pronunciation/page.tsx",
+        "src/components/conversation-lab.tsx",
+        "src/components/lesson-workspace.tsx",
+        "src/components/pronunciation-lab.tsx"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [
+        "src/components/lesson-workspace.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/14",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/import-job-retention",
+      "commit": "26514ca26527be5858f154a9a771040467f4d8eb",
+      "features": "feat(import): add safe terminal job cleanup",
+      "files": [
+        "docs/MODULE_STATUS.md",
+        "src/app/api/import-jobs/[jobId]/route.ts",
+        "src/app/experience-v2.css",
+        "src/components/admin-dashboard.tsx",
+        "src/lib/import-job-store.ts",
+        "src/lib/import-jobs.test.ts",
+        "src/lib/import-jobs.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/import-jobs.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/24",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/interactive-textbook-drills",
+      "commit": "fa423819afb700db534abee886746785a8bf7cce",
+      "features": "feat(practice): real interactive cloze, translation and dictation from textbook",
+      "files": [
+        "src/app/practice/drills/page.tsx",
+        "src/components/app-shell.tsx",
+        "src/components/grammar-lab.tsx",
+        "src/components/textbook-drills.module.css",
+        "src/components/textbook-drills.tsx",
+        "src/components/vocabulary-lab.tsx",
+        "src/lib/textbook-drills.test.ts",
+        "src/lib/textbook-drills.ts",
+        "tests/e2e/textbook-drills.spec.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/textbook-drills.test.ts",
+        "tests/e2e/textbook-drills.spec.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/32",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/learner-experience-completion",
+      "commit": "6fdb962fd254a867d52bbc72c4fb6918983984e6",
+      "features": "feat(learn): complete learner experience foundations",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/app/review/page.tsx",
+        "src/components/ingestion-studio.tsx",
+        "src/components/study-session.tsx",
+        "src/components/vocabulary-lab.tsx",
+        "src/lib/study-session-plan.test.ts",
+        "src/lib/study-session-plan.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/study-session-plan.test.ts"
+      ],
+      "overlap": [
+        "src/components/study-session.tsx",
+        "src/lib/study-session-plan.test.ts",
+        "src/lib/study-session-plan.ts"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/11",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/learner-ux-flow-polish",
+      "commit": "7b98e00cad4028201f6150f30dd0a3ba4fb3c4be",
+      "features": "feat(ux): polish course library and auto-advance learning flow",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/app/layout.tsx",
+        "src/app/learn/page.tsx",
+        "src/components/listening-lab.tsx",
+        "src/components/study-session.tsx"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/17",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/learner-ux-flow-v2",
+      "commit": "e8e05cde8ad4172eea7f869872ea5043713ec46f",
+      "features": "feat(ux): refine learner flow responsive layouts and browser QA",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".gitignore",
+        "package.json",
+        "playwright.config.ts",
+        "src/app/experience-v2.css",
+        "src/app/page.tsx",
+        "src/app/practice/page.tsx",
+        "src/app/review/page.tsx",
+        "src/app/stats/page.tsx",
+        "src/components/active-course-chip.tsx",
+        "src/components/conversation-lab.tsx",
+        "src/components/listening-lab.tsx",
+        "src/components/reading-lab.tsx",
+        "src/components/speaking-lab.tsx",
+        "src/components/study-session.tsx",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "overlap": [
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/18",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/learning-analytics-v1",
+      "commit": "d153301b1c5be2ade769764c1372f6bb0b9fea4a",
+      "features": "feat(stats): add learner progress intelligence",
+      "files": [
+        "docs/MODULE_STATUS.md",
+        "src/app/experience-v2.css",
+        "src/components/stats-client.tsx",
+        "src/lib/learning-analytics.test.ts",
+        "src/lib/learning-analytics.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/learning-analytics.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked #25; corrected course denominator and core-completion label",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/25",
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "feat/learning-flow-v3",
+      "commit": "55d7bdded0e099f4dad3dbea706d547e535bcdbf",
+      "features": "feat(learn): learning flow v3",
+      "files": [
+        "src/app/experience-v2.css",
+        "src/app/practice/page.tsx",
+        "src/app/practice/quiz/page.tsx",
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/10",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/module-completion-pass",
+      "commit": "3ba3c23af97601ca873cc2b038f1ad86230257f8",
+      "features": "feat(scale): complete account admin and course management modules",
+      "files": [
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "docs/MODULE_STATUS.md",
+        "docs/PHASE_SCALE_1_SETUP.md",
+        "src/app/admin/page.tsx",
+        "src/app/api/admin/users/[userId]/status/route.ts",
+        "src/app/api/me/password/route.ts",
+        "src/app/api/me/profile/route.ts",
+        "src/app/api/me/sessions/route.ts",
+        "src/app/experience-v2.css",
+        "src/app/learn/page.tsx",
+        "src/components/account-settings.tsx",
+        "src/components/admin-dashboard.tsx",
+        "src/components/settings-client.tsx",
+        "src/lib/auth/account-validation.test.ts",
+        "src/lib/auth/server.ts",
+        "src/lib/auth/validation.ts",
+        "src/lib/db/course-catalog.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/auth/account-validation.test.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/19",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/one-drop-auto-import",
+      "commit": "1c2b938f3cc374fc28639d5848c42ff28485c786",
+      "features": "feat(import): one-drop PDF auto compilation via Haneul Bridge",
+      "files": [
+        "docs/AUTO_IMPORT_GUIDE.md",
+        "src/app/api/mcp-bridge/status/route.ts",
+        "src/app/globals.css",
+        "src/app/mcp/route.ts",
+        "src/components/ingestion-studio.tsx",
+        "src/config/ingestion.ts",
+        "src/i18n/vi.ts",
+        "src/lib/course-bundle.ts",
+        "src/lib/import-preset.test.ts",
+        "src/lib/import-preset.ts",
+        "src/lib/learning-state.tsx",
+        "src/lib/mcp-events.ts",
+        "src/lib/review-schedule.test.ts",
+        "src/lib/review-schedule.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/import-preset.test.ts",
+        "src/lib/review-schedule.test.ts"
+      ],
+      "overlap": [
+        "src/lib/course-bundle.ts",
+        "src/lib/learning-state.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "No verified merge decision",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/4",
+      "status": "needs follow-up"
+    },
+    {
+      "branch": "feat/one-drop-plugin-bootstrap",
+      "commit": "caaf483adf63351da62dfee7d645bf33f9f50aa0",
+      "features": "feat(mcp): simplify one-drop ChatGPT auto compilation",
+      "files": [
+        ".github/workflows/ci.yml",
+        "docs/AUTO_IMPORT_GUIDE.md",
+        "docs/MCP_BRIDGE.md",
+        "src/app/globals.css",
+        "src/app/mcp/route.ts",
+        "src/components/ingestion-studio.tsx",
+        "src/i18n/vi.ts",
+        "src/lib/course-bundle.ts",
+        "src/lib/course-consumer.test.ts",
+        "src/lib/course-consumer.ts",
+        "src/lib/import-compiler.test.ts",
+        "src/lib/import-compiler.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-consumer.test.ts",
+        "src/lib/import-compiler.test.ts"
+      ],
+      "overlap": [
+        "src/lib/course-bundle.ts"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/5",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/phase-scale-1-auth-db",
+      "commit": "7490b7b3941449702d34282569a30a7fe6516769",
+      "features": "feat(scale): Phase Scale 1 auth database and roles",
+      "files": [
+        ".env.example",
+        "docs/PHASE_SCALE_1_SETUP.md",
+        "migrations/001_scale_phase_1.sql",
+        "package.json",
+        "scripts/db-migrate.mjs",
+        "scripts/promote-admin.mjs",
+        "src/app/admin/page.tsx",
+        "src/app/api/admin/courses/[courseId]/status/route.ts",
+        "src/app/api/admin/users/[userId]/role/route.ts",
+        "src/app/api/auth/login/route.ts",
+        "src/app/api/auth/logout/route.ts",
+        "src/app/api/auth/me/route.ts",
+        "src/app/api/auth/register/route.ts",
+        "src/app/api/courses/route.ts",
+        "src/app/api/me/enrollments/route.ts",
+        "src/app/api/me/learning-state/route.ts",
+        "src/app/experience-v2.css",
+        "src/app/import/page.tsx",
+        "src/app/login/page.tsx",
+        "src/app/register/page.tsx",
+        "src/components/admin-dashboard.tsx",
+        "src/components/app-shell.tsx",
+        "src/components/auth-form.tsx",
+        "src/components/profile-client.tsx",
+        "src/lib/auth-client.tsx",
+        "src/lib/auth/password.test.ts",
+        "src/lib/auth/password.ts",
+        "src/lib/auth/server.ts",
+        "src/lib/auth/types.ts",
+        "src/lib/auth/validation.ts",
+        "src/lib/content-store.tsx",
+        "src/lib/db.ts",
+        "src/lib/db/course-catalog.ts",
+        "src/lib/db/learning-state-contract.ts",
+        "src/lib/db/learning-state-store.ts",
+        "src/lib/learning-state.tsx"
+      ],
+      "migrations": [
+        "migrations/001_scale_phase_1.sql"
+      ],
+      "tests": [
+        "src/lib/auth/password.test.ts"
+      ],
+      "overlap": [
+        "src/app/api/me/learning-state/route.ts",
+        "src/lib/db/learning-state-contract.ts",
+        "src/lib/db/learning-state-store.ts",
+        "src/lib/learning-state.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/16",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/profile-metadata-completion",
+      "commit": "f762c875e08541b0a2aecbd19c1b450f30865e46",
+      "features": "feat(profile): complete avatar and joined-date metadata",
+      "files": [
+        "docs/MODULE_STATUS.md",
+        "docs/PHASE_SCALE_1_SETUP.md",
+        "migrations/002_user_profile_metadata.sql",
+        "src/app/api/me/profile/route.ts",
+        "src/app/experience-v2.css",
+        "src/components/account-settings.tsx",
+        "src/components/profile-client.tsx",
+        "src/components/user-avatar-glyph.tsx",
+        "src/lib/auth/account-validation.test.ts",
+        "src/lib/auth/server.ts",
+        "src/lib/auth/types.ts",
+        "src/lib/auth/validation.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "migrations": [
+        "migrations/002_user_profile_metadata.sql"
+      ],
+      "tests": [
+        "src/lib/auth/account-validation.test.ts",
+        "tests/e2e/learner-ux.spec.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/22",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/project-base",
+      "commit": "7794c51be67a0a7b4827b4ab45cf77222c1e200a",
+      "features": "feat: Haneul learning app with PDF ingestion and MCP bridge",
+      "files": [
+        ".env.example",
+        ".github/workflows/ci.yml",
+        ".gitignore",
+        "README.md",
+        "curriculum/curriculum.json",
+        "curriculum/sources.json",
+        "curriculum/workflow.json",
+        "docs/ARCHITECTURE.md",
+        "docs/CHATGPT_ASSISTED_IMPORT.md",
+        "docs/CONTENT_MODEL.md",
+        "docs/MCP_BRIDGE.md",
+        "docs/UX_REFERENCE.md",
+        "eslint.config.mjs",
+        "next-env.d.ts",
+        "next.config.ts",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "src/app/api/import-jobs/[jobId]/pages/route.ts",
+        "src/app/api/import-jobs/[jobId]/route.ts",
+        "src/app/api/import-jobs/route.ts",
+        "src/app/api/ingest/generate/route.ts",
+        "src/app/api/ingest/map/route.ts",
+        "src/app/api/ingest/metadata/route.ts",
+        "src/app/api/ingest/ocr/route.ts",
+        "src/app/api/ingest/status/route.ts",
+        "src/app/api/ingest/validate/route.ts",
+        "src/app/error.tsx",
+        "src/app/globals.css",
+        "src/app/import/page.tsx",
+        "src/app/layout.tsx",
+        "src/app/learn/[lessonId]/page.tsx",
+        "src/app/learn/page.tsx",
+        "src/app/listening/page.tsx",
+        "src/app/loading.tsx",
+        "src/app/manifest.ts",
+        "src/app/mcp/route.ts",
+        "src/app/not-found.tsx",
+        "src/app/page.tsx",
+        "src/app/practice/page.tsx",
+        "src/app/practice/quiz/page.tsx",
+        "src/app/reading/page.tsx",
+        "src/app/review/page.tsx",
+        "src/app/settings/page.tsx",
+        "src/app/speaking/page.tsx",
+        "src/app/stats/page.tsx",
+        "src/app/vocabulary/page.tsx",
+        "src/app/writing/page.tsx",
+        "src/components/app-shell.tsx",
+        "src/components/dashboard-live-stats.tsx",
+        "src/components/empty-course-state.tsx",
+        "src/components/empty-skill-state.tsx",
+        "src/components/ingestion-studio.tsx",
+        "src/components/lesson-media-gallery.tsx",
+        "src/components/lesson-workspace.tsx",
+        "src/components/listening-lab.tsx",
+        "src/components/progress-ring.tsx",
+        "src/components/quiz-demo.tsx",
+        "src/components/reading-lab.tsx",
+        "src/components/settings-client.tsx",
+        "src/components/speaking-lab.tsx",
+        "src/components/stats-client.tsx",
+        "src/components/study-session.tsx",
+        "src/components/vocabulary-lab.tsx",
+        "src/components/writing-lab.tsx",
+        "src/config/ingestion.ts",
+        "src/config/product.ts",
+        "src/data/content.ts",
+        "src/data/demo.ts",
+        "src/i18n/messages.tsx",
+        "src/i18n/vi.ts",
+        "src/lib/chatgpt-handoff.ts",
+        "src/lib/content-ai.ts",
+        "src/lib/content-db.ts",
+        "src/lib/content-store.tsx",
+        "src/lib/course-bundle.ts",
+        "src/lib/import-job-store.ts",
+        "src/lib/import-jobs.ts",
+        "src/lib/language-profile.ts",
+        "src/lib/learning-state.tsx",
+        "src/lib/lesson-media.ts",
+        "src/lib/mcp-events.ts",
+        "src/lib/mcp-import-client.ts",
+        "src/lib/pdf-extractor.ts",
+        "tsconfig.json"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [
+        "src/components/lesson-workspace.tsx",
+        "src/components/study-session.tsx",
+        "src/lib/course-bundle.ts",
+        "src/lib/learning-state.tsx"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/1",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "feat/reading-sentence-workbook-20261009",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "feat/source-complete-practice-audit",
+      "commit": "baed7c20411b80887e4ab3cfd47733f46b342460",
+      "features": "feat(practice): remove 8-question cap and audit source evidence coverage",
+      "files": [
+        "docs/SOURCE_COMPLETE_PRACTICE_LOOP.md",
+        "src/components/study-session.tsx",
+        "src/lib/practice-coverage.test.ts",
+        "src/lib/practice-coverage.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/practice-coverage.test.ts"
+      ],
+      "overlap": [
+        "src/components/study-session.tsx"
+      ],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked #29 audit/tests/docs; kept newer main practice generator and resume instead of older session patch",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/29",
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "feat/source-item-coverage-cli-v6",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "feat/source-item-evidence-audit-20261009",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "feat/source-sized-compilation-guidance",
+      "commit": "58ee5bb265962fd22dbe821dc347d1f3eb46ad8d",
+      "features": "docs(practice): record fixed-quiz compilation blocker",
+      "files": [
+        "docs/PRACTICE_COMPILATION_GAP.md"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Obsolete fixed-volume blocker note; current compiler and regression tests remove that quota",
+      "PR": null,
+      "status": "superseded"
+    },
+    {
+      "branch": "feat/verified-item-evidence-audit-v5",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "feat/verified-source-item-parity-20261009",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/course-access-integrity",
+      "commit": "f3903f5fd193a214ae03019952cf8d8b032ebd91",
+      "features": "fix(data): harden course access and learner-state integrity",
+      "files": [
+        "docs/ARCHITECTURE.md",
+        "docs/MODULE_STATUS.md",
+        "src/app/api/me/enrollments/route.ts",
+        "src/app/api/me/learning-state/route.ts",
+        "src/lib/auth/server.ts",
+        "src/lib/db/course-access.test.ts",
+        "src/lib/db/course-access.ts",
+        "src/lib/db/learning-state-contract.test.ts",
+        "src/lib/db/learning-state-contract.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/db/course-access.test.ts",
+        "src/lib/db/learning-state-contract.test.ts"
+      ],
+      "overlap": [
+        "src/app/api/me/learning-state/route.ts",
+        "src/lib/db/learning-state-contract.test.ts",
+        "src/lib/db/learning-state-contract.ts"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/23",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "fix/course-cache-import-recovery-v2",
+      "commit": "df52272ba2e67911917a69381b38ae7657cfd35f",
+      "features": "fix(course): replace stale browser course after consume",
+      "files": [
+        "src/lib/content-store.tsx",
+        "src/lib/course-consumer.test.ts",
+        "src/lib/course-consumer.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-consumer.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/8",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "fix/direct-import-complete-source-20261010",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/exhaustive-import-lesson-compilation",
+      "commit": "9f2bfb6f1dd9d001938981b995cd5a1c39b3fb99",
+      "features": "fix(import): exhaustively compile source pages and preserve >100 exercises",
+      "files": [
+        "src/app/api/ingest/generate/route.ts",
+        "src/components/ingestion-studio.tsx",
+        "src/lib/course-bundle.test.ts",
+        "src/lib/course-bundle.ts",
+        "src/lib/import-checkpoint-volume.test.ts",
+        "src/lib/import-job-store.ts",
+        "src/lib/pdf-extractor.ts",
+        "src/lib/pdf-text-layout.test.ts",
+        "src/lib/pdf-text-layout.ts",
+        "src/lib/source-chunk-compilation.test.ts",
+        "src/lib/source-chunk-compilation.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-bundle.test.ts",
+        "src/lib/import-checkpoint-volume.test.ts",
+        "src/lib/pdf-text-layout.test.ts",
+        "src/lib/source-chunk-compilation.test.ts"
+      ],
+      "overlap": [
+        "src/lib/course-bundle.test.ts",
+        "src/lib/course-bundle.ts"
+      ],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/33",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "fix/haneul-course-bundle-runtime",
+      "commit": "d6e2203174908315adf5d776adba15c0776ec1f8",
+      "features": "Fix/haneul course bundle runtime",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/2",
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/import-admin-boundary",
+      "commit": "518ded6d408b93dfda1e4fe1c8e1fb0381010ba8",
+      "features": "fix(security): complete admin import boundary and pipeline monitor",
+      "files": [
+        "docs/MODULE_STATUS.md",
+        "docs/PHASE_SCALE_1_SETUP.md",
+        "src/app/admin/page.tsx",
+        "src/app/api/admin/import-jobs/route.ts",
+        "src/app/api/course/route.ts",
+        "src/app/api/import-jobs/[jobId]/pages/route.ts",
+        "src/app/api/import-jobs/[jobId]/route.ts",
+        "src/app/api/import-jobs/route.ts",
+        "src/app/api/ingest/generate/route.ts",
+        "src/app/api/ingest/map/route.ts",
+        "src/app/api/ingest/metadata/route.ts",
+        "src/app/api/ingest/ocr/route.ts",
+        "src/app/api/ingest/status/route.ts",
+        "src/app/api/ingest/validate/route.ts",
+        "src/app/api/mcp-bridge/status/route.ts",
+        "src/app/experience-v2.css",
+        "src/components/admin-dashboard.tsx",
+        "src/lib/admin/import-monitor.ts",
+        "src/lib/auth/api-guard.test.ts",
+        "src/lib/auth/api-guard.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/auth/api-guard.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Merged PR source head verified; keep later main fixes instead of replaying pre-squash history",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/20",
+      "status": "squashed into main"
+    },
+    {
+      "branch": "fix/import-progress-recovery",
+      "commit": "acb0dcef0c4e66f5ea12767ed38486ccb47349e7",
+      "features": "feat(ui): Haneul experience v2",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/item-level-dialogue-source-refs-20261012",
+      "commit": "c662da25c120ee7ec7a5f25b6661d7c73f394338",
+      "features": "fix(fidelity): retain item-level dialogue anchors in content.ts",
+      "files": [
+        "src/data/content.ts"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked dialogue-line type and repaired normalization, drills and workbook consumers",
+      "PR": null,
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "fix/ocr-complete-source-page-batches-20261014",
+      "commit": "75c520909453962e85ae2ee137f323791d505074",
+      "features": "fix(import): compile all textbook pages and preserve complete exercise banks",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/p0-source-manifest-integrity-20261011",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/practice-checkpoint-source-signature-20261013",
+      "commit": "ec1407565860c795fffe48beba2392a7538ace7d",
+      "features": "feat(practice): interactive sourced cloze translation and dictation",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/source-complete-compilation-20261009-r11",
+      "commit": "135b8fd2b71d35352b06d6ce0ce800052a01f06d",
+      "features": "test(compilation): guard source-complete practice contract",
+      "files": [
+        "src/lib/course-bundle.ts",
+        "src/lib/course-compilation-source-fidelity.test.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/course-compilation-source-fidelity.test.ts"
+      ],
+      "overlap": [
+        "src/lib/course-bundle.ts"
+      ],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Combined item-anchor and exercise-motif contract with newer exhaustive compiler; retained source-sized volume regression",
+      "PR": null,
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "fix/source-complete-compilation-contract-20261009",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/source-driven-practice-volume-contract",
+      "commit": "d96bfa15e99e5587b54ca2dd8976dd4cb3c563f1",
+      "features": "test(practice): verify per-item coverage and original exercise motif",
+      "files": [
+        "src/lib/source-inventory-parity.test.ts",
+        "src/lib/source-inventory-parity.ts"
+      ],
+      "migrations": [],
+      "tests": [
+        "src/lib/source-inventory-parity.test.ts"
+      ],
+      "overlap": [],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked independent inventory parity comparator and tests",
+      "PR": null,
+      "status": "integrated in this branch"
+    },
+    {
+      "branch": "fix/source-exhaustive-compiler-contract-oct09",
+      "commit": "fc8d33c3b3c718888d88ebd1144386b0a298a64f",
+      "features": "feat(practice): persist and resume full-length source study sessions",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/source-sized-compiler-practice-contract-v2",
+      "commit": "5db4f5642a732be864c4c7013e164b750ca613ee",
+      "features": "feat(import): add safe terminal job cleanup",
+      "files": [],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "Full branch merge not replayed over squashed baseline",
+      "integrationDecision": "Ancestor of audited main; no replay",
+      "PR": null,
+      "status": "already in main"
+    },
+    {
+      "branch": "fix/worksheet-translation-fidelity",
+      "commit": "2531559c83ca6864cf18cfd0d8029ac7d18d3237",
+      "features": "fix(worksheet): enforce source-faithful translation contract",
+      "files": [
+        "README.md",
+        "docs/WORKSHEET_BAI_1_REGRESSION.md",
+        "docs/WORKSHEET_TRANSLATION_CONTRACT.md",
+        "docs/WORKSHEET_WORKER_PROMPT.md"
+      ],
+      "migrations": [],
+      "tests": [],
+      "overlap": [],
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Cherry-picked #27 documentation; external worksheet runtime is outside this branch",
+      "PR": "https://github.com/phung086/Tieng-Han/pull/27",
+      "status": "integrated in this branch"
+    }
+  ]
+}

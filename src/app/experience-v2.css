@@ -5602,3 +5602,18 @@ img {
     padding: 16px;
   }
 }
+.source-evidence-panel {
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9d3f5;
+  border-radius: 14px;
+  background: #fff;
+  color: #283450;
+  overflow-wrap: anywhere;
+}
+.source-evidence-panel summary { cursor: pointer; font-weight: 700; }
+.source-evidence-panel p { max-width: 75ch; line-height: 1.65; margin: 0.75rem 0; }
+.source-evidence-panel dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+.source-evidence-panel dt { font-size: 0.85rem; }
+.source-evidence-panel dd { margin: 0.25rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.source-evidence-missing { max-height: 20rem; overflow-y: auto; }

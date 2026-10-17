@@ -12,6 +12,7 @@ import {
   type CompiledCourseBundle,
 } from "@/lib/course-bundle";
 import { defaultLanguageProfile } from "@/lib/language-profile";
+import { auditCurriculumCoverage } from "@/lib/curriculum-coverage";
 import type { RuntimeCourse } from "@/lib/content-store";
 import type { ImportJob } from "@/lib/import-jobs";
 import {
@@ -21,13 +22,13 @@ import {
   listImportJobs,
 } from "@/lib/import-job-store";
 
-export const activeCourseFilePath = path.join(
+export const activeCourseFilePath = process.env.HANEUL_ACTIVE_COURSE_FILE || path.join(
   process.cwd(),
   ".haneul",
   "active-course.json",
 );
 
-export const courseLibraryDir = path.join(
+export const courseLibraryDir = process.env.HANEUL_COURSE_LIBRARY || path.join(
   process.cwd(),
   ".haneul",
   "courses",
@@ -102,6 +103,7 @@ export function buildRuntimeCourseFromBundle(
       pageCount: bundle.sourceManifest?.[0]?.pageCount,
       edition: bundle.course.edition,
       coverImageDataUrl,
+      curriculumCoverage: auditCurriculumCoverage(bundle),
     },
     lessons: bundle.course.lessons,
     questions: bundle.course.questions,
@@ -164,12 +166,12 @@ export async function getCourseLibrary(): Promise<RuntimeCourse[]> {
   const byId = new Map<string, RuntimeCourse>();
 
   try {
-    const entries = await readdir(courseLibraryDir, { withFileTypes: true });
+    const entries = await readdir(/* turbopackIgnore: true */ courseLibraryDir, { withFileTypes: true });
 
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
       const course = await readRuntimeCourseFile(
-        path.join(courseLibraryDir, entry.name),
+        path.join(/* turbopackIgnore: true */ courseLibraryDir, entry.name),
       );
       if (course) byId.set(course.id, course);
     }

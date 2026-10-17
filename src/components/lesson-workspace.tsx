@@ -20,6 +20,8 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
+import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
+import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
 import {
   getCoreLessonProgress,
   getRequiredCoreSkills,
@@ -57,6 +59,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     requiredCoreSkills,
   );
   const coreComplete = progress >= 100;
+  const evidence = auditLessonPracticeCoverage(lesson, course.questions);
+  const contentCounts = summarizeLessonPractice(lesson, course.questions);
+  const curriculumCoverage = course.source?.curriculumCoverage;
 
   const dialogues = lesson.dialogues ?? [];
   const pronunciation = lesson.pronunciation ?? [];
@@ -176,13 +181,13 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             {lesson.quality ? (
               <span className="grounding-badge">
                 <ShieldCheck size={13} />
-                {messages.lesson.grounding} {lesson.quality.groundingScore}%
+                AI tự đánh giá nguồn: {lesson.quality.groundingScore}%
               </span>
             ) : null}
           </div>
         </div>
         <div className="lesson-header-actions">
-          <span className="lesson-progress-pill">{progress}% {messages.lesson.completed}</span>
+          <span className="lesson-progress-pill">{progress}% phần cốt lõi</span>
           <Link
             className="primary-button"
             href={primaryNextHref}
@@ -191,6 +196,28 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           </Link>
         </div>
       </header>
+
+      <details className="source-evidence-panel">
+        <summary>Nội dung đã nhập · {curriculumCoverage?.status === "complete" ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>
+        <p>Tiến độ học và số câu luyện không chứng minh sách đã được biên soạn đầy đủ. {curriculumCoverage && curriculumCoverage.status !== "unverified" ? "Kết quả dưới đây đối chiếu với inventory nguồn đã cung cấp; nội dung nguồn vẫn cần người kiểm tra." : "Tổng số mục trong giáo trình gốc chưa được kiểm kê độc lập."}</p>
+        {curriculumCoverage && curriculumCoverage.status !== "unverified" ? <p>
+          Nội dung nguồn: {curriculumCoverage.sourceCoverage.covered}/{curriculumCoverage.sourceCoverage.total} ·
+          Có cách ôn: {curriculumCoverage.practiceCoverage.covered}/{curriculumCoverage.practiceCoverage.total} ·
+          Đã kiểm chứng: {curriculumCoverage.validationCoverage.covered}/{curriculumCoverage.validationCoverage.total}.
+        </p> : null}
+        {curriculumCoverage?.issues.length ? <p>{curriculumCoverage.issues.join(" · ")}</p> : null}
+        <dl>
+          <div><dt>Từ vựng</dt><dd>{contentCounts.vocabulary}</dd></div>
+          <div><dt>Ngữ pháp / ví dụ</dt><dd>{contentCounts.grammar} / {contentCounts.grammarExamples}</dd></div>
+          <div><dt>Dòng hội thoại</dt><dd>{contentCounts.dialogueLines}</dd></div>
+          <div><dt>Câu đọc hiểu / nghe</dt><dd>{contentCounts.reading} / {contentCounts.listening}</dd></div>
+          <div><dt>Câu hỏi đã nhập</dt><dd>{contentCounts.sourceQuestions}</dd></div>
+          <div><dt>Bài luyện tạo thêm</dt><dd>{contentCounts.derivedQuestions}</dd></div>
+        </dl>
+        <p>{evidence.verifiedItems}/{evidence.sourceItems} mục trong dữ liệu hiện có được nối với câu hỏi qua nguồn riêng biệt. {evidence.ambiguous.length} mục có nguồn chung chưa đủ để đối chiếu.</p>
+        {evidence.uncovered.length ? <p className="source-evidence-missing">Cần đối chiếu: {evidence.uncovered.map(item => item.key).join(", ")}</p> : null}
+        <Link className="text-button" href={"/practice/workbook?lesson=" + lessonId}>Mở toàn bộ nội dung và bài tập đã nhập</Link>
+      </details>
 
       {coreComplete ? (
         <section className="lesson-complete-banner-v4">

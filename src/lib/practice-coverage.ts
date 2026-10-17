@@ -45,7 +45,7 @@ export function auditLessonPracticeCoverage(
     g.examples.forEach((_, j) => add(`grammar:${g.id || i}:example:${j}`, "grammar-example", g.sourceRef)),
   );
   lesson.dialogues?.forEach((d, i) =>
-    d.lines.forEach((_, j) => add(`dialogue:${d.id || i}:line:${j}`, "dialogue-line", d.sourceRef)),
+    d.lines.forEach((line, j) => add(`dialogue:${d.id || i}:line:${j}`, "dialogue-line", line.sourceRef ?? d.sourceRef)),
   );
   lesson.reading?.questions.forEach((q, i) =>
     add(`reading:${q.id || i}`, "reading-question", q.sourceRef),

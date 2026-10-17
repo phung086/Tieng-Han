@@ -6,6 +6,7 @@ import {
   type StudyQuestion,
 } from "@/data/content";
 import type { LanguageProfile } from "@/lib/language-profile";
+import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
 import {
   clearStoredCourse,
   readStoredCourse,
@@ -24,6 +25,7 @@ export type RuntimeCourse = {
     pageCount?: number;
     edition?: string;
     coverImageDataUrl?: string;
+    curriculumCoverage?: CurriculumCoverage;
   };
   lessons: LessonContent[];
   questions: StudyQuestion[];

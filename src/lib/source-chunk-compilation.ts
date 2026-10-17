@@ -1,16 +1,17 @@
 import type { LessonContent, StudyQuestion } from "@/data/content";
-import { normalizeLessonContent } from "@/lib/course-bundle";
+import { parseCourseBundle } from "@/lib/course-bundle";
 
 export type SourcePageSlice = {
   fileName: string;
   pageNumber: number;
   text: string;
   imageDataUrl?: string;
+  sourceLocation?: string;
   part?: number;
 };
 
 const label = (page: SourcePageSlice) =>
-  "[SOURCE: " + page.fileName + " · p." + page.pageNumber +
+  "[SOURCE: " + page.fileName + " · " + (page.sourceLocation ?? "p." + page.pageNumber) +
   (page.part ? " · part " + page.part : "") + "]\n";
 
 /** Preserve every source character; never silently skip pages at a character limit. */
@@ -103,10 +104,15 @@ export function mergeGeneratedLessonChunks(
     if (!Array.isArray(raw.questions)) {
       throw new Error("Generated chunk " + (index + 1) + " has no question array");
     }
-    return {
-      lesson: normalizeLessonContent({ ...(raw.lesson as Record<string, unknown>), id: lessonId }),
-      questions: raw.questions as StudyQuestion[],
-    };
+    const parsed = parseCourseBundle(JSON.stringify({
+      format: "haneul-course-bundle", version: 1,
+      course: { title: "Source batch " + (index + 1), level: "",
+        lessons: [{ ...(raw.lesson as Record<string, unknown>), id: lessonId }],
+        questions: raw.questions.map(question => question && typeof question === "object"
+          ? { ...question, lessonId } : question),
+      },
+    }));
+    return { lesson: parsed.course.lessons[0], questions: parsed.course.questions };
   });
 
   const first = chunks[0].lesson;

@@ -3,6 +3,7 @@ import {
   listImportJobs,
 } from "@/lib/import-job-store";
 import type { ImportJobStatus } from "@/lib/import-jobs";
+import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
 
 export type AdminImportJobSummary = {
   id: string;
@@ -24,6 +25,7 @@ export type AdminImportJobSummary = {
     pageNumber?: number;
   }>;
   error?: string;
+  curriculumCoverage?: CurriculumCoverage;
 };
 
 export async function getAdminImportJobs(
@@ -69,6 +71,7 @@ export async function getAdminImportJobs(
             pageNumber: work.sourceCursor?.pageNumber,
           })) ?? [],
         error: job.error,
+        curriculumCoverage: job.curriculumCoverage,
       };
     }),
   );
