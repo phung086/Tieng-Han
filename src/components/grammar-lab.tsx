@@ -14,9 +14,11 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 
 export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
-  const { getLesson, course } = useContent();
+  const { getLesson, course, hydrated } = useContent();
   const { state } = useLearning();
   const lesson = getLesson(lessonId);
+
+  if (!hydrated) return <p role="status">Đang mở ngữ pháp của bài…</p>;
 
   if (!lesson || !lesson.grammar.length) {
     return <EmptySkillState lessonId={lessonId} skill="Ngữ pháp" />;
