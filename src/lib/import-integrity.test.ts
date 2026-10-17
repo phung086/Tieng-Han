@@ -142,4 +142,35 @@ describe("source import integrity and recovery", () => {
     expect((await store.getCompilationProgress(job.id)).completedLessonIds).toEqual([1]);
     expect((await store.requeueImportJob(job.id)).automaticRetries).toBe(0);
   });
+
+  it("serializes concurrent job updates without lost fields and recovers after a rejected mutation", async () => {
+    const job = await store.createImportJob(input());
+    await Promise.all(Array.from({ length: 20 }, () => store.updateImportJob(job.id, current => ({
+      ...current, automaticRetries: (current.automaticRetries ?? 0) + 1,
+    }))));
+    expect((await store.requireImportJob(job.id)).automaticRetries).toBe(20);
+    await expect(store.updateImportJob(job.id, () => { throw new Error("failed mutation"); })).rejects.toThrow("failed mutation");
+    await store.updateImportJob(job.id, current => ({ ...current, automaticRetries: 21 }));
+    expect((await store.requireImportJob(job.id)).automaticRetries).toBe(21);
+  });
+
+  it("allows only one different concurrent final result and idempotently accepts retries", async () => {
+    const job = await store.createImportJob(input());
+    await store.appendImportPages(job.id, [page(1), page(2)]);
+    await store.queueImportJob(job.id);
+    const first = bundle(); const second = bundle(); second.course.title = "A different result";
+    const results = await Promise.allSettled([
+      store.submitImportBundle(job.id, first), store.submitImportBundle(job.id, second),
+    ]);
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter(result => result.status === "rejected")).toHaveLength(1);
+    const persisted = await store.requireImportJob(job.id);
+    const winningInput = persisted.resultBundle?.course.title === first.course.title ? first : second;
+    // The original input does not include the server's default language. It is
+    // still an idempotent retry after canonicalization, even if key order differs.
+    const retried = await store.submitImportBundle(job.id, { course: winningInput.course,
+      version: winningInput.version, format: winningInput.format, sourceManifest: winningInput.sourceManifest });
+    expect(retried.resultBundle).toEqual(persisted.resultBundle);
+    expect((await store.requireImportJob(job.id)).resultBundle).toEqual(persisted.resultBundle);
+  });
 });

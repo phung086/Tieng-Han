@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import {
   mkdir,
   readFile,
@@ -34,6 +35,14 @@ import {
 const rootDir =
   process.env.HANEUL_IMPORT_DIR ||
   path.join(process.cwd(), ".haneul", "import-jobs");
+
+// Serialize read/mutate/write within one server process. This does not replace
+// cross-process worker leases, which are still a separate deployment concern.
+const jobWrites = new Map<string, Promise<void>>();
+function sameBundle(left: unknown, right: unknown) {
+  if (left === undefined || right === undefined) return left === right;
+  return isDeepStrictEqual(JSON.parse(JSON.stringify(left)), JSON.parse(JSON.stringify(right)));
+}
 
 function assertSafeId(jobId: string) {
   if (!/^[a-z0-9-]{8,80}$/i.test(jobId)) {
@@ -166,11 +175,22 @@ export async function updateImportJob(
   jobId: string,
   mutate: (job: ImportJob) => ImportJob,
 ) {
-  const current = await requireImportJob(jobId);
-  const next = mutate(current);
-  next.updatedAt = new Date().toISOString();
-  await writeJsonAtomic(jobFile(jobId), next);
-  return next;
+  const previous = jobWrites.get(jobId) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const pending = previous.then(() => gate);
+  jobWrites.set(jobId, pending);
+  await previous;
+  try {
+    const current = await requireImportJob(jobId);
+    const next = mutate(current);
+    next.updatedAt = new Date().toISOString();
+    await writeJsonAtomic(jobFile(jobId), next);
+    return next;
+  } finally {
+    release();
+    if (jobWrites.get(jobId) === pending) jobWrites.delete(jobId);
+  }
 }
 
 export async function appendImportPages(
@@ -207,13 +227,12 @@ export async function queueImportJob(jobId: string) {
 
   await assertAllSourcePages(current);
 
-  const queued = await updateImportJob(jobId, (job) => ({
-    ...job,
-    status: "queued",
-    error: undefined,
-  }));
+  const queued = await updateImportJob(jobId, (job) => {
+    if (job.status !== "uploading" && job.status !== "failed") return job;
+    return { ...job, status: "queued", error: undefined };
+  });
 
-  await publishImportJobQueued(queued);
+  if (queued.status === "queued") await publishImportJobQueued(queued);
   return queued;
 }
 
@@ -348,13 +367,12 @@ export async function requeueImportJob(jobId: string, options?: { automatic?: bo
 
   await assertAllSourcePages(current);
 
-  const queued = await updateImportJob(jobId, (job) => ({
-    ...job,
-    status: "queued",
-    error: undefined,
-    resultBundle: undefined,
-    automaticRetries: options?.automatic ? (job.automaticRetries ?? 0) + 1 : 0,
-  }));
+  const queued = await updateImportJob(jobId, (job) => {
+    if (job.status === "ready" || job.status === "consumed") throw new Error("Không thể đưa job đã khóa trở lại queued.");
+    if (options?.automatic && (job.automaticRetries ?? 0) >= 3) throw new Error("Đã thử lại tự động 3 lần.");
+    return { ...job, status: "queued", error: undefined, resultBundle: undefined,
+      automaticRetries: options?.automatic ? (job.automaticRetries ?? 0) + 1 : 0 };
+  });
 
   await publishImportJobQueued(queued);
   return queued;
@@ -744,25 +762,34 @@ export async function submitImportBundle(
   bundle: CompiledCourseBundle,
 ) {
   const current = await requireImportJob(jobId);
+  const parsed = parseCourseBundle(JSON.stringify(bundle));
+  parsed.language ??= current.language;
   if (current.status === "ready" || current.status === "consumed") {
-    if (JSON.stringify(current.resultBundle) === JSON.stringify(bundle)) return current;
+    if (sameBundle(current.resultBundle, parsed)) return current;
     throw new Error("Job đã khóa; không thể ghi đè kết quả đã xuất bản.");
   }
   if (current.status !== "queued" && current.status !== "processing") throw new Error("Import job chưa sẵn sàng để nhận bundle.");
-  const parsed = parseCourseBundle(JSON.stringify(bundle));
   if (!sameSourceManifest(current.sourceManifest, parsed.sourceManifest ?? [])) throw new Error("sourceManifest của bundle không khớp nguồn import.");
   if (parsed.language && (parsed.language.target !== current.language.target || parsed.language.learner !== current.language.learner)) {
     throw new Error("Language profile của bundle không khớp import job.");
   }
-  parsed.language ??= current.language;
   await assertAllSourcePages(current);
-  return updateImportJob(jobId, (job) => ({
+  return updateImportJob(jobId, (job) => {
+    // Recheck after all asynchronous validation and while holding the write
+    // queue: another valid submission may have completed in the meantime.
+    if (job.status === "ready" || job.status === "consumed") {
+      if (sameBundle(job.resultBundle, parsed)) return job;
+      throw new Error("Job đã khóa; không thể ghi đè kết quả đã xuất bản.");
+    }
+    if (job.status !== "queued" && job.status !== "processing") throw new Error("Import job chưa sẵn sàng để nhận bundle.");
+    return {
     ...job,
     status: "ready",
     resultBundle: parsed,
     curriculumCoverage: auditCurriculumCoverage(parsed),
     error: undefined,
-  }));
+    };
+  });
 }
 
 export async function failImportJob(jobId: string, error: string) {
