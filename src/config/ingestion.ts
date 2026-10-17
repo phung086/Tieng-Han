@@ -20,9 +20,9 @@ export const ingestionConfig = {
     maxVisionPagesPerLesson: 8,
   },
   validation: {
-    minimumCoverage: 75,
-    minimumGrounding: 85,
-    passCoverage: 82,
-    passGrounding: 90,
+    minimumCoverage: 100,
+    minimumGrounding: 100,
+    passCoverage: 100,
+    passGrounding: 100,
   },
 } as const;

@@ -7,6 +7,7 @@ export const sourceInventorySchema = z.object({
   pages: z.array(z.object({
     fileName: nonempty, pageNumber: z.number().int().positive(),
     status: z.enum(["reviewed", "unavailable"]), reason: nonempty.optional(),
+    classification: z.enum(["learning-content", "non-learning"]).optional(),
   })),
   items: z.array(z.object({
     id: nonempty, lessonId: z.number().int().positive(), kind: nonempty,
@@ -67,6 +68,16 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     else issues.push("Trang bất khả dụng: " + key + ": " + (page.reason ?? "chưa ghi lý do"));
   }
   for (const key of expectedPages) if (!reviewedPages.has(key)) issues.push("Trang chưa được đối chiếu: " + key);
+  for (const page of inventory.pages) {
+    if (page.status !== "reviewed") continue;
+    const key = sourceKey(page.fileName, page.pageNumber);
+    const pageItems = inventory.items.filter(item => item.fileName === page.fileName && item.pageNumber === page.pageNumber);
+    if (page.classification === "non-learning") {
+      if (!page.reason || pageItems.length) issues.push("Trang loại khỏi nội dung học phải có lý do và không có item: " + key);
+    } else if (page.classification !== "learning-content" || !pageItems.length) {
+      issues.push("Trang chưa có kiểm kê đơn vị nội dung (không được chỉ đánh dấu đã đọc): " + key);
+    }
+  }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
@@ -87,7 +98,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const repeatedDestination = destinations.has(destination);
     destinations.add(destination);
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
-    const hasContent = isContentPath && !repeatedDestination && content !== undefined && content !== null &&
+    const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
+    const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
+    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
       (typeof content !== "string" || Boolean(content.trim())) &&
       (!Array.isArray(content) || content.length > 0);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {

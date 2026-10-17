@@ -19,6 +19,7 @@ export type RuntimeCourse = {
   level: string;
   language?: LanguageProfile;
   source?: {
+    importJobId?: string;
     fileName?: string;
     fileNames?: string[];
     importedAt?: string;

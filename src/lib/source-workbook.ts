@@ -2,7 +2,8 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
 
 export type WorkbookCategory =
   | "Từ vựng" | "Ngữ pháp" | "Nghe" | "Nói" | "Đọc" | "Viết"
-  | "Hội thoại" | "Phát âm" | "Văn hóa" | "Bài tập bổ sung" | "Câu hỏi đã nhập";
+  | "Hội thoại" | "Phát âm" | "Văn hóa" | "Bài tập bổ sung" | "Câu hỏi đã nhập"
+  | "Nguồn dự phòng · chưa tính là bài biên soạn";
 
 export type WorkbookItem = {
   id: string;
@@ -132,7 +133,7 @@ export function buildSourceWorkbook(
   (lesson.extraSections ?? []).forEach((section, index) => {
     section.content.forEach((text, sub) => add({
       id: id("extra-" + index, sub),
-      category: "Bài tập bổ sung",
+      category: section.kind === "source-transcript" ? "Nguồn dự phòng · chưa tính là bài biên soạn" : "Bài tập bổ sung",
       title: section.title + " · " + (sub + 1),
       prompt: text,
       hint: section.kind + " · Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách.",

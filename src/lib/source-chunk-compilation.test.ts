@@ -4,6 +4,7 @@ import {
   chunkSourcePages,
   formatSourcePages,
   mergeGeneratedLessonChunks,
+  retainSourceTranscripts,
 } from "@/lib/source-chunk-compilation";
 
 const examplePage = (n: number, text: string, visual = false) => ({
@@ -103,6 +104,16 @@ describe("source page batching", () => {
 });
 
 describe("merging full textbook content", () => {
+  it("keeps all original page characters separately from authored content, including the final page", () => {
+    const pages = [examplePage(10, "original instruction\n① choice A ② choice B"), examplePage(11, "last source word"), examplePage(12, "", true)];
+    const result = retainSourceTranscripts(3, { lesson: lesson(1), questions: questions(1, 2) }, pages);
+    const transcripts = result.lesson.extraSections!.filter(item => item.kind === "source-transcript");
+    expect(transcripts).toHaveLength(3);
+    expect(transcripts[0].content).toEqual([pages[0].text]);
+    expect(transcripts[1].content).toEqual([pages[1].text]);
+    expect(transcripts[2].sourceRef).toContain("p.12");
+    expect(result.lesson.vocabulary).toHaveLength(60);
+  });
   it("merges 180 words and 241 questions instead of truncating to a quiz target", () => {
     const results = [
       { lesson: lesson(1, false, false), questions: questions(1, 85) },

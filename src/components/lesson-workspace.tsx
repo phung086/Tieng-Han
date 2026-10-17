@@ -35,8 +35,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   const [tab, setTab] = useState<LessonTabKey>("overview");
   const { state } = useLearning();
   const messages = useMessages();
-  const { getLesson, course } = useContent();
+  const { getLesson, course, hydrated } = useContent();
   const lesson = getLesson(lessonId);
+
+  if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
 
   if (!lesson) {
     return (
@@ -196,6 +198,8 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           </Link>
         </div>
       </header>
+
+      <p><Link className="secondary-button" href={"/sources?page=" + (lesson.sourceRef?.match(/\bpp?\.(\d+)/)?.[1] ?? 1)}><BookOpen size={17} /> Đối chiếu toàn bộ giáo trình gốc</Link></p>
 
       <details className="source-evidence-panel">
         <summary>Nội dung đã nhập · {curriculumCoverage?.status === "complete" ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>

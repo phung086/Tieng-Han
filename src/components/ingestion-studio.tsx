@@ -27,6 +27,7 @@ import { useContent, type RuntimeCourse } from "@/lib/content-store";
 import { buildLessonMedia } from "@/lib/lesson-media";
 import { chunkSourcePages, mergeGeneratedLessonChunks } from "@/lib/source-chunk-compilation";
 import { ingestionConfig } from "@/config/ingestion";
+import { acceptsFullSourceValidation } from "@/lib/source-request";
 import { useLearning } from "@/lib/learning-state";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 import { useMessages, type UiMessages } from "@/i18n/messages";
@@ -975,90 +976,64 @@ export function IngestionStudio() {
     try {
       const lessons: LessonContent[] = [];
       const questions: StudyQuestion[] = [];
+      const failedLessons: string[] = [];
 
       for (let index = 0; index < lessonIds.length; index += 1) {
         const lessonId = lessonIds[index];
-        setMessage(
-          copy.generatingPrefix + " " + copy.lessonLabel + " " +
-            lessonId +
-            " · " +
-            (index + 1) +
-            "/" +
-            lessonIds.length +
-            "…",
-        );
+        try {
+          setMessage(
+            copy.generatingPrefix + " " + copy.lessonLabel + " " +
+              lessonId +
+              " · " +
+              (index + 1) +
+              "/" +
+              lessonIds.length +
+              "…",
+          );
 
-        const lessonPages = documents.flatMap((document) => {
-          const map = maps.find((item) => item.documentId === document.id);
-          if (!map) return [];
-          return pagesForLesson(document, map.starts, lessonId);
-        });
+          const lessonPages = documents.flatMap((document) => {
+            const map = maps.find((item) => item.documentId === document.id);
+            if (!map) return [];
+            return pagesForLesson(document, map.starts, lessonId);
+          });
 
-        const sourcePages = lessonPages.map((page) => ({
-          fileName: page.fileName,
-          pageNumber: page.pageNumber,
-          text: page.text,
-          imageDataUrl: page.previewImageDataUrl,
-          sourceLocation: page.sourceLocation,
-        }));
+          const sourcePages = lessonPages.map((page) => ({
+            fileName: page.fileName,
+            pageNumber: page.pageNumber,
+            text: page.text,
+            imageDataUrl: page.previewImageDataUrl,
+            sourceLocation: page.sourceLocation,
+          }));
 
-        const lessonMedia = buildLessonMedia(lessonPages);
+          const lessonMedia = buildLessonMedia(lessonPages);
 
-        if (!sourcePages.length) continue;
+          if (!sourcePages.length) throw new Error("Không tìm thấy trang nguồn cho bài đã khai báo; cần sửa bản đồ bài học.");
 
-        const language = getLanguageProfile(
-          targetLanguageCode || "ko",
-        );
-        let payload = await requestGeneratedLesson(
-          lessonId,
-          sourcePages,
-          copy,
-          language,
-        );
-        let lessonQuestions = (payload.questions ?? []).map((question) => ({
-          ...question,
-          lessonId,
-        }));
-
-        setMessage(
-          copy.validatingPrefix + " " + copy.lessonLabel + " " +
-            lessonId +
-            " · " +
-            (index + 1) +
-            "/" +
-            lessonIds.length +
-            "…",
-        );
-
-        let validation = await validateGeneratedLesson(
-          { ...payload.lesson, id: lessonId },
-          lessonQuestions,
-          sourcePages,
-          copy,
-          language,
-          payload.validationParts,
-        );
-
-        if (!validation.pass) {
-          const revisionNotes = [
-            ...validation.issues.map((item) => copy.revisionIssue + " " + item),
-            ...validation.missingTopics.map((item) => copy.revisionMissing + " " + item),
-          ];
-
-          setMessage(copy.lessonLabel + " " + lessonId + " " + copy.repairPrefix);
-          payload = await requestGeneratedLesson(
+          const language = getLanguageProfile(
+            targetLanguageCode || "ko",
+          );
+          let payload = await requestGeneratedLesson(
             lessonId,
             sourcePages,
             copy,
             language,
-            revisionNotes,
           );
-          lessonQuestions = (payload.questions ?? []).map((question) => ({
+          let lessonQuestions = (payload.questions ?? []).map((question) => ({
             ...question,
             lessonId,
           }));
 
-          validation = await validateGeneratedLesson(
+          setMessage(
+            copy.validatingPrefix + " " + copy.lessonLabel + " " +
+              lessonId +
+              " · " +
+              (index + 1) +
+              "/" +
+              lessonIds.length +
+              "…",
+          );
+
+          let validation = await validateGeneratedLesson(
             { ...payload.lesson, id: lessonId },
             lessonQuestions,
             sourcePages,
@@ -1066,49 +1041,78 @@ export function IngestionStudio() {
             language,
             payload.validationParts,
           );
+
+          if (!validation.pass) {
+            const revisionNotes = [
+              ...validation.issues.map((item) => copy.revisionIssue + " " + item),
+              ...validation.missingTopics.map((item) => copy.revisionMissing + " " + item),
+            ];
+
+            setMessage(copy.lessonLabel + " " + lessonId + " " + copy.repairPrefix);
+            payload = await requestGeneratedLesson(
+              lessonId,
+              sourcePages,
+              copy,
+              language,
+              revisionNotes,
+            );
+            lessonQuestions = (payload.questions ?? []).map((question) => ({
+              ...question,
+              lessonId,
+            }));
+
+            validation = await validateGeneratedLesson(
+              { ...payload.lesson, id: lessonId },
+              lessonQuestions,
+              sourcePages,
+              copy,
+              language,
+              payload.validationParts,
+            );
+          }
+
+          if (!acceptsFullSourceValidation(validation)) {
+            throw new Error(
+              copy.lessonLabel +
+                " " +
+                lessonId +
+                " " +
+                copy.qualityErrorPrefix +
+                ": " +
+                copy.coverageLabel +
+                " " +
+                validation.coverageScore +
+                "%, " +
+                copy.groundingLabel +
+                " " +
+                validation.groundingScore +
+                "%.",
+            );
+          }
+
+          lessons.push({
+            ...payload.lesson,
+            id: lessonId,
+            quality: {
+              coverageScore: validation.coverageScore,
+              groundingScore: validation.groundingScore,
+              issues: validation.issues,
+              missingTopics: validation.missingTopics,
+            },
+            media: lessonMedia,
+          });
+
+          questions.push(...lessonQuestions);
+
+          setProgress(Math.round(((index + 1) / lessonIds.length) * 100));
+        } catch (reason) {
+          failedLessons.push("Bài " + lessonId + ": " + (reason instanceof Error ? reason.message : copy.genericGenerateError));
+          setProgress(Math.round(((index + 1) / lessonIds.length) * 100));
         }
-
-        if (
-          validation.coverageScore < ingestionConfig.validation.minimumCoverage ||
-          validation.groundingScore < ingestionConfig.validation.minimumGrounding
-        ) {
-          throw new Error(
-            copy.lessonLabel +
-              " " +
-              lessonId +
-              " " +
-              copy.qualityErrorPrefix +
-              ": " +
-              copy.coverageLabel +
-              " " +
-              validation.coverageScore +
-              "%, " +
-              copy.groundingLabel +
-              " " +
-              validation.groundingScore +
-              "%.",
-          );
-        }
-
-        lessons.push({
-          ...payload.lesson,
-          id: lessonId,
-          quality: {
-            coverageScore: validation.coverageScore,
-            groundingScore: validation.groundingScore,
-            issues: validation.issues,
-            missingTopics: validation.missingTopics,
-          },
-          media: lessonMedia,
-        });
-
-        questions.push(...lessonQuestions);
-
-        setProgress(Math.round(((index + 1) / lessonIds.length) * 100));
       }
 
       if (!lessons.length) {
-        throw new Error(copy.noGeneratedLesson);
+        throw new Error(copy.noGeneratedLesson + " " + failedLessons.join(" · "));
       }
 
       const runtimeCourse: RuntimeCourse = {
@@ -1124,6 +1128,15 @@ export function IngestionStudio() {
           edition: edition || undefined,
           coverImageDataUrl:
             documents[0]?.pages[0]?.previewImageDataUrl,
+          curriculumCoverage: {
+            status: failedLessons.length ? "partial" : "unverified",
+            basis: "AI QA is not independent source inventory verification",
+            sourceCoverage: { covered: 0, total: 0, percent: null },
+            practiceCoverage: { covered: 0, total: 0, percent: null },
+            validationCoverage: { covered: 0, total: 0, percent: null },
+            derivedContent: questions.filter(question => question.origin === "derived").length,
+            issues: [...failedLessons, "Bản nháp AI chưa có kiểm kê độc lập từng đơn vị nguồn; chưa xác nhận biên soạn đầy đủ."],
+          },
         },
         lessons: lessons.sort((a, b) => a.id - b.id),
         questions,
@@ -1133,6 +1146,7 @@ export function IngestionStudio() {
       replaceCourse(runtimeCourse);
       setStatus("done");
       setProgress(100);
+      if (failedLessons.length) setError("Đã lưu các bài hợp lệ dưới dạng bản nháp một phần. Còn lỗi cần xử lý: " + failedLessons.join(" · "));
       const averageGrounding = Math.round(
         runtimeCourse.lessons.reduce(
           (sum, lesson) => sum + (lesson.quality?.groundingScore ?? 0),
@@ -1161,7 +1175,7 @@ export function IngestionStudio() {
           copy.groundingAverage +
           " " +
           averageGrounding +
-          "%.",
+          "%. Bản nháp chưa được xác nhận bao phủ đầy đủ giáo trình.",
       );
     } catch (reason) {
       setStatus("mapped");
