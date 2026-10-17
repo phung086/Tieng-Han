@@ -15,6 +15,8 @@ export type ExtractedPage = {
   fileName: string;
   pageNumber: number;
   text: string;
+  sourceLocation?: string;
+  extractionIssues?: string[];
   hasVisual: boolean;
   previewImageDataUrl?: string;
   embeddedImages: EmbeddedPdfImage[];
@@ -26,6 +28,7 @@ export type ExtractedDocument = {
   fileName: string;
   pageCount: number;
   pages: ExtractedPage[];
+  pagination?: "physical-pages" | "logical-blocks";
 };
 
 type OcrResponse = {
@@ -287,6 +290,7 @@ export async function extractPdf(
   ]);
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    try {
     const page = await pdf.getPage(pageNumber);
     const [textContent, operatorList, annotations] = await Promise.all([
       page.getTextContent(),
@@ -314,13 +318,14 @@ export async function extractPdf(
 
     let previewImageDataUrl: string | undefined;
     let embeddedImages: EmbeddedPdfImage[] = [];
+    const extractionIssues: string[] = [];
 
     if (hasVisual || pageNumber === 1) {
       try {
         previewImageDataUrl = await renderPagePreview(page);
         embeddedImages = extractEmbeddedImages(page, operatorList, imageOps);
       } catch {
-        // Text ingestion remains usable if visual extraction is unsupported.
+        extractionIssues.push("Không trích được hình hoặc preview; cần kiểm tra trang nguồn.");
       }
     }
 
@@ -333,7 +338,15 @@ export async function extractPdf(
       previewImageDataUrl,
       embeddedImages,
       externalLinks,
+      extractionIssues,
     });
+    } catch {
+      // Preserve a failed page in the inventory and continue independent pages.
+      // Never turn a parser failure into a shorter, apparently successful book.
+      pages.push({ documentId: id, fileName: file.name, pageNumber, text: "", hasVisual: true,
+        embeddedImages: [], externalLinks: [],
+        extractionIssues: ["Không đọc được trang PDF; cần thử lại hoặc cung cấp bản rõ hơn."] });
+    }
   }
 
   return {
@@ -369,6 +382,7 @@ export async function ocrLowTextPages(
 
   for (let offset = 0; offset < targets.length; offset += batchSize) {
     const batchTargets = targets.slice(offset, offset + batchSize);
+    try {
     const images: Array<{
       fileName: string;
       pageNumber: number;
@@ -406,10 +420,23 @@ export async function ocrLowTextPages(
       throw new Error(result.error || "OCR vision thất bại.");
     }
 
+    for (const target of batchTargets) {
+      const match = result.pages?.find(page => page.pageNumber === target.pageNumber);
+      if (!match?.text?.trim()) {
+        const stored = pages.find(page => page.pageNumber === target.pageNumber);
+        if (stored) stored.extractionIssues = [...(stored.extractionIssues ?? []), "OCR chưa trả nội dung; cần đối chiếu ảnh nguồn."];
+      }
+    }
     for (const ocrPage of result.pages ?? []) {
       const page = pages.find((item) => item.pageNumber === ocrPage.pageNumber);
       if (page && ocrPage.text.trim()) {
         page.text = cleanPageText(ocrPage.text);
+      }
+    }
+    } catch {
+      for (const target of batchTargets) {
+        const stored = pages.find(page => page.pageNumber === target.pageNumber);
+        if (stored) stored.extractionIssues = [...(stored.extractionIssues ?? []), "OCR batch thất bại; giữ nguyên nguồn và tiếp tục batch khác."];
       }
     }
 

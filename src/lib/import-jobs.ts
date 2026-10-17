@@ -1,5 +1,6 @@
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import type { LanguageProfile } from "@/lib/language-profile";
+import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
 
 export const IMPORT_JOB_FORMAT = "haneul-import-job";
 export const IMPORT_JOB_VERSION = 1;
@@ -30,6 +31,7 @@ export type ImportJobDocument = {
   documentId: string;
   fileName: string;
   pageCount: number;
+  pagination?: "physical-pages" | "logical-blocks";
 };
 
 export type ImportJobPage = {
@@ -37,6 +39,8 @@ export type ImportJobPage = {
   fileName: string;
   pageNumber: number;
   text: string;
+  sourceLocation?: string;
+  extractionIssues?: string[];
   hasVisual: boolean;
   previewImageDataUrl?: string;
   embeddedImages?: Array<{
@@ -71,6 +75,8 @@ export type ImportJob = {
   totalPages: number;
   resultBundle?: CompiledCourseBundle;
   error?: string;
+  automaticRetries?: number;
+  curriculumCoverage?: CurriculumCoverage;
 };
 
 export type CreateImportJobInput = Pick<

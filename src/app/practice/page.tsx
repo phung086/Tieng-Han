@@ -22,6 +22,10 @@ import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 import { EmptyCourseState } from "@/components/empty-course-state";
+import {
+  getCoreLessonProgress,
+  getRequiredCoreSkills,
+} from "@/lib/lesson-completion";
 
 const skillModes = [
   { path: "/vocabulary", key: "vocabulary", icon: Layers3, tone: "blue" },
@@ -45,16 +49,26 @@ export default function PracticePage() {
     );
   }
 
+  const coreProgressFor = (lesson: (typeof course.lessons)[number]) => {
+    const requiredSkills = getRequiredCoreSkills({
+      hasVocabulary: lesson.vocabulary.length > 0,
+      hasGrammar: lesson.grammar.length > 0,
+    });
+    return getCoreLessonProgress(
+      state.completedActivities,
+      lesson.id,
+      requiredSkills,
+    );
+  };
   const current =
-    course.lessons.find(
-      (lesson) => (state.lessonProgress[String(lesson.id)] ?? 0) < 100,
-    ) ?? course.lessons[course.lessons.length - 1];
+    course.lessons.find((lesson) => coreProgressFor(lesson) < 100) ??
+    course.lessons[course.lessons.length - 1];
 
   const today = todayKey();
   const dueCount = Object.values(state.mastery).filter(
     (item) => item.dueAt <= today,
   ).length;
-  const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
+  const currentProgress = coreProgressFor(current);
 
   const modes = [
     {
@@ -96,14 +110,14 @@ export default function PracticePage() {
           <span className="experience-kicker">PRACTICE LAB</span>
           <h1>Luyện đúng thứ bạn cần, đúng lúc.</h1>
           <p>
-            Chọn một phiên ngắn, luyện một kỹ năng riêng hoặc quay lại các điểm yếu.
+            Từ vựng + Ngữ pháp là cốt lõi để đi tiếp; Nghe/Nói/Đọc/Viết có thể luyện khi thuận tiện.
           </p>
           <ActiveCourseChip compact />
         </div>
 
         <div className="practice-head-stats-v3">
           <span><Flame size={17} /> {state.streak} ngày</span>
-          <span><Target size={17} /> {currentProgress}% bài hiện tại</span>
+          <span><Target size={17} /> {currentProgress}% phần cốt lõi</span>
           <span><Clock3 size={17} /> {dueCount} mục đến hạn</span>
         </div>
       </header>

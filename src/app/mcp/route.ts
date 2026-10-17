@@ -315,10 +315,10 @@ function buildMcpServer() {
             text:
               "[SOURCE: " +
               page.fileName +
-              " · p." +
-              page.pageNumber +
+              " · " + (page.sourceLocation ?? "p." + page.pageNumber) +
               "]\n" +
               (page.text || "(no extractable text)") +
+              (page.extractionIssues?.length ? "\nEXTRACTION ISSUES (review required): " + page.extractionIssues.join("; ") : "") +
               (page.externalLinks?.length
                 ? "\nLinks: " + page.externalLinks.join(", ")
                 : ""),
@@ -509,15 +509,17 @@ function buildMcpServer() {
         title: z.string().optional(),
         level: z.string().optional(),
         edition: z.string().optional(),
+        sourceInventory: z.record(z.string(), z.unknown()).optional(),
       }),
     },
-    async ({ jobId, lessonIds, title, level, edition }) => {
+    async ({ jobId, lessonIds, title, level, edition, sourceInventory }) => {
       try {
         const saved = await finalizeCourseFromDrafts(jobId, {
           lessonIds,
           title,
           level,
           edition,
+          sourceInventory,
         });
 
         return {

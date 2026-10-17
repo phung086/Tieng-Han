@@ -6,6 +6,7 @@ import {
   requireAdmin,
 } from "@/lib/auth/server";
 import { setCourseStatus } from "@/lib/db/course-catalog";
+import { getCourseLibrary } from "@/lib/course-consumer";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,13 @@ export async function PATCH(
       );
     }
 
+    if (parsed.data.status === "published") {
+      const candidate = (await getCourseLibrary()).find(course => course.id === courseId);
+      if (!candidate) return NextResponse.json({ error: "Không tìm thấy giáo trình." }, { status: 404 });
+      if (candidate.source?.curriculumCoverage?.status !== "complete") {
+        return NextResponse.json({ error: "Chưa thể xuất bản: cần đối chiếu đủ trang, nội dung, bài luyện và xác minh inventory nguồn." }, { status: 409 });
+      }
+    }
     const course = await setCourseStatus(
       courseId,
       parsed.data.status,

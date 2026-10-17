@@ -102,7 +102,7 @@ export function buildSourceWorkbook(
       prompt: value(line.targetText || line.ko),
       answer: value(line.learnerMeaning || line.vi) || undefined,
       hint: "Đọc theo vai rồi tự viết lại câu không nhìn sách.",
-      sourceRef: dialogue.sourceRef ?? lesson.sourceRef,
+      sourceRef: line.sourceRef ?? dialogue.sourceRef ?? lesson.sourceRef,
     }));
   });
 

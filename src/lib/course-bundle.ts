@@ -4,6 +4,9 @@ import type {
   StudyQuestion,
   VocabularyItem,
 } from "@/data/content";
+import { contentPath, validateNestedContent } from "@/lib/nested-content-contract";
+import { sourceManifestSchema } from "@/lib/source-integrity";
+import { sourceInventorySchema, type SourceInventory } from "@/lib/curriculum-coverage";
 import {
   createLanguageProfile,
   type LanguageProfile,
@@ -19,6 +22,7 @@ export type CompiledCourseBundle = {
   generatedAt?: string;
   language?: LanguageProfile;
   sourceFiles?: string[];
+  sourceInventory?: SourceInventory;
   sourceManifest?: Array<{
     name: string;
     size: number;
@@ -69,6 +73,7 @@ function normalizeDialogue(value: unknown): DialogueItem {
           stringValue(lineRow.learnerMeaning) || stringValue(lineRow.vi);
 
         return {
+          ...lineRow,
           speaker:
             typeof lineRow.speaker === "string"
               ? lineRow.speaker
@@ -173,6 +178,10 @@ export type BundleValidationError = {
   path: string;
   reason: string;
   expected?: string;
+  actual?: unknown;
+  courseTitle?: string;
+  lessonId?: unknown;
+  itemId?: unknown;
 };
 
 const VALID_SKILLS = new Set([
@@ -201,11 +210,11 @@ function validateLesson(
   const row = value as Record<string, unknown>;
 
   // id
-  if (!Number.isFinite(Number(row.id))) {
+  if (typeof row.id !== "number" || !Number.isSafeInteger(row.id) || row.id < 1) {
     errors.push({
       path: `${prefix}.id`,
-      reason: "must be a finite number",
-      expected: "number",
+      reason: "must be a positive safe integer",
+      expected: "positive integer",
     });
   }
 
@@ -363,6 +372,7 @@ function validateLesson(
     }
   }
 
+  errors.push(...validateNestedContent(value, prefix));
   return errors;
 }
 
@@ -390,13 +400,13 @@ function validateQuestion(
   }
 
   const lessonId = Number(row.lessonId);
-  if (!Number.isFinite(lessonId)) {
+  if (typeof row.lessonId !== "number" || !Number.isSafeInteger(lessonId) || lessonId < 1) {
     errors.push({
       path: `${prefix}.lessonId`,
       reason: "must be a finite number",
       expected: "number",
     });
-  } else if (validLessonIds.size > 0 && !validLessonIds.has(lessonId)) {
+  } else if (!validLessonIds.has(lessonId)) {
     errors.push({
       path: `${prefix}.lessonId`,
       reason: `lessonId "${lessonId}" referenced by question "${String(row.id ?? index)}" does not exist in bundle lessons`,
@@ -470,6 +480,21 @@ function validateQuestion(
     });
   }
 
+  for (const field of ["choices", "tokens"]) {
+    const entries = row[field];
+    if (Array.isArray(entries) && entries.some(item => typeof item !== "string")) {
+      errors.push({ path: `${prefix}.${field}`, reason: "every entry must be a string", expected: "string[]" });
+    }
+  }
+  if (row.type === "choice" && Array.isArray(row.choices) && row.choices.length === 0) {
+    errors.push({ path: `${prefix}.choices`, reason: "choice question needs nonempty choices", expected: "nonempty string[]" });
+  }
+  for (const field of ["title", "explanation"]) {
+    if (typeof row[field] !== "string") errors.push({ path: `${prefix}.${field}`, reason: "required field missing", expected: "string" });
+  }
+  if (row.sourceRef !== undefined && typeof row.sourceRef !== "string") errors.push({ path: `${prefix}.sourceRef`, reason: "must be a string", expected: "string", actual: typeof row.sourceRef });
+  if (row.origin !== undefined && row.origin !== "source" && row.origin !== "derived") errors.push({ path: `${prefix}.origin`, reason: "must be source or derived", expected: "source|derived", actual: typeof row.origin });
+
   return errors;
 }
 
@@ -506,6 +531,16 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
 
   const root = parsed as Record<string, unknown>;
   const rootErrors: BundleValidationError[] = [];
+  if (root.sourceInventory !== undefined) {
+    const result = sourceInventorySchema.safeParse(root.sourceInventory);
+    if (!result.success) rootErrors.push(...result.error.issues.map(issue => ({ path: contentPath("sourceInventory", issue.path), reason: issue.message })));
+  }
+  if (root.sourceManifest !== undefined) {
+    const result = sourceManifestSchema.safeParse(root.sourceManifest);
+    if (!result.success) rootErrors.push(...result.error.issues.map(issue => ({
+      path: contentPath("sourceManifest", issue.path), reason: issue.message,
+    })));
+  }
 
   if (root.format !== COURSE_BUNDLE_FORMAT) {
     rootErrors.push({
@@ -576,8 +611,13 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
   // Validate each lesson
   const lessonErrors: BundleValidationError[] = [];
   const lessons = course.lessons as unknown[];
+  if (!lessons.length) lessonErrors.push({ path: "course.lessons", reason: "at least one lesson is required" });
+  const seenLessonIds = new Set<unknown>();
   for (let i = 0; i < lessons.length; i++) {
     lessonErrors.push(...validateLesson(lessons[i], i));
+    const id = (lessons[i] as { id?: unknown } | null)?.id;
+    if (seenLessonIds.has(id)) lessonErrors.push({ path: `lesson[${i}].id`, reason: "duplicate lesson id" });
+    seenLessonIds.add(id);
   }
 
   // Collect valid lesson IDs for question cross-referencing
@@ -594,15 +634,27 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
   // Validate each question
   const questionErrors: BundleValidationError[] = [];
   const questions = course.questions as unknown[];
+  const seenQuestionIds = new Set<unknown>();
   for (let i = 0; i < questions.length; i++) {
     questionErrors.push(
       ...validateQuestion(questions[i], i, validLessonIds),
     );
+    const id = (questions[i] as { id?: unknown } | null)?.id;
+    if (seenQuestionIds.has(id)) questionErrors.push({ path: `question[${i}].id`, reason: "duplicate question id" });
+    seenQuestionIds.add(id);
   }
 
   const allErrors = [...lessonErrors, ...questionErrors];
   if (allErrors.length) {
-    throw new CourseBundleValidationError(allErrors);
+    throw new CourseBundleValidationError(allErrors.map(error => {
+      const lessonMatch = /^lesson\[(\d+)\]/.exec(error.path);
+      const questionMatch = /^question\[(\d+)\]/.exec(error.path);
+      const item = (lessonMatch ? lessons[Number(lessonMatch[1])] : questionMatch ? questions[Number(questionMatch[1])] : null) as Record<string, unknown> | null;
+      return { ...error, courseTitle: course.title as string,
+        lessonId: lessonMatch ? item?.id : item?.lessonId,
+        itemId: questionMatch ? item?.id : undefined,
+      };
+    }));
   }
 
   return {
@@ -614,26 +666,8 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
     sourceFiles: Array.isArray(root.sourceFiles)
       ? root.sourceFiles.map(String)
       : undefined,
-    sourceManifest: Array.isArray(root.sourceManifest)
-      ? root.sourceManifest
-          .map((item) => {
-            const row = item as Record<string, unknown>;
-            return {
-              name: String(row.name ?? ""),
-              size: Number(row.size ?? 0),
-              lastModified: Number(row.lastModified ?? 0),
-              pageCount: Number(row.pageCount ?? 0),
-              sha256: String(row.sha256 ?? ""),
-            };
-          })
-          .filter(
-            (item) =>
-              item.name &&
-              item.sha256 &&
-              Number.isFinite(item.size) &&
-              Number.isFinite(item.pageCount),
-          )
-      : undefined,
+    sourceInventory: root.sourceInventory === undefined ? undefined : sourceInventorySchema.parse(root.sourceInventory),
+    sourceManifest: root.sourceManifest as CompiledCourseBundle["sourceManifest"],
     course: {
       title: course.title as string,
       level: course.level as string,
@@ -657,14 +691,15 @@ export function getCompilationContract(language: LanguageProfile) {
       format: COURSE_BUNDLE_FORMAT,
       version: COURSE_BUNDLE_VERSION,
       sourceManifest: "Copy exactly from job.sourceManifest.",
+      sourceInventory: "Optional independently reviewed {version:1,pages:[{fileName,pageNumber,status:reviewed|unavailable,reason?}],items:[{id,lessonId,kind,fileName,pageNumber,sourceRef,contentPointer,practiceMethod:questions|workbook,practiceQuestionIds:string[],verified:boolean}]}. Missing inventory is unverified; never fabricate totals or review flags.",
     },
     language,
     principles: [
       "The uploaded textbook is the curriculum source of truth.",
       "Preserve lesson order and source page references.",
-      "Cover vocabulary, grammar, dialogue, pronunciation, culture, notes, exercises and special sections when present.",
-      "Create practice for vocabulary, grammar, listening, speaking, reading and writing without introducing unsupported curriculum.",
-      "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>.",
+      "Inventory and preserve every source item in lesson order: vocabulary entries and examples, grammar patterns and examples, dialogue lines, listening and reading items, pronunciation, culture, notes, and original exercises. Never silently sample source content.",
+      "Create source-grounded practice for all six skills without introducing unsupported curriculum. Preserve each original exercise instruction and its motif; do not replace every task with multiple choice.",
+      "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>, preferring item-level anchors. Never count repeated drills for one item as coverage of another item.",
       "Do not invent unreadable source content; record uncertainty instead.",
       "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
       "Treat job.courseHint as a hint only. Infer the actual course title, level and edition from the textbook source when the source supports them, and pass those values to finalize_course_bundle instead of preserving a guessed/default level.",
@@ -677,6 +712,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "For every source exercise preserve its original prompt, options, order and answer when available; use the supported question type for graded work, or preserve ungraded exercises verbatim under extraSections. Never manufacture answers.",
       "For large lessons checkpoint and continue in page batches until the complete source range is processed. Checkpoint partialQuestions is unlimited and must not drop later items.",
       "Prepare a per-lesson source inventory: every extracted word, sample sentence, exercise and subpart must have an explicit destination in vocabulary, grammar, dialogues, reading, listening, writing, questions or extraSections. Missing evidence is recorded as uncertainty, not silently skipped.",
+      "DOCX sourceLocation identifies logical blocks, not physical printed pages. Preserve that label in sourceRef. Review extractionIssues and record unresolved source problems; do not claim complete coverage from uploaded page counts or AI self-reported quality scores.",
     ],
     pedagogy: {
       lessonFlow: [
@@ -686,7 +722,7 @@ export function getCompilationContract(language: LanguageProfile) {
         "Keep explanations concise enough for self-study and preserve textbook terminology.",
       ],
       practiceVolume:
-        "NO FIXED QUIZ CAP. Question count scales with the actual source: cover every sourced vocabulary entry and every textbook exercise/subpart, plus every available grammar pattern/example, dialogue sentence, reading/listening prompt, speaking and writing activity. A lesson with 80 words must not be reduced to 10 or 20 questions. Keep ungraded source activities in extraSections when a trustworthy answer is unavailable; do not invent content.",
+        "NO FIXED QUIZ CAP. Do not use a fixed count, maximum, or sampling ratio. Inventory every source item: cover every sourced vocabulary entry and every textbook exercise/subpart, plus every available grammar pattern/example, dialogue sentence, reading/listening prompt, speaking and writing activity. A lesson with 80 words must not be reduced to 10 or 20 questions. Keep open-ended or ungradable source activities in extraSections instead of inventing answer keys. Never pad with unsupported content.",
       practiceBalance: [
         "Vocabulary: cover ALL source words and their available examples; never sample only a few.",
         "Grammar: cover ALL source grammar patterns and each available example or original textbook exercise.",
@@ -697,7 +733,7 @@ export function getCompilationContract(language: LanguageProfile) {
         "Prefer retrieval over repeated explanation.",
         "Reuse the same knowledge across different modalities without copying the exact same question wording.",
         "Wrong-answer distractors must remain plausible but must not introduce facts or grammar outside the lesson.",
-        "Mark every derived practice item with a sourceRef pointing to the source pages it was derived from.",
+        "Mark every derived practice item with a sourceRef pointing to the source pages it was derived from and, where available, its unique item anchor. Missing or ambiguous anchors cannot certify coverage.",
       ],
     },
     checkpointWorkflow: [
@@ -772,7 +808,7 @@ export function getCompilationContract(language: LanguageProfile) {
           sourceRef: "string optional",
         },
         dialogues:
-          "{id:string,title?:string,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string}[],sourceRef?:string}[] optional",
+          "{id:string,title?:string,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string,sourceRef?:string}[],sourceRef?:string}[] optional",
         pronunciation:
           "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string}[] optional",
         culture:
@@ -798,6 +834,7 @@ export function getCompilationContract(language: LanguageProfile) {
         answer: "string",
         explanation: "string",
         sourceRef: "string optional",
+        origin: "source|derived optional; absent means unknown on legacy bundles",
       },
       requiredLessonFields: [
         "id",

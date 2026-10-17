@@ -10,6 +10,10 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { publishImportJobQueued } from "@/lib/mcp-events";
+import { sameSourceManifest, validateImportDocuments, validateImportPage } from "@/lib/source-integrity";
+import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
+import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
+import { auditCurriculumCoverage, sourceInventorySchema } from "@/lib/curriculum-coverage";
 import {
   COURSE_BUNDLE_FORMAT,
   COURSE_BUNDLE_VERSION,
@@ -39,7 +43,7 @@ function assertSafeId(jobId: string) {
 
 function jobDir(jobId: string) {
   assertSafeId(jobId);
-  return path.join(rootDir, jobId);
+  return path.join(/* turbopackIgnore: true */ rootDir, jobId);
 }
 
 function jobFile(jobId: string) {
@@ -55,7 +59,7 @@ function draftsDir(jobId: string) {
 }
 
 function assertLessonId(lessonId: number) {
-  if (!Number.isInteger(lessonId) || lessonId < 1 || lessonId > 10000) {
+  if (!Number.isSafeInteger(lessonId) || lessonId < 1) {
     throw new Error("lessonId không hợp lệ.");
   }
 }
@@ -83,7 +87,7 @@ function pageFile(jobId: string, page: Pick<ImportJobPage, "documentId" | "pageN
     throw new Error("documentId không hợp lệ.");
   }
   const pageNumber = Number(page.pageNumber);
-  if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > 10000) {
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) {
     throw new Error("pageNumber không hợp lệ.");
   }
 
@@ -111,6 +115,7 @@ async function readJson<T>(filePath: string): Promise<T> {
 export async function createImportJob(
   input: CreateImportJobInput,
 ): Promise<ImportJob> {
+  validateImportDocuments(input);
   await ensureRoot();
 
   const now = new Date().toISOString();
@@ -177,6 +182,9 @@ export async function appendImportPages(
     throw new Error("Import job không còn nhận page upload.");
   }
 
+  // Validate the entire batch before writing anything. Upload retries overwrite
+  // only the same declared page key, so they cannot inflate the page count.
+  for (const page of pages) validateImportPage(job, page);
   for (const page of pages) {
     await writeJsonAtomic(pageFile(jobId, page), page);
   }
@@ -197,15 +205,7 @@ export async function queueImportJob(jobId: string) {
     return current;
   }
 
-  if (current.uploadedPages < current.totalPages) {
-    throw new Error(
-      "Chưa upload đủ page snapshot: " +
-        current.uploadedPages +
-        "/" +
-        current.totalPages +
-        ".",
-    );
-  }
+  await assertAllSourcePages(current);
 
   const queued = await updateImportJob(jobId, (job) => ({
     ...job,
@@ -217,11 +217,29 @@ export async function queueImportJob(jobId: string) {
   return queued;
 }
 
+async function assertAllSourcePages(job: ImportJob) {
+  validateImportDocuments(job);
+  const missing: string[] = [];
+  for (const document of job.documents) {
+    for (let pageNumber = 1; pageNumber <= document.pageCount; pageNumber++) {
+      const key = { documentId: document.documentId, pageNumber };
+      try {
+        const page = await readJson<ImportJobPage>(pageFile(job.id, key));
+        validateImportPage(job, page);
+        if (page.documentId !== key.documentId || page.pageNumber !== pageNumber) throw new Error("Snapshot key mismatch");
+      } catch {
+        missing.push(document.documentId + "/" + pageNumber);
+      }
+    }
+  }
+  if (missing.length) throw new Error("Thiếu hoặc hỏng page snapshot: " + missing.join(", "));
+}
+
 export async function listImportJobs(
   status?: ImportJobStatus,
 ): Promise<ImportJob[]> {
   await ensureRoot();
-  const entries = await readdir(rootDir, { withFileTypes: true });
+  const entries = await readdir(/* turbopackIgnore: true */ rootDir, { withFileTypes: true });
   const jobs: ImportJob[] = [];
 
   for (const entry of entries) {
@@ -316,7 +334,7 @@ export async function deleteImportJob(jobId: string) {
   };
 }
 
-export async function requeueImportJob(jobId: string) {
+export async function requeueImportJob(jobId: string, options?: { automatic?: boolean }) {
   const current = await requireImportJob(jobId);
 
   if (current.status === "ready" || current.status === "consumed") {
@@ -324,22 +342,18 @@ export async function requeueImportJob(jobId: string) {
       "Không thể đưa job đã hoàn tất trở lại queued. Hãy tạo import job mới nếu muốn biên lại.",
     );
   }
-
-  if (current.uploadedPages < current.totalPages) {
-    throw new Error(
-      "Chưa upload đủ page snapshot: " +
-        current.uploadedPages +
-        "/" +
-        current.totalPages +
-        ".",
-    );
+  if (options?.automatic && (current.automaticRetries ?? 0) >= 3) {
+    throw new Error("Đã thử lại tự động 3 lần. Cần kiểm tra lỗi nguồn hoặc compiler trước khi thử lại thủ công.");
   }
+
+  await assertAllSourcePages(current);
 
   const queued = await updateImportJob(jobId, (job) => ({
     ...job,
     status: "queued",
     error: undefined,
     resultBundle: undefined,
+    automaticRetries: options?.automatic ? (job.automaticRetries ?? 0) + 1 : 0,
   }));
 
   await publishImportJobQueued(queued);
@@ -376,38 +390,49 @@ export type WorkCheckpoint = {
   partialQuestions?: Array<Record<string, unknown>>;
 };
 
-async function readLessonDrafts(jobId: string): Promise<StoredLessonDraft[]> {
+async function readLessonDrafts(jobId: string) {
   await mkdir(draftsDir(jobId), { recursive: true });
   const files = (await readdir(draftsDir(jobId)))
-    .filter((name) => /^lesson-\d{5}\.json$/.test(name))
+    .filter((name) => /^lesson-\d{5,}\.json$/.test(name))
     .sort();
 
   const drafts: StoredLessonDraft[] = [];
+  const errors: Array<{ file: string; reason: string }> = [];
   for (const file of files) {
-    drafts.push(
-      await readJson<StoredLessonDraft>(path.join(draftsDir(jobId), file)),
-    );
+    try {
+      const draft = await readJson<StoredLessonDraft>(path.join(draftsDir(jobId), file));
+      if (!draft || draft.version !== 1 || draft.lessonId !== Number(file.match(/\d+/)?.[0]) || draft.lesson?.id !== draft.lessonId) throw new Error("Lesson draft identity mismatch");
+      const job = await requireImportJob(jobId);
+      normalizeDraft(job, draft.lesson, draft.questions);
+      drafts.push(draft);
+    } catch (error) {
+      errors.push({ file, reason: error instanceof Error ? error.message : "Unreadable draft" });
+    }
   }
 
-  return drafts;
+  return { drafts, errors };
 }
 
-async function readWorkCheckpoints(
-  jobId: string,
-): Promise<WorkCheckpoint[]> {
+async function readWorkCheckpoints(jobId: string) {
   await mkdir(draftsDir(jobId), { recursive: true });
   const files = (await readdir(draftsDir(jobId)))
-    .filter((name) => /^work-\d{5}\.json$/.test(name))
+    .filter((name) => /^work-\d{5,}\.json$/.test(name))
     .sort();
 
   const checkpoints: WorkCheckpoint[] = [];
+  const errors: Array<{ file: string; reason: string }> = [];
   for (const file of files) {
-    checkpoints.push(
-      await readJson<WorkCheckpoint>(path.join(draftsDir(jobId), file)),
-    );
+    try {
+      const checkpoint = await readJson<WorkCheckpoint>(path.join(draftsDir(jobId), file));
+      if (!checkpoint || checkpoint.version !== 1 || checkpoint.lessonId !== Number(file.match(/\d+/)?.[0]) ||
+        !["source-reading", "drafting", "qa"].includes(checkpoint.phase) || !Array.isArray(checkpoint.notes)) throw new Error("Invalid work checkpoint");
+      checkpoints.push(checkpoint);
+    } catch (error) {
+      errors.push({ file, reason: error instanceof Error ? error.message : "Unreadable checkpoint" });
+    }
   }
 
-  return checkpoints;
+  return { checkpoints, errors };
 }
 
 export async function saveWorkCheckpoint(
@@ -568,8 +593,8 @@ export async function saveLessonDraft(
 
 export async function getCompilationProgress(jobId: string) {
   const job = await requireImportJob(jobId);
-  const drafts = await readLessonDrafts(jobId);
-  const workCheckpoints = await readWorkCheckpoints(jobId);
+  const { drafts, errors: draftErrors } = await readLessonDrafts(jobId);
+  const { checkpoints: workCheckpoints, errors: checkpointErrors } = await readWorkCheckpoints(jobId);
   const completedLessonIds = drafts
     .map((draft) => draft.lessonId)
     .sort((a, b) => a - b);
@@ -598,6 +623,12 @@ export async function getCompilationProgress(jobId: string) {
     language: job.language,
     courseHint: job.courseHint,
     totalPages: job.totalPages,
+    diagnostics: [...draftErrors, ...checkpointErrors],
+    // A valid saved lesson is not proof of completeness against the textbook.
+    // These are observed runtime counts; independent source totals stay unknown.
+    sourceCoverage: job.curriculumCoverage?.sourceCoverage ?? null,
+    validationCoverage: job.curriculumCoverage?.validationCoverage ?? null,
+    curriculumCoverage: job.curriculumCoverage,
     completedLessonIds,
     completedLessons: drafts.map((draft) => ({
       lessonId: draft.lessonId,
@@ -605,6 +636,8 @@ export async function getCompilationProgress(jobId: string) {
       learnerTitle: draft.lesson.vi,
       savedAt: draft.savedAt,
       questionCount: draft.questions.length,
+      contentCounts: summarizeLessonPractice(draft.lesson, draft.questions),
+      practiceCoverage: auditLessonPracticeCoverage(draft.lesson, draft.questions),
       coverageScore: draft.lesson.quality?.coverageScore,
       groundingScore: draft.lesson.quality?.groundingScore,
       issues: draft.lesson.quality?.issues ?? [],
@@ -635,6 +668,7 @@ export async function finalizeCourseFromDrafts(
     title?: string;
     level?: string;
     edition?: string;
+    sourceInventory?: unknown;
   },
 ) {
   const job = await requireImportJob(jobId);
@@ -644,7 +678,10 @@ export async function finalizeCourseFromDrafts(
     throw new Error("Job đã hoàn tất nhưng không còn result bundle.");
   }
 
-  const drafts = await readLessonDrafts(jobId);
+  const { drafts, errors: draftErrors } = await readLessonDrafts(jobId);
+  const { checkpoints, errors: checkpointErrors } = await readWorkCheckpoints(jobId);
+  const errors = [...draftErrors, ...checkpointErrors];
+  if (errors.length) throw new Error("Cần sửa checkpoint trước khi finalize: " + errors.map(item => item.file + ": " + item.reason).join("; "));
   if (!drafts.length) {
     throw new Error("Chưa có lesson draft nào để finalize.");
   }
@@ -663,6 +700,10 @@ export async function finalizeCourseFromDrafts(
     }
     return draft;
   });
+  const omittedIds = drafts.filter(draft => !requestedIds.includes(draft.lessonId)).map(draft => draft.lessonId);
+  if (omittedIds.length) throw new Error("Không thể bỏ âm thầm lesson draft: " + omittedIds.join(", "));
+  const unfinished = checkpoints.filter(checkpoint => !byId.has(checkpoint.lessonId));
+  if (unfinished.length) throw new Error("Còn lesson checkpoint chưa hoàn tất: " + unfinished.map(item => item.lessonId).join(", "));
 
   const allQuestions = selected.flatMap((draft) => draft.questions);
   const globalQuestionIds = new Set<string>();
@@ -683,6 +724,7 @@ export async function finalizeCourseFromDrafts(
       language: job.language,
       sourceFiles: job.documents.map((document) => document.fileName),
       sourceManifest: job.sourceManifest,
+      sourceInventory: input?.sourceInventory === undefined ? undefined : sourceInventorySchema.parse(input.sourceInventory),
       course: {
         title: input?.title?.trim() || job.courseHint.title,
         level: input?.level?.trim() || job.courseHint.level,
@@ -701,20 +743,37 @@ export async function submitImportBundle(
   jobId: string,
   bundle: CompiledCourseBundle,
 ) {
+  const current = await requireImportJob(jobId);
+  if (current.status === "ready" || current.status === "consumed") {
+    if (JSON.stringify(current.resultBundle) === JSON.stringify(bundle)) return current;
+    throw new Error("Job đã khóa; không thể ghi đè kết quả đã xuất bản.");
+  }
+  if (current.status !== "queued" && current.status !== "processing") throw new Error("Import job chưa sẵn sàng để nhận bundle.");
+  const parsed = parseCourseBundle(JSON.stringify(bundle));
+  if (!sameSourceManifest(current.sourceManifest, parsed.sourceManifest ?? [])) throw new Error("sourceManifest của bundle không khớp nguồn import.");
+  if (parsed.language && (parsed.language.target !== current.language.target || parsed.language.learner !== current.language.learner)) {
+    throw new Error("Language profile của bundle không khớp import job.");
+  }
+  parsed.language ??= current.language;
+  await assertAllSourcePages(current);
   return updateImportJob(jobId, (job) => ({
     ...job,
     status: "ready",
-    resultBundle: bundle,
+    resultBundle: parsed,
+    curriculumCoverage: auditCurriculumCoverage(parsed),
     error: undefined,
   }));
 }
 
 export async function failImportJob(jobId: string, error: string) {
-  return updateImportJob(jobId, (job) => ({
+  return updateImportJob(jobId, (job) => {
+    if (job.status === "ready" || job.status === "consumed") throw new Error("Không thể đánh dấu failed cho job đã khóa.");
+    return {
     ...job,
     status: "failed",
     error: error.slice(0, 4000),
-  }));
+    };
+  });
 }
 
 export async function consumeImportJob(jobId: string) {

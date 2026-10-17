@@ -32,14 +32,9 @@ export async function syncCourseCatalog(
   try {
     await client.query("BEGIN");
 
-    const existingCount = await client.query<{ count: string }>(
-      "SELECT COUNT(*)::text AS count FROM haneul_course_catalog",
-    );
-    const bootstrapLibrary =
-      Number(existingCount.rows[0]?.count ?? 0) === 0;
-    const initialStatus: CoursePublicationStatus = bootstrapLibrary
-      ? "published"
-      : "draft";
+    // New imports start as drafts even in an empty catalog. Existing publication
+    // decisions remain unchanged by ON CONFLICT below.
+    const initialStatus: CoursePublicationStatus = "draft";
 
     for (const course of courses) {
       await client.query(
@@ -117,6 +112,7 @@ export async function setCourseStatus(
           ELSE published_at
         END
       WHERE course_id = $1
+        AND ($2 <> 'published' OR metadata->'source'->'curriculumCoverage'->>'status' = 'complete')
       RETURNING *
     `,
     [courseId, status],

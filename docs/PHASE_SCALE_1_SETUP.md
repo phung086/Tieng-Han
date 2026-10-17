@@ -104,10 +104,7 @@ PostgreSQL stores a catalog/visibility layer:
 - `draft`: admin only.
 - `archived`: admin only.
 
-Existing courses are registered as `published` on the first catalog sync so
-Sơ cấp 1 and Sơ cấp 2 remain available after enabling the database. After that
-bootstrap, newly discovered/imported courses enter the catalog as `draft` and
-an admin publishes them explicitly.
+Newly discovered courses are registered as `draft`, including the first catalog sync. Existing persisted publication decisions remain unchanged. Publishing requires a complete submitted-source inventory reconciliation; see `docs/SOURCE_INVENTORY.md`.
 
 ## 8. Role boundaries
 

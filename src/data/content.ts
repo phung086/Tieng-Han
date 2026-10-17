@@ -70,6 +70,8 @@ export type DialogueItem = {
     ko: string;
     /** Legacy runtime alias for learnerMeaning. */
     vi?: string;
+    /** Stable item-level anchor for this dialogue line, when available. */
+    sourceRef?: string;
   }>;
   sourceRef?: string;
 };
@@ -141,4 +143,6 @@ export type StudyQuestion = {
   answer: string;
   explanation: string;
   sourceRef?: string;
+  /** Explicitly distinguishes textbook tasks from added practice; absent on legacy bundles. */
+  origin?: "source" | "derived";
 };
