@@ -50,7 +50,7 @@ contains documentation, integration decisions and the source-level hint fix.
 | Frozen dependency installation | Passed |
 | ESLint | Passed |
 | TypeScript | Passed |
-| Vitest | 152 passed, 1 private-data test skipped in the normal suite |
+| Vitest | 154 passed, 1 private-data test skipped in the normal suite after the concurrency correction |
 | Opt-in private course regression | 1 passed; reads all 4 existing courses / 60 lessons without truncating collections |
 | Audit CLI regression | 3 passed |
 | Production build | Passed; 43 routes, no dynamic filesystem tracing warnings in the final build |
@@ -117,3 +117,18 @@ accent borders); the incumbent visual system was preserved.
 Run/upload and inventory instructions are in [SOURCE_INVENTORY.md](SOURCE_INVENTORY.md).
 The pull request and actual merge outcome are recorded in the chat handoff;
 creating a PR alone is not treated as a successful merge.
+
+## Integration delivery and concurrent submissions
+
+Integration PR [#34](https://github.com/phung086/Tieng-Han/pull/34) merged at
+`48c31be45bac8544ca62f071e96e8bcf001aa606` after all CI steps passed. The fetched
+main tree matched the tested integration tree. On that main snapshot, 152 unit
+tests, TypeScript, build and 20 production E2E tests passed again.
+
+The post-merge review found a concurrent read/modify/write gap in the JSON job
+store. A focused follow-up serializes mutations within a server process,
+rechecks terminal states while committing a result/requeue, and canonicalizes
+identical bundle retries. New regressions submit different bundles concurrently,
+apply 20 parallel metadata updates, and recover after a rejected mutation. The
+follow-up has 154 passing unit tests. It does not claim cross-process worker
+leases or distributed transactions.
