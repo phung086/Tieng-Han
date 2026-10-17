@@ -8,13 +8,13 @@ describe("import-preset", () => {
     expect(fileStem("Korean-Beginner-1.PDF")).toBe("Korean Beginner 1");
   });
 
-  it("uses the target language as a safe fallback level", () => {
+  it("leaves the textbook level unknown until source metadata is available", () => {
     const hint = defaultImportHint(
       "Korean Beginner 1.pdf",
       getLanguageProfile("ko"),
     );
 
     expect(hint.title).toBe("Korean Beginner 1");
-    expect(hint.level).toBe("Tiếng Hàn");
+    expect(hint.level).toBe("");
   });
 });

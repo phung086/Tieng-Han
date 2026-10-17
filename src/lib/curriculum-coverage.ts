@@ -67,6 +67,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     else issues.push("Trang bất khả dụng: " + key + ": " + (page.reason ?? "chưa ghi lý do"));
   }
   for (const key of expectedPages) if (!reviewedPages.has(key)) issues.push("Trang chưa được đối chiếu: " + key);
+  const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
   let validated = 0;
@@ -112,7 +113,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   return {
     status: !issues.length ? "complete" : represented ? "partial" : "blocked",
     basis: "Reconciled against submitted reviewed inventory; not automatic PDF semantic verification",
-    sourceCoverage: ratio(represented, total), practiceCoverage: ratio(practiced, total),
+    sourceCoverage: { ...ratio(represented, total), percent: allPagesReviewed ? ratio(represented, total).percent : null },
+    practiceCoverage: ratio(practiced, total),
     validationCoverage: ratio(validated, total), derivedContent, issues,
   };
 }

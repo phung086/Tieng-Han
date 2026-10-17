@@ -1,5 +1,8 @@
 # Tiếng Hàn
 
+Hướng dẫn PDF/DOCX, inventory nguồn và cổng xuất bản:
+[SOURCE_INVENTORY.md](docs/SOURCE_INVENTORY.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp

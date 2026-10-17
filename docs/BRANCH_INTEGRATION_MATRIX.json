@@ -515,10 +515,10 @@
         "src/lib/course-bundle.ts",
         "src/lib/learning-state.tsx"
       ],
-      "conflicts": "Full branch merge not replayed over squashed baseline",
-      "integrationDecision": "No verified merge decision",
+      "conflicts": "No unresolved textual conflicts; overlapping behavior reconciled as described",
+      "integrationDecision": "Original import workflow already in main; retained later filename-hint helper/tests and wired them without inventing a level; prepare_import_job already present from #5",
       "PR": "https://github.com/phung086/Tieng-Han/pull/4",
-      "status": "needs follow-up"
+      "status": "integrated in this branch"
     },
     {
       "branch": "feat/one-drop-plugin-bootstrap",

@@ -22,6 +22,7 @@ import {
 } from "@/lib/pdf-extractor";
 import { extractDocument } from "@/lib/document-extractor";
 import { auditCurriculumCoverage } from "@/lib/curriculum-coverage";
+import { defaultImportHint } from "@/lib/import-preset";
 import { useContent, type RuntimeCourse } from "@/lib/content-store";
 import { buildLessonMedia } from "@/lib/lesson-media";
 import { chunkSourcePages, mergeGeneratedLessonChunks } from "@/lib/source-chunk-compilation";
@@ -418,8 +419,7 @@ export function IngestionStudio() {
       targetLanguageCode || ingestionConfig.autoImport.targetLanguage,
       ingestionConfig.autoImport.learnerLanguage,
     );
-    let nextCourseTitle =
-      sourceFiles[0]?.name.replace(/\.(pdf|docx)$/i, "") || copy.genericCourseTitle;
+    let nextCourseTitle = defaultImportHint(sourceFiles[0]?.name ?? "", language).title || copy.genericCourseTitle;
     let nextLevel = level.trim();
     let nextEdition = edition.trim();
 

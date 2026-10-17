@@ -42,7 +42,7 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory.pages[1] = { fileName: "synthetic.pdf", pageNumber: 2, status: "unavailable", reason: "scan unreadable" };
     const report = auditCurriculumCoverage(bundle);
     expect(report.status).toBe("partial");
-    expect(report.sourceCoverage.percent).toBe(100);
+    expect(report.sourceCoverage.percent).toBeNull();
     expect(report.validationCoverage.percent).toBe(50);
     expect(report.issues.join(" ")).toContain("scan unreadable");
   });

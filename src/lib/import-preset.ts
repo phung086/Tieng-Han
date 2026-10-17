@@ -14,6 +14,7 @@ export function defaultImportHint(
 ) {
   return {
     title: fileStem(fileName) || language.targetName,
-    level: language.targetName,
+    // A language name is not a textbook level. Leave it unknown until sourced.
+    level: "",
   };
 }
