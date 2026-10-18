@@ -23,6 +23,7 @@ describe("PDF page and OCR batch recovery", () => {
     expect(document.pages.map(page => page.pageNumber)).toEqual([1, 2, 3]);
     expect(document.pages[1].extractionIssues).toHaveLength(1);
     expect(document.pages[2].text).toBe("Source page 3");
+    expect(document.pages[2].previewImageDataUrl).toBe("data:image/jpeg;base64,preview");
     expect(document.pageCount).toBe(3);
   });
 

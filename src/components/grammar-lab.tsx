@@ -13,6 +13,7 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 import { GrammarExplanation } from "./grammar-explanation";
 import { relatedGrammar } from "@/lib/related-grammar";
+import { LessonSourceFigures } from "./lesson-source-figures";
 
 export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
   const { getLesson, course, courses, hydrated } = useContent();
@@ -95,6 +96,7 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
         </Link>
       </section>
 
+      <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={lesson.grammar.map(item => item.sourceRef)} title="Hình và bảng trong trang ngữ pháp gốc" />
       <nav className="grammar-contents" aria-label="Các mẫu ngữ pháp trong bài">
         {lesson.grammar.map((item, index) => <a href={"#grammar-" + index} key={item.id}>{item.pattern}</a>)}
       </nav>

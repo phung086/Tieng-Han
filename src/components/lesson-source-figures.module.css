@@ -1,0 +1,9 @@
+.figures { margin-block: 24px; color: #302b38; }
+.figures h2 { font-size: 1rem; margin: 0 0 6px; }
+.figures p { color: #655c6c; font-size: .85rem; line-height: 1.8; margin: 0 0 14px; }
+.shelf { display: flex; gap: 18px; overflow-x: auto; padding-block: 6px 16px; }
+.shelf figure { margin: 0; flex: 0 0 160px; }
+.shelf img { display: block; height: 200px; width: 160px; object-fit: contain; background: #fff; border: 1px solid #ded9cf; border-radius: 3px; }
+.shelf figcaption { font-size: .75rem; color: #563891; line-height: 1.8; padding-top: 8px; }
+.shelf a { text-decoration: none; }
+.shelf a:focus-visible { outline: 3px solid #7250bb; outline-offset: 4px; }

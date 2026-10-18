@@ -9,11 +9,10 @@ export const ingestionConfig = {
   pdf: {
     lowTextCharacters: 80,
     ocrTriggerRatio: 0.35,
-    previewScale: 0.9,
-    previewJpegQuality: 0.72,
-    maxPreviewWidth: 1100,
+    previewScale: 1.6,
+    previewJpegQuality: 0.85,
+    maxPreviewWidth: 1600,
     minEmbeddedImagePixels: 40_000,
-    maxEmbeddedImagesPerPage: 12,
   },
   lesson: {
     initialVisibleMediaItems: 6,

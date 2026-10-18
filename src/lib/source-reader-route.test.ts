@@ -47,4 +47,11 @@ describe("complete original source access", () => {
     expect(getCourseLibrary).not.toHaveBeenCalled();
     expect(readImportPage).not.toHaveBeenCalled();
   });
+  it("offers complete text separately without repeatedly transferring image payloads", async () => {
+    vi.mocked(readImportPage).mockResolvedValue({ documentId: "doc-0", fileName: "synthetic.pdf", pageNumber: 2, text: "complete source text", hasVisual: true, previewImageDataUrl: "large original", embeddedImages: [{ id: "a", width: 1, height: 1, dataUrl: "large figure" }] });
+    const body = await (await request("?page=2&view=text")).json();
+    expect(body.page.text).toBe("complete source text");
+    expect(body.page.previewImageDataUrl).toBeUndefined();
+    expect(body.page.embeddedImages).toBeUndefined();
+  });
 });

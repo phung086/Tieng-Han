@@ -20,6 +20,8 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { GrammarExplanation } from "./grammar-explanation";
+import { LessonBook } from "./lesson-book";
+import { LessonSourceFigures } from "./lesson-source-figures";
 import { useMessages } from "@/i18n/messages";
 import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
 import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
@@ -29,15 +31,20 @@ import {
   getRequiredCoreSkills,
 } from "@/lib/lesson-completion";
 
-type LessonTabKey = "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
-const tabKeys: LessonTabKey[] = ["overview", "vocabulary", "grammar", "reading", "supplement"];
+type LessonTabKey = "book" | "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
+const tabKeys: LessonTabKey[] = ["book", "overview", "vocabulary", "grammar", "reading", "supplement"];
 
 
-export function LessonWorkspace({ lessonId }: { lessonId: number }) {
-  const [tab, setTab] = useState<LessonTabKey>("overview");
+export function LessonWorkspace({ lessonId, initialPage, initialFile }: { lessonId: number; initialPage?: number; initialFile?: string }) {
+  const { course } = useContent();
+  return <LessonWorkspaceContent key={[course.id, lessonId, initialPage, initialFile].join(":")} lessonId={lessonId} initialPage={initialPage} initialFile={initialFile} />;
+}
+
+function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lessonId: number; initialPage?: number; initialFile?: string }) {
   const { state } = useLearning();
   const messages = useMessages();
   const { getLesson, course, hydrated } = useContent();
+  const [tab, setTab] = useState<LessonTabKey>(course.source?.importJobId || /^course-import-/.test(course.id) ? "book" : "overview");
   const lesson = getLesson(lessonId);
 
   if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
@@ -174,39 +181,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
     window.speechSynthesis.speak(utterance);
   }
 
-  return (
-    <div className="lesson-workspace">
-      <header className="lesson-workspace-header">
-        <div>
-          <span className="kicker">{course.level} · {messages.common.lesson.toUpperCase()} {lessonId}</span>
-          <h1 className="korean-text">{lesson.title}</h1>
-          <p>{lesson.vi} · {lesson.objective}</p>
-          <div className="lesson-source-line">
-            {lesson.sourceRef ? <span>{lesson.sourceRef}</span> : null}
-            {lesson.quality ? (
-              <span className="grounding-badge">
-                <ShieldCheck size={13} />
-                AI tự đánh giá nguồn: {lesson.quality.groundingScore}%
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div className="lesson-header-actions">
-          <span className="lesson-progress-pill">{progress}% phần cốt lõi</span>
-          <Link
-            className="primary-button"
-            href={primaryNextHref}
-          >
-            <Play size={17} /> {primaryNextLabel}
-          </Link>
-          <Link className="secondary-button" href={nextLesson ? "/learn/" + nextLesson.id : "/learn"}>
-            {nextLesson ? "Sang Bài " + nextLesson.id : "Chọn bài khác"}
-          </Link>
-        </div>
-      </header>
-
-      <p><Link className="secondary-button" href={"/sources?page=" + (lesson.sourceRef?.match(/\bpp?\.(\d+)/)?.[1] ?? 1)}><BookOpen size={17} /> Đối chiếu toàn bộ giáo trình gốc</Link></p>
-      <p><Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}><PenLine size={17} /> Luyện toàn bộ nội dung bài</Link></p>
+  const sourceResources = <>
+      <div className="lesson-resource-links"><Link className="secondary-button" href={"/sources?page=" + (lesson.sourceRef?.match(/\bpp?\.\s*(\d+)/)?.[1] ?? 1)}><BookOpen size={17} /> Đối chiếu toàn bộ giáo trình gốc</Link>
+      <Link className="secondary-button" href={"/practice/workbook?lesson=" + lessonId}><PenLine size={17} /> Luyện toàn bộ nội dung bài</Link></div>
 
       <details className="source-evidence-panel">
         <summary>Nội dung đã nhập · {isCurrentCompleteCoverage(curriculumCoverage) ? "Đã đối chiếu inventory nguồn" : "Chưa xác minh độ đầy đủ của sách"}</summary>
@@ -230,7 +207,42 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         <Link className="text-button" href={"/practice/workbook?lesson=" + lessonId}>Mở toàn bộ nội dung và bài tập đã nhập</Link>
       </details>
 
-      {coreComplete ? (
+  </>;
+
+  return (
+    <div className={"lesson-workspace" + (tab === "book" ? " lesson-book-mode" : "")}>
+      <header className="lesson-workspace-header">
+        <div>
+          <span className="kicker">{course.level} · {messages.common.lesson.toUpperCase()} {lessonId}</span>
+          <h1 className="korean-text">{lesson.title}</h1>
+          <p>{lesson.vi} · {lesson.objective}</p>
+          <div className="lesson-source-line">
+            {lesson.sourceRef ? <span>{lesson.sourceRef}</span> : null}
+            {lesson.quality ? (
+              <span className="grounding-badge">
+                <ShieldCheck size={13} />
+                AI tự đánh giá nguồn: {lesson.quality.groundingScore}%
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="lesson-header-actions">
+          <span className="lesson-progress-pill">{progress}% phần cốt lõi</span>
+          <Link
+            className="primary-button"
+            href={primaryNextHref}
+          >
+            <Play size={17} /> {tab === "book" ? "Ôn bài" : primaryNextLabel}
+          </Link>
+          <Link className="secondary-button" href={nextLesson ? "/learn/" + nextLesson.id : "/learn"}>
+            {nextLesson ? "Sang Bài " + nextLesson.id : "Chọn bài khác"}
+          </Link>
+        </div>
+      </header>
+
+      {tab !== "book" ? sourceResources : null}
+
+      {coreComplete && tab !== "book" ? (
         <section className="lesson-complete-banner-v4">
           <div className="lesson-complete-icon-v4">
             <CheckCircle2 size={28} />
@@ -266,16 +278,19 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
         {tabKeys.map((key) => (
           <button
             className={tab === key ? "active" : ""}
+            aria-pressed={tab === key}
             key={key}
             onClick={() => setTab(key)}
           >
-            {messages.lesson.tabs[key]}
+            {key === "book" ? "Sách có hình" : messages.lesson.tabs[key]}
             {key === "supplement" && supplementalCount ? (
               <span className="tab-count">{supplementalCount}</span>
             ) : null}
           </button>
         ))}
       </nav>
+
+      {tab === "book" ? <><LessonBook key={String(initialPage) + initialFile} courseId={course.id} lesson={lesson} initialPage={initialPage} initialFile={initialFile} />{sourceResources}</> : null}
 
       {tab === "overview" ? (
         <section className="lesson-overview-v3">
@@ -426,6 +441,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
       {tab === "vocabulary" ? (
         <section className="lesson-content-card">
+          <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={lesson.vocabulary.map(item => item.sourceRef)} title="Hình minh họa và bảng từ trong sách" />
           <div className="content-heading">
             <div><span className="eyebrow">어휘</span><h2>{messages.lesson.vocabTitle}</h2></div>
             <Link className="secondary-button" href={"/vocabulary?lesson=" + lessonId}>{messages.lesson.openFlashcards}</Link>
@@ -448,6 +464,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
 
       {tab === "grammar" ? (
         <section className="grammar-stack">
+          <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={lesson.grammar.map(item => item.sourceRef)} title="Hình và bảng trong trang ngữ pháp gốc" />
           {lesson.grammar.length ? lesson.grammar.map((grammar, index) => (
             <article className="grammar-card" key={grammar.id}>
               <div className="grammar-number">{String(index + 1).padStart(2, "0")}</div>

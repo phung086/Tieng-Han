@@ -16,6 +16,7 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+import { LessonSourceFigures } from "./lesson-source-figures";
 
 type VocabMode = "cards" | "match";
 
@@ -245,6 +246,8 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </button>
         </div>
       </header>
+      <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={deck.map(item => item.sourceRef)} title="Học từ qua hình trong giáo trình" />
+
 
       {mode === "cards" ? (
         <>
