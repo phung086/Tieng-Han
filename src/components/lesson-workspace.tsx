@@ -19,6 +19,7 @@ import {
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
+import { GrammarExplanation } from "./grammar-explanation";
 import { useMessages } from "@/i18n/messages";
 import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
 import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
@@ -198,6 +199,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           >
             <Play size={17} /> {primaryNextLabel}
           </Link>
+          <Link className="secondary-button" href={nextLesson ? "/learn/" + nextLesson.id : "/learn"}>
+            {nextLesson ? "Sang Bài " + nextLesson.id : "Chọn bài khác"}
+          </Link>
         </div>
       </header>
 
@@ -235,7 +239,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             <span className="experience-kicker">CORE COMPLETE</span>
             <h2>Bạn đã nắm phần cốt lõi của Bài {lessonId}.</h2>
             <p>
-              Từ vựng + Ngữ pháp đã đủ để mở bài tiếp theo. Nghe, Nói, Đọc và Viết là phần luyện thêm — có thể bỏ qua lúc chưa thuận tiện và quay lại sau.
+              Bạn có thể ôn sâu hơn hoặc học bài khác bất cứ lúc nào. Mọi bài đều mở sẵn, không phụ thuộc điểm số hay thiết bị.
             </p>
           </div>
           <div className="lesson-complete-actions-v4">
@@ -280,8 +284,8 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <span className="experience-kicker">LESSON MISSION</span>
               <h2>{lesson.objective}</h2>
               <p>
-                Tập trung ghi nhớ Từ vựng và Ngữ pháp trước. Khi hai phần này đã đạt,
-                bạn có thể sang bài mới; Nghe/Nói/Đọc/Viết được giữ như phần luyện thêm.
+                Chọn phần bạn cần học hôm nay. Mọi bài đều mở sẵn; không cần hoàn thành
+                bài này để sang bài khác. Không có mic hay bàn phím tiếng Hàn vẫn ôn được.
               </p>
 
               <div className="lesson-mission-progress-v3">
@@ -450,15 +454,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               <div>
                 <span className="eyebrow">문법</span>
                 <h2>{grammar.pattern}</h2>
-                <strong>{grammar.meaning}</strong>
-                <p>{grammar.explanation}</p>
-                <div className="grammar-examples">
-                  {grammar.examples.map((example) => (
-                    <button className="korean-text" onClick={() => speak(example)} key={example}>
-                      <Volume2 size={15} /> {example}
-                    </button>
-                  ))}
-                </div>
+                <GrammarExplanation item={grammar} onSpeak={speak} />
                 {grammar.sourceRef ? <small className="source-ref">{grammar.sourceRef}</small> : null}
               </div>
             </article>

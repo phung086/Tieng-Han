@@ -245,7 +245,7 @@ test("course library keeps long titles readable and switches course cleanly", as
   await expectNoPageOverflow(page);
 });
 
-test("next lesson unlocks after vocabulary and grammar even when legacy progress is below 100", async ({
+test("all lessons remain open with zero progress and no completed activities", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -267,10 +267,7 @@ test("next lesson unlocks after vocabulary and grammar even when legacy progress
           reading: { correct: 0, total: 0 },
           writing: { correct: 0, total: 0 },
         },
-        completedActivities: [
-          "lesson:1:vocabulary",
-          "lesson:1:grammar",
-        ],
+        completedActivities: [],
         dailyStats: {},
         mastery: {},
       }),
@@ -284,10 +281,56 @@ test("next lesson unlocks after vocabulary and grammar even when legacy progress
   });
 
   await expect(lessonTwoCard).toHaveClass(/current/);
-  await expect(lessonTwoCard).toContainText("ĐANG CHỜ BẠN");
+  await expect(lessonTwoCard).toContainText("TỰ DO HỌC");
   await expect(
     lessonTwoCard.locator('a[href="/learn/2"]'),
   ).toHaveCount(1);
+  await lessonTwoCard.locator('a[href="/learn/2"]').click();
+  await expect(page).toHaveURL(/\/learn\/2$/);
+  await page.getByLabel("Học theo nhịp của bạn").selectOption("1");
+  await expect(page).toHaveURL(/\/learn\/1$/);
+  await expect(page.getByRole("link", { name: "Sang Bài 2", exact: true })).toBeVisible();
+});
+
+test("speaking works without a microphone and never invents a pronunciation pass", async ({ page }) => {
+  await page.goto("/speaking?lesson=1");
+  await page.getByRole("button", { name: "Không dùng mic · tự luyện" }).click();
+  await page.locator(".speaking-bottom .primary-button").click();
+  await page.locator(".speaking-bottom .primary-button").click();
+  await expect(page.getByRole("heading", { name: "Đã kết thúc lượt tự luyện" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Tiếp:/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("haneul-learning-state-v2:course-1") || "{}").completedActivities ?? [])).not.toContain("lesson:1:speaking");
+});
+
+test("games retain the complete deck, record weak items and restore a graded turn", async ({ page }) => {
+  await page.goto("/practice");
+  const arcade = page.locator("#review-games");
+  await arcade.getByLabel("Phạm vi trò chơi").selectOption("1");
+  await arcade.getByRole("button", { name: "Bắt đầu chơi" }).click();
+  await arcade.getByRole("button", { name: "Chưa nhớ · xem và ôn lại" }).click();
+  await expect(arcade.getByRole("status")).toContainText("trường học");
+  await page.reload();
+  await arcade.getByLabel("Phạm vi trò chơi").selectOption("1");
+  await arcade.getByRole("button", { name: "Bắt đầu chơi" }).click();
+  await expect(arcade.getByRole("status")).toContainText("1 mục cần gặp lại");
+  await arcade.getByRole("button", { name: "Chơi lại các mục sai" }).click();
+  await expect(arcade.getByRole("heading", { name: "학교", exact: true })).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
+test("input questions can be answered by touch and skipped without a Korean keyboard", async ({ page }) => {
+  await page.goto("/practice/quiz?lesson=1&skill=grammar");
+  await page.getByLabel("Tự chuyển sau câu đúng").uncheck();
+  await page.getByRole("button", { name: "Không có bàn phím tiếng Hàn · chạm để xếp" }).click();
+  const pieces = page.getByLabel("Mảnh câu trả lời");
+  // The generated pattern question uses the exact source pattern as its answer.
+  for (const word of ["N은/는", "N입니다"]) await pieces.getByRole("button", { name: word, exact: true }).click();
+  await page.getByRole("button", { name: "Kiểm tra", exact: true }).click();
+  await expect(page.getByText("Chính xác!", { exact: true })).toBeVisible();
+  await page.locator(".session-footer .primary-button").click();
+  await page.getByRole("button", { name: "Chưa làm được · xem đáp án và ôn lại" }).click();
+  await expect(page.getByText("Đáp án đúng:")).toBeVisible();
+  await expect(page.locator(".session-footer .primary-button")).toBeEnabled();
 });
 
 test("correct quiz answers auto-advance while wrong answers keep feedback visible", async ({

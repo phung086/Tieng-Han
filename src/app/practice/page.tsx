@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -18,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ActiveCourseChip } from "@/components/active-course-chip";
+import { ReviewArcade } from "@/components/review-arcade";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
@@ -38,8 +40,10 @@ const skillModes = [
 
 export default function PracticePage() {
   const { state } = useLearning();
-  const { course } = useContent();
+  const { course, hydrated } = useContent();
   const messages = useMessages();
+
+  if (!hydrated) return <p role="status">Đang mở giáo trình và các cách ôn tập…</p>;
 
   if (!course.lessons.length) {
     return (
@@ -76,7 +80,7 @@ export default function PracticePage() {
       icon: Sparkles,
       eyebrow: "GỢI Ý CHO BẠN",
       title: "Bài học nhanh",
-      desc: "8 câu trộn đều kỹ năng, vừa đủ cho một phiên 8–12 phút.",
+      desc: "Ôn toàn bộ câu hỏi đã nhập và câu luyện tạo thêm từ nội dung bài.",
       meta: "Cân bằng · phản hồi ngay",
       href: "/practice/quiz?lesson=" + current.id + "&mode=guided",
       tone: "violet",
@@ -110,7 +114,7 @@ export default function PracticePage() {
           <span className="experience-kicker">PRACTICE LAB</span>
           <h1>Luyện đúng thứ bạn cần, đúng lúc.</h1>
           <p>
-            Từ vựng + Ngữ pháp là cốt lõi để đi tiếp; Nghe/Nói/Đọc/Viết có thể luyện khi thuận tiện.
+            Tự do chọn bài và kỹ năng. Có thể chạm để trả lời, không cần mic hay bàn phím tiếng Hàn.
           </p>
           <ActiveCourseChip compact />
         </div>
@@ -121,6 +125,8 @@ export default function PracticePage() {
           <span><Clock3 size={17} /> {dueCount} mục đến hạn</span>
         </div>
       </header>
+
+      <Suspense fallback={<p role="status">Đang mở trò chơi ôn tập…</p>}><ReviewArcade key={course.id} /></Suspense>
 
       <section className="practice-current-v3">
         <div className="practice-current-copy-v3">

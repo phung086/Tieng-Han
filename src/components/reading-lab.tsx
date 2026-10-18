@@ -188,11 +188,9 @@ export function ReadingLab({ lessonId = 3 }: { lessonId?: number }) {
                 <button className="secondary-button" onClick={reset} type="button">
                   <RotateCcw size={16} /> {messages.reading.retry}
                 </button>
-                {passed ? (
                   <Link className="primary-button" href={nextStep.href}>
                     Tiếp: {nextStep.label} <ArrowRight size={16} />
                   </Link>
-                ) : null}
               </div>
             </div>
           ) : (

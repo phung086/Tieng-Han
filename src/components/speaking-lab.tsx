@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Mic, MicOff, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
@@ -62,6 +62,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [unsupported, setUnsupported] = useState(false);
+  const [manual, setManual] = useState(false);
+  const [recognitionError, setRecognitionError] = useState(false);
   const [finished, setFinished] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
   const recognitionRef = useRef<RecognitionLike | null>(null);
@@ -78,10 +80,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
 
   const target = sentences[index] ?? "";
   const nextStep = getNextLessonFlowStep(lessonId, "speaking");
-  const score = useMemo(
-    () => similarity(transcript, target),
-    [transcript, target],
-  );
+  const score = similarity(transcript, target);
 
   if (!lesson || !sentences.length) {
     return (
@@ -103,6 +102,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function startRecognition() {
+    setRecognitionError(false);
     const browserWindow = window as unknown as {
       webkitSpeechRecognition?: new () => RecognitionLike;
       SpeechRecognition?: new () => RecognitionLike;
@@ -118,6 +118,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
     }
 
     const recognition = new Recognition();
+    setUnsupported(false);
+    setManual(false);
     recognition.lang = course.language?.locale ?? "ko-KR";
     recognition.interimResults = false;
     recognition.continuous = false;
@@ -143,32 +145,31 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
       }
     };
     recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onerror = () => { setListening(false); setRecognitionError(true); };
     recognitionRef.current = recognition;
 
     setListening(true);
     setTranscript("");
-    recognition.start();
+    try { recognition.start(); }
+    catch { setListening(false); setRecognitionError(true); }
   }
 
   function next(effectiveScores = scores) {
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setListening(false);
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
     }
 
     if (index === sentences.length - 1) {
-      const availableScores = effectiveScores.filter(
-        (item) => typeof item === "number",
-      );
-      const average = availableScores.length
-        ? Math.round(
-            availableScores.reduce((sum, item) => sum + item, 0) /
-              availableScores.length,
-          )
-        : 0;
+      const average = Math.round(sentences.reduce((sum, _, i) => sum + (effectiveScores[i] ?? 0), 0) / sentences.length);
 
-      if (unsupported || average >= 75) {
+      if (!manual && !unsupported && average >= 75) {
         completeLessonSkill(lessonId, "speaking");
       }
       setFinished(true);
@@ -180,6 +181,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function restart() {
+    if (recognitionRef.current) { recognitionRef.current.onresult = null; recognitionRef.current.stop(); recognitionRef.current = null; }
+    setListening(false);
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
@@ -191,38 +194,29 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   if (finished) {
-    const average = scores.length
-      ? Math.round(
-          scores.reduce((sum, item) => sum + item, 0) / scores.length,
-        )
-      : 0;
-    const passed = unsupported || average >= 75;
+    const average = Math.round(sentences.reduce((sum, _, i) => sum + (scores[i] ?? 0), 0) / sentences.length);
 
     return (
       <div className="skill-complete-card">
         <div className="complete-orb"><CheckCircle2 size={32} /></div>
         <span className="eyebrow">{messages.speaking.complete}</span>
         <h1>
-          {unsupported
-            ? messages.speaking.completedFallback
+          {unsupported || manual
+            ? "Đã kết thúc lượt tự luyện"
             : messages.speaking.averagePrefix + " " + average + "%"}
         </h1>
         <p>
-          {passed
-            ? unsupported
-              ? "Trình duyệt không hỗ trợ chấm giọng nói, nên Haneul ghi nhận lượt shadowing thủ công."
-              : "Bạn đạt " + average + "% độ khớp và đủ điều kiện hoàn thành chặng Nói."
-            : "Bạn đang ở " + average + "%. Hãy nghe mẫu chậm và thử lại để đạt tối thiểu 75%."}
+          {unsupported || manual
+            ? "Bạn đã tự luyện theo câu mẫu; chưa có điểm phát âm được xác minh. Có thể học tiếp ngay và quay lại thu âm khi thuận tiện."
+            : "Độ khớp các câu đã chấm: " + average + "%. Bạn có thể ôn lại hoặc học tiếp bất cứ lúc nào."}
         </p>
         <div className="complete-actions">
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.speaking.retry}
           </button>
-          {passed ? (
             <Link className="primary-button" href={nextStep.href}>
               Tiếp: {nextStep.label}
             </Link>
-          ) : null}
         </div>
       </div>
     );
@@ -246,6 +240,11 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
         <h2 className="korean-text">{target}</h2>
 
         <div className="model-actions">
+          <button className="secondary-button" type="button" onClick={() => {
+            if (recognitionRef.current) { recognitionRef.current.onresult = null; recognitionRef.current.stop(); }
+            setListening(false); setManual(true);
+            if (autoAdvanceTimerRef.current) window.clearTimeout(autoAdvanceTimerRef.current);
+          }}>Không dùng mic · tự luyện</button>
           <button
             className="secondary-button"
             onClick={() => playModel()}
@@ -285,6 +284,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
             {messages.speaking.unsupported}
           </div>
         ) : null}
+        {recognitionError ? <p className="browser-note" role="status">Chưa thu được giọng nói. Thử lại hoặc chọn tự luyện; bạn vẫn chuyển câu và chuyển bài bình thường.</p> : null}
+        {manual ? <p className="browser-note" role="status">Đọc theo câu mẫu hoặc nghe rồi nhắc lại khi thuận tiện. Tự luyện không được tính là điểm phát âm đã chấm.</p> : null}
 
         {transcript ? (
           <div className="speech-result" aria-live="polite" role="status">
@@ -317,7 +318,6 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
               "primary-button" +
               (transcript && score >= 75 ? " auto-advance-button-v3" : "")
             }
-            disabled={!unsupported && (!transcript || score >= 75)}
             onClick={() => next()}
           >
             {transcript && score >= 75

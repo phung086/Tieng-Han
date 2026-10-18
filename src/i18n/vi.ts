@@ -82,7 +82,7 @@ export const viMessages = {
   },
   learn: {
     kicker: "GIÁO TRÌNH",
-    intro: "Mỗi bài đi theo cùng một workflow; khi nhập sách thật, lộ trình tự mở khóa theo tiến độ học của bạn.",
+    intro: "Mọi bài học đều mở sẵn. Chọn nội dung cần học và ôn theo nhịp của bạn.",
     currentCourse: "Giáo trình đang học",
     lessons: "bài",
     completed: "hoàn thành",
@@ -97,7 +97,7 @@ export const viMessages = {
     reviewLesson: "Ôn lại bài",
     continueLesson: "Tiếp tục bài",
     startLesson: "Bắt đầu bài",
-    locked: "Hoàn thành bài trước để mở khóa",
+    locked: "Chọn bài để bắt đầu",
   },
   practice: {
     kicker: "LUYỆN TẬP · 연습",

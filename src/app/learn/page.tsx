@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Check,
-  LockKeyhole,
   Play,
   Sparkles,
   Star,
@@ -231,7 +230,7 @@ export default function LearnPage() {
           <span className="experience-kicker">LEARNING WORLD</span>
           <h1>{course.title}</h1>
           <p>
-            Đi từng chặng nhỏ, mở từng bài và giữ nhịp học đều. Bài hiện tại là Bài {current.id}.
+            Tự do chọn bất kỳ bài nào. Tiến độ giúp bạn theo dõi việc ôn tập, không khóa bài học. Gợi ý tiếp tục: Bài {current.id}.
           </p>
         </div>
 
@@ -259,21 +258,9 @@ export default function LearnPage() {
 
           <div className="zone-path-v2">
             {lessons.map((lesson) => {
-              const globalIndex = course.lessons.findIndex(
-                (item) => item.id === lesson.id,
-              );
               const progress = coreProgressFor(lesson);
-              const previousDone =
-                globalIndex === 0 ||
-                coreProgressFor(course.lessons[globalIndex - 1]) >= 100;
               const done = progress >= 100;
-              const unlocked = done || previousDone;
-              const currentLesson = unlocked && !done;
-              const status = done
-                ? "done"
-                : currentLesson
-                  ? "current"
-                  : "locked";
+              const status = done ? "done" : "current";
 
               return (
                 <article
@@ -283,10 +270,8 @@ export default function LearnPage() {
                   <div className="journey-node-v2">
                     {done ? (
                       <Check size={29} strokeWidth={3} />
-                    ) : unlocked ? (
-                      <Play size={25} fill="currentColor" />
                     ) : (
-                      <LockKeyhole size={24} />
+                      <Play size={25} fill="currentColor" />
                     )}
                   </div>
 
@@ -294,9 +279,7 @@ export default function LearnPage() {
                     <span>
                       {done
                         ? "ĐÃ NẮM CỐT LÕI"
-                        : currentLesson
-                          ? "ĐANG CHỜ BẠN"
-                          : "CHƯA MỞ KHÓA"}
+                        : "TỰ DO HỌC"}
                     </span>
                     <h3>
                       Bài {String(lesson.id).padStart(2, "0")} · {lesson.title}
@@ -306,14 +289,12 @@ export default function LearnPage() {
                       <i style={{ width: progress + "%" }} />
                     </div>
 
-                    {unlocked ? (
                       <Link
                         href={"/learn/" + lesson.id}
                         aria-label={
                           "Mở bài " + lesson.id + " " + lesson.title
                         }
                       />
-                    ) : null}
                   </div>
                 </article>
               );

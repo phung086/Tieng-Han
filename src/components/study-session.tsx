@@ -25,6 +25,7 @@ import {
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 import { parsePracticeCheckpoint, practiceCheckpointKey, serializePracticeCheckpoint } from "@/lib/practice-checkpoint";
+import { TouchAnswer } from "./touch-answer";
 
 export type StudySessionMode = "guided" | "quick" | "mastery";
 
@@ -106,6 +107,8 @@ function StudySessionBody({
   const [bestCombo, setBestCombo] = useState(0);
   const [focus, setFocus] = useState(3);
   const [showHint, setShowHint] = useState(false);
+  const [touchInput, setTouchInput] = useState(false);
+  const [autoAdvance, setAutoAdvance] = useState(true);
   const [skillStats, setSkillStats] = useState<
     Partial<Record<SkillKey, { correct: number; total: number }>>
   >(restored?.skillStats ?? {});
@@ -217,12 +220,12 @@ function StudySessionBody({
     setShowHint(false);
   }
 
-  function submit(answerOverride?: string) {
-    const candidate = answerOverride ?? submittedAnswer;
-    if (!candidate || checked) return;
+  function submit(answerOverride?: string, skipped = false) {
+    const candidate = skipped ? "" : answerOverride ?? submittedAnswer;
+    if ((!candidate && !skipped) || checked) return;
 
     const correct =
-      normalize(candidate) === normalize(question.answer);
+      !skipped && normalize(candidate) === normalize(question.answer);
     const nextCorrectCount = correctCount + (correct ? 1 : 0);
     const previousSkill = skillStats[question.skill] ?? {
       correct: 0,
@@ -239,6 +242,7 @@ function StudySessionBody({
     if (answerOverride !== undefined) {
       setAnswer(answerOverride);
     }
+    if (skipped) { setAnswer(""); setTokens([]); }
 
     setChecked(true);
     setCorrectCount(nextCorrectCount);
@@ -260,7 +264,7 @@ function StudySessionBody({
 
     recordAnswer(question.skill, correct, question.id);
 
-    if (correct) {
+    if (correct && autoAdvance) {
       autoAdvanceTimerRef.current = window.setTimeout(() => {
         advance(nextCorrectCount, nextSkillStats);
       }, AUTO_ADVANCE_DELAY_MS);
@@ -489,6 +493,10 @@ function StudySessionBody({
 
         {question.type === "input" ? (
           <div className="input-answer-wrap">
+            <button className="secondary-button" type="button" disabled={checked} onClick={() => { setTouchInput(value => !value); setAnswer(""); }}>
+              {touchInput ? "Chuyển sang tự gõ" : "Không có bàn phím tiếng Hàn · chạm để xếp"}
+            </button>
+            {touchInput ? <TouchAnswer key={question.id} answer={question.answer} disabled={checked} onChange={setAnswer} /> : <>
             <input
               autoComplete="off"
               autoFocus
@@ -503,12 +511,13 @@ function StudySessionBody({
               disabled={checked}
               onChange={(event) => setAnswer(event.target.value)}
               onKeyDown={(event) =>
-                event.key === "Enter" && submit()
+                event.key === "Enter" && !event.nativeEvent.isComposing && submit()
               }
               placeholder={messages.quiz.inputPlaceholder}
               value={answer}
             />
             <span>{messages.quiz.enterHint}</span>
+            </>}
           </div>
         ) : null}
 
@@ -519,6 +528,7 @@ function StudySessionBody({
                 tokens.map((token, tokenIndex) => (
                   <button
                     key={token + "-" + tokenIndex}
+                    disabled={checked}
                     onClick={() =>
                       setTokens((current) =>
                         current.filter(
@@ -538,11 +548,11 @@ function StudySessionBody({
 
             <div className="token-bank">
               {question.tokens
-                ?.filter((token) => !tokens.includes(token))
-                .map((token) => (
+                ?.filter((token, index, bank) => bank.slice(0, index + 1).filter(item => item === token).length > tokens.filter(item => item === token).length)
+                .map((token, tokenIndex) => (
                   <button
                     disabled={checked}
-                    key={token}
+                    key={token + ":" + tokenIndex}
                     onClick={() =>
                       setTokens((current) => [
                         ...current,
@@ -556,6 +566,12 @@ function StudySessionBody({
             </div>
           </div>
         ) : null}
+
+        {!checked ? <button className="text-button" type="button" onClick={() => submit(undefined, true)}>Chưa làm được · xem đáp án và ôn lại</button> : null}
+        <p><label><input type="checkbox" checked={autoAdvance} onChange={event => {
+          setAutoAdvance(event.target.checked);
+          if (!event.target.checked && autoAdvanceTimerRef.current) window.clearTimeout(autoAdvanceTimerRef.current);
+        }} /> Tự chuyển sau câu đúng</label></p>
 
         {checked ? (
           <div
@@ -612,11 +628,11 @@ function StudySessionBody({
 
         <button
           className="primary-button"
-          disabled={!submittedAnswer || (checked && isCorrect)}
+          disabled={!checked && !submittedAnswer}
           onClick={checked ? () => advance() : () => submit()}
         >
           {checked
-            ? isCorrect
+            ? isCorrect && autoAdvance
               ? index === questions.length - 1
                 ? "Đúng rồi · đang hoàn tất…"
                 : "Đúng rồi · tự chuyển…"

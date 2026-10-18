@@ -1,0 +1,46 @@
+.arcade { margin-block: 32px; padding: clamp(20px, 3vw, 36px); background: #fff; color: #25213a; border: 1px solid #d9d2eb; border-radius: 16px; scroll-margin-top: 24px; }
+.header { display: flex; gap: 16px; align-items: flex-start; }
+.header > svg { flex-shrink: 0; color: #6041ba; margin-top: 4px; }
+.header h2 { margin: 0 0 10px; font-size: clamp(1.4rem, 2vw, 1.9rem); text-wrap: balance; }
+.header p, .start p { color: #59516b; line-height: 1.75; max-width: 72ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-block: 26px; }
+.controls label { display: grid; gap: 8px; font-weight: 600; max-width: 100%; }
+.controls select { padding: 12px; font: inherit; border: 1px solid #b9afce; border-radius: 10px; color: inherit; background: white; max-width: 100%; }
+.controls .check { display: flex; gap: 8px; align-items: center; font-size: .9rem; }
+.check input { width: 18px; height: 18px; accent-color: #6746bc; }
+.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #d9d2eb; gap: 8px; }
+.modes button { border: 0; border-bottom: 3px solid transparent; background: transparent; color: #59516b; text-align: left; padding: 14px 12px; cursor: pointer; }
+.modes button[aria-pressed="true"] { border-bottom-color: #6746bc; background: #f3effc; color: #482b96; }
+.modes strong, .modes span { display: block; }
+.modes strong { font: 700 1rem var(--font-ui), sans-serif; margin-bottom: 8px; }
+.modes span { font: 400 .8rem/1.65 var(--font-ui), sans-serif; }
+.start { padding-block: 16px; }
+.roundBar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-block: 20px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.roundBar strong { color: #6041ba; }
+.roundBar button { margin-left: auto; }
+.question { padding-block: 16px; animation: question-arrives .23s cubic-bezier(.16,1,.3,1); }
+.question h3 { margin: 0 0 24px; font: 700 clamp(1.35rem, 2.3vw, 2rem)/1.6 var(--font-korean), var(--font-ui), sans-serif; overflow-wrap: anywhere; }
+.question > :global(.text-button) { min-height: 44px; margin-left: 12px; }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.choices button { padding: 18px; min-height: 64px; border: 1px solid #c8bfdc; border-radius: 12px; background: #faf8ff; color: #302745; font: 600 1rem/1.7 var(--font-korean), var(--font-ui), sans-serif; text-align: left; cursor: pointer; overflow-wrap: anywhere; transition: background-color .15s, transform .15s; }
+.choices button:hover:enabled { background: #eee8fc; transform: translateY(-2px); }
+.choices button.correct { color: #15563b; background: #e4f6ec; border-color: #2f865c; }
+.choices button.wrong { color: #852b3c; background: #fff0f2; border-color: #b75064; }
+.feedback { margin-block: 20px; padding: 22px; background: #f5f2fb; border-radius: 12px; line-height: 1.85; }
+.feedback > p { white-space: pre-line; overflow-wrap: anywhere; max-width: 72ch; }
+.feedback > strong { color: #482b96; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.sourceNote { display: block; margin-top: 20px; color: #645b76; font-size: .75rem; line-height: 1.7; overflow-wrap: anywhere; }
+.result { padding-block: 30px; }
+.result h3 { font-size: 1.45rem; }
+.result p { line-height: 1.75; }
+.touch { margin-block: 16px; }
+.touch p, .touch small { color: #645b76; font-size: .85rem; line-height: 1.7; }
+.built, .pieces { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 0; }
+.built { min-height: 64px; border-block: 1px dashed #b9afce; color: #645b76; }
+.touch button { padding: 10px 14px; border: 1px solid #c8bfdc; border-radius: 8px; background: #fff; color: #302745; font: 600 1rem/1.5 var(--font-korean), var(--font-ui), sans-serif; cursor: pointer; overflow-wrap: anywhere; max-width: 100%; }
+.touch button:disabled { opacity: .4; cursor: default; }
+.arcade :is(button, select, input):focus-visible, .touch button:focus-visible { outline: 3px solid #6746bc; outline-offset: 4px; }
+@keyframes question-arrives { from { opacity: .5; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 700px) { .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .choices { grid-template-columns: 1fr; } .controls select { width: 100%; } .roundBar button { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { .question { animation: none; } .choices button { transition: none; } .choices button:hover:enabled { transform: none; } }

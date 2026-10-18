@@ -131,11 +131,9 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
           <button className="secondary-button" onClick={restart}>
             <RotateCcw size={16} /> {messages.listening.listenAgain}
           </button>
-          {passed ? (
             <Link className="primary-button" href={nextStep.href}>
               Tiếp: {nextStep.label}
             </Link>
-          ) : null}
         </div>
       </div>
     );

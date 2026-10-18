@@ -5617,3 +5617,17 @@ img {
 .source-evidence-panel dt { font-size: 0.85rem; }
 .source-evidence-panel dd { margin: 0.25rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .source-evidence-missing { max-height: 20rem; overflow-y: auto; }
+
+/* Read long source explanations at a comfortable measure, preserving every line. */
+.grammar-contents { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 8px 24px; }
+.grammar-contents a { color: #50358c; padding: 10px 14px; background: #fff; border: 1px solid #d9d2eb; border-radius: 8px; font-size: .9rem; text-underline-offset: 4px; }
+.grammar-concept-grid-v4 { grid-template-columns: minmax(0,1fr); }
+.grammar-concept-card-v4 { scroll-margin-top: 24px; }
+.grammar-concept-copy-v4 { min-width: 0; }
+.grammar-concept-copy-v4 h2 { overflow-wrap: anywhere; }
+.grammar-concept-copy-v4 > .source-ref { display: block; margin-top: 18px; }
+.writing-word-bank { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; }
+.writing-word-bank p { width: 100%; margin: 0 0 8px; }
+.grammar-related { margin-top: 24px; padding-block: 16px; border-top: 1px solid #d9d2eb; }
+.grammar-related summary { color: #50358c; cursor: pointer; line-height: 1.8; font-weight: 600; }
+.grammar-related > p { color: #645b76; font-size: .85rem; line-height: 1.8; max-width: 74ch; }
