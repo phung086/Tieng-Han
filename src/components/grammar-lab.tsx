@@ -6,15 +6,16 @@ import {
   BookOpenCheck,
   CheckCircle2,
   Sparkles,
-  Volume2,
 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
+import { GrammarExplanation } from "./grammar-explanation";
+import { relatedGrammar } from "@/lib/related-grammar";
 
 export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
-  const { getLesson, course, hydrated } = useContent();
+  const { getLesson, course, courses, hydrated } = useContent();
   const { state } = useLearning();
   const lesson = getLesson(lessonId);
 
@@ -43,10 +44,9 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
     <div className="grammar-lab-v4">
       <header className="grammar-lab-head-v4">
         <div>
-          <span className="experience-kicker">GRAMMAR LAB · BÀI {lessonId}</span>
-          <h1>Hiểu mẫu câu, rồi dùng ngay.</h1>
+          <h1>Ngữ pháp Bài {lessonId} · Hiểu rồi dùng ngay.</h1>
           <p>
-            Đọc ngắn, nghe ví dụ và luyện đúng những điểm ngữ pháp xuất hiện trong giáo trình.
+            {lesson.grammar.length} mẫu câu · Giải thích, lưu ý và ví dụ đã nhập được giữ đầy đủ, kèm nguồn để đối chiếu.
           </p>
         </div>
 
@@ -77,6 +77,12 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
         </Link>
         <Link
           className="secondary-button"
+          href={"/practice?lesson=" + lessonId + "&game=grammar#review-games"}
+        >
+          Chơi ghép mẫu câu · Xếp câu
+        </Link>
+        <Link
+          className="secondary-button"
           href={"/practice/drills?lesson=" + lessonId}
         >
           Điền từ · Nghe chép · Luyện dịch
@@ -89,35 +95,29 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
         </Link>
       </section>
 
+      <nav className="grammar-contents" aria-label="Các mẫu ngữ pháp trong bài">
+        {lesson.grammar.map((item, index) => <a href={"#grammar-" + index} key={item.id}>{item.pattern}</a>)}
+      </nav>
       <section className="grammar-concept-grid-v4">
         {lesson.grammar.map((item, index) => (
-          <article className="grammar-concept-card-v4" key={item.id}>
+          <article className="grammar-concept-card-v4" key={item.id} id={"grammar-" + index}>
             <div className="grammar-concept-index-v4">
               {String(index + 1).padStart(2, "0")}
             </div>
 
             <div className="grammar-concept-copy-v4">
-              <span>문법</span>
               <h2 className="korean-text">{item.pattern}</h2>
-              <strong>{item.meaning}</strong>
-              <p>{item.explanation}</p>
-
-              <div className="grammar-concept-examples-v4">
-                {item.examples.map((example) => (
-                  <button
-                    key={example}
-                    onClick={() => speak(example)}
-                    type="button"
-                  >
-                    <Volume2 size={15} />
-                    <span className="korean-text">{example}</span>
-                  </button>
-                ))}
-              </div>
+              <GrammarExplanation item={item} onSpeak={speak} />
 
               {item.sourceRef ? (
                 <small className="source-ref">{item.sourceRef}</small>
               ) : null}
+              {relatedGrammar(item, course.id, courses).map(related => <details className="grammar-related" key={related.courseId + related.lessonId + related.grammar.id}>
+                <summary>Đọc thêm cùng mẫu · {related.courseTitle} · Bài {related.lessonId}</summary>
+                <p>Phần tham khảo từ giáo trình khác trong thư viện, giữ nguồn riêng; không thay thế nội dung của bài đang học.</p>
+                <GrammarExplanation item={related.grammar} onSpeak={speak} />
+                <small className="source-ref">{related.grammar.sourceRef}</small>
+              </details>)}
             </div>
           </article>
         ))}
@@ -125,10 +125,9 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
 
       <section className="grammar-practice-callout-v4">
         <div>
-          <span className="experience-kicker">CHECK YOURSELF</span>
           <h2>Đừng chỉ đọc hiểu — hãy tự chọn, điền và sắp xếp câu.</h2>
           <p>
-            Hoàn thành tối thiểu 75% câu hỏi ngữ pháp để Haneul đánh dấu chặng này là đã nắm.
+            Điểm số giúp chọn nội dung cần ôn lại. Bạn có thể chuyển bài bất cứ lúc nào; dùng mảnh câu thay cho bàn phím khi cần.
           </p>
         </div>
         <Link

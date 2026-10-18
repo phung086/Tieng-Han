@@ -19,6 +19,7 @@ import { ContentProvider, useContent } from "@/lib/content-store";
 import { I18nProvider, useMessages } from "@/i18n/messages";
 import { productConfig } from "@/config/product";
 import { AuthProvider, useAuth } from "@/lib/auth-client";
+import { FreeLessonNavigation } from "./free-lesson-navigation";
 
 const navigation = [
   { href: "/", key: "today", icon: Home },
@@ -125,7 +126,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         </Link>
       </aside>
 
-      <main className="app-main">{children}</main>
+      <main className="app-main"><FreeLessonNavigation />{children}</main>
 
       <nav className="bottom-nav" aria-label={messages.navigation.textbook}>
         {navigation.map(({ href, key, icon: Icon }) => {

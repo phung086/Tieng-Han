@@ -13,6 +13,7 @@ import {
   type TextbookDrill,
 } from "@/lib/textbook-drills";
 import styles from "./textbook-drills.module.css";
+import { TouchAnswer } from "./touch-answer";
 
 const modes: Array<{ id: DrillMode; title: string; description: string }> = [
   { id: "cloze", title: "Điền từ", description: "Điền từ vựng và mẫu ngữ pháp vào chỗ trống." },
@@ -163,6 +164,7 @@ function DrillSession({
   const [restored, setRestored] = useState(false);
   const [ready, setReady] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [touchInput, setTouchInput] = useState(false);
 
   useEffect(() => {
     const animationFrame = window.requestAnimationFrame(() => {
@@ -277,7 +279,10 @@ function DrillSession({
         ) : null}
         {audioError ? <p role="status">Thiết bị không hỗ trợ đọc tiếng Hàn tự động. Có thể bỏ qua câu này và học bằng Sổ luyện nguồn.</p> : null}
         <label className={styles.answerLabel} htmlFor="textbook-drill-answer">Câu trả lời của bạn</label>
-        <textarea
+        <button type="button" className="secondary-button" disabled={checked} onClick={() => { setTouchInput(value => !value); setResponse(""); }}>
+          {touchInput ? "Chuyển sang tự gõ" : "Không có bàn phím tiếng Hàn · chạm để xếp"}
+        </button>
+        {touchInput ? <TouchAnswer key={item.id} answer={item.answer} disabled={checked} onChange={setResponse} /> : <textarea
           id="textbook-drill-answer"
           className={styles.textarea}
           value={response}
@@ -292,7 +297,7 @@ function DrillSession({
               else next();
             }
           }}
-        />
+        />}
         {!checked ? (
           <>
             <button className={styles.hint} type="button" onClick={() => setShowHint(value => !value)}>

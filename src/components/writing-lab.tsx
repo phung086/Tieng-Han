@@ -88,6 +88,10 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
         </div>
 
         <div className="writing-area">
+          <div className="writing-word-bank" role="group" aria-label="Chèn từ tiếng Hàn không cần bàn phím">
+            <p>Chạm để chèn từ gợi ý khi chưa có bàn phím tiếng Hàn:</p>
+            {content.targetWords.map((word, index) => <button className="secondary-button" type="button" key={word + index} onClick={() => { setText(value => value + (value && !value.endsWith(" ") ? " " : "") + word); setSubmitted(false); }}>{word}</button>)}
+          </div>
           <textarea
             onChange={(event) => {
               setText(event.target.value);
@@ -161,7 +165,7 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
           </button>
         </div>
 
-        {submitted && score >= 75 ? (
+        <p>Checklist là gợi ý tự kiểm tra, không thay cho đánh giá ngữ pháp của giáo viên. Bạn có thể học tiếp bất cứ lúc nào.</p>
           <div className="writing-next-v4">
             <Link className="primary-button" href={nextStep.href}>
               Tiếp: {nextStep.label}
@@ -173,7 +177,6 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
               {messages.writing.back}
             </Link>
           </div>
-        ) : null}
       </section>
     </div>
   );

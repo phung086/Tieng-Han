@@ -13,7 +13,7 @@ describe("lesson flow", () => {
   it("returns to the lesson hub after grammar instead of forcing listening", () => {
     expect(getNextLessonFlowStep(3, "grammar")).toEqual({
       skill: "lesson",
-      label: "Xong phần cốt lõi",
+      label: "Về bài học",
       href: "/learn/3",
     });
   });

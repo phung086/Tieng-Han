@@ -26,7 +26,7 @@ const hrefBySkill: Record<SkillKey, (lessonId: number) => string> = {
 
 const labels: Record<SkillKey, string> = {
   vocabulary: "Ngữ pháp",
-  grammar: "Xong phần cốt lõi",
+  grammar: "Về bài học",
   listening: "Nói (tùy chọn)",
   speaking: "Đọc (tùy chọn)",
   reading: "Viết (tùy chọn)",

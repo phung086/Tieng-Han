@@ -11,6 +11,9 @@ Hướng dẫn PDF/DOCX, inventory nguồn và cổng xuất bản:
 Khôi phục và đối chiếu toàn bộ bài từ PDF gốc:
 [ALL_LESSON_RECOVERY.md](docs/ALL_LESSON_RECOVERY.md).
 
+Học mọi bài không cần mở khóa, ôn từ/ngữ pháp bằng game và thao tác chạm:
+[FLEXIBLE_LEARNING.md](docs/FLEXIBLE_LEARNING.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp

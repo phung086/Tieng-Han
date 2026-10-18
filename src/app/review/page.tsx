@@ -16,6 +16,7 @@ import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
+import { buildArcadeCards } from "@/lib/review-arcade";
 
 type ReviewCatalogItem = {
   id: string;
@@ -123,7 +124,12 @@ export default function ReviewPage() {
       "&mode=guided",
   }));
 
-  const catalog = uniqueCatalog([...textbookCatalog, ...questionCatalog]);
+  const gameCatalog: ReviewCatalogItem[] = buildArcadeCards(course.lessons).map(item => ({
+    id: item.knowledgeId, title: item.mode === "sentence" ? item.answer : item.prompt,
+    subtitle: item.skill === "grammar" ? messages.review.labels.grammar : messages.review.labels.vocabulary,
+    lessonId: item.lessonId, href: "/practice#review-games",
+  }));
+  const catalog = uniqueCatalog([...textbookCatalog, ...questionCatalog, ...gameCatalog]);
 
   const mastered: ReviewDisplay[] = catalog
     .map((item) => {
