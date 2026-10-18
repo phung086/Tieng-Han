@@ -246,9 +246,6 @@ function extractEmbeddedImages(
       dataUrl: rendered.dataUrl,
     });
 
-    if (items.length >= ingestionConfig.pdf.maxEmbeddedImagesPerPage) {
-      break;
-    }
   }
 
   return items;
@@ -320,13 +317,13 @@ export async function extractPdf(
     let embeddedImages: EmbeddedPdfImage[] = [];
     const extractionIssues: string[] = [];
 
-    if (hasVisual || pageNumber === 1) {
-      try {
-        previewImageDataUrl = await renderPagePreview(page);
-        embeddedImages = extractEmbeddedImages(page, operatorList, imageOps);
-      } catch {
-        extractionIssues.push("Không trích được hình hoặc preview; cần kiểm tra trang nguồn.");
-      }
+    // Raster operators do not describe vector drawings, tables or layout. Keep
+    // a rendered page for the electronic book even when no image XObject exists.
+    try {
+      previewImageDataUrl = await renderPagePreview(page);
+      embeddedImages = extractEmbeddedImages(page, operatorList, imageOps);
+    } catch {
+      extractionIssues.push("Không trích được hình hoặc preview; cần kiểm tra trang nguồn.");
     }
 
     pages.push({

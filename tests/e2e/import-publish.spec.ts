@@ -14,6 +14,7 @@ async function tool(request: APIRequestContext, name: string, args: Record<strin
 }
 
 test("real HTTP import, checkpoint, publish, reload and practice work without an AI provider key", async ({ request, page }) => {
+  const preview = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
   const sourceManifest = [{ name: "synthetic-source.pdf", size: 100, lastModified: 1, pageCount: 2, sha256: "a".repeat(64) }];
   const create = await request.post("/api/import-jobs", { data: { sourceManifest,
     documents: [{ documentId: "doc-0", fileName: "synthetic-source.pdf", pageCount: 2 }],
@@ -23,7 +24,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const { job } = await create.json();
   const uploaded = await request.put(`/api/import-jobs/${job.id}/pages`, { data: { pages: [1, 2].map(pageNumber => ({
     documentId: "doc-0", fileName: "synthetic-source.pdf", pageNumber,
-    text: "학생 — học sinh", hasVisual: false,
+    text: "학생 — học sinh", hasVisual: true, previewImageDataUrl: preview,
   })) } });
   expect(uploaded.ok()).toBe(true);
   const queued = await request.patch(`/api/import-jobs/${job.id}`, { data: { action: "queue" } });
@@ -54,6 +55,15 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");
   await expect(page.getByRole("heading", { name: "학생", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sách có hình", exact: true })).toHaveAttribute("aria-pressed", "true");
+  const book = page.getByRole("region", { name: "Sách điện tử có hình minh họa" });
+  await expect(book.getByRole("img", { name: /Trang sách gốc 1/ })).toBeVisible();
+  await expect.poll(() => book.getByRole("img", { name: /Trang sách gốc/ }).evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  await book.getByRole("button", { name: "Trang sau của bài" }).click();
+  await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
+  await page.reload();
+  await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
+  await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
   await expect(page.locator(".lesson-coach-stats-v3")).toContainText("7 câu luyện");
   await page.getByRole("link", { name: "Luyện toàn bộ nội dung bài", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Luyện đủ từng mục trong bài", exact: true })).toBeVisible();

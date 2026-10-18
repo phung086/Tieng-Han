@@ -11,13 +11,13 @@ type SourceResponse = {
   documentId: string; pageNumber: number; page: ImportJobPage | null; error?: string;
 };
 
-export function SourceReader({ initialPage = 1 }: { initialPage?: number }) {
+export function SourceReader({ initialPage = 1, initialDocument = "" }: { initialPage?: number; initialDocument?: string }) {
   const { course, hydrated } = useContent();
-  return hydrated ? <Reader key={course.id} courseId={course.id} initialPage={initialPage} /> : <p role="status">Đang mở giáo trình…</p>;
+  return hydrated ? <Reader key={[course.id, initialDocument, initialPage].join(":")} courseId={course.id} initialPage={initialPage} initialDocument={initialDocument} /> : <p role="status">Đang mở giáo trình…</p>;
 }
 
-function Reader({ courseId, initialPage }: { courseId: string; initialPage: number }) {
-  const [documentId, setDocumentId] = useState("");
+function Reader({ courseId, initialPage, initialDocument }: { courseId: string; initialPage: number; initialDocument: string }) {
+  const [documentId, setDocumentId] = useState(initialDocument);
   const [pageNumber, setPageNumber] = useState(initialPage);
   const [pageInput, setPageInput] = useState(String(initialPage));
   const [result, setResult] = useState<SourceResponse | null>(null);

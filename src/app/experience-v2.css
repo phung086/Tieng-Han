@@ -5631,3 +5631,18 @@ img {
 .grammar-related { margin-top: 24px; padding-block: 16px; border-top: 1px solid #d9d2eb; }
 .grammar-related summary { color: #50358c; cursor: pointer; line-height: 1.8; font-weight: 600; }
 .grammar-related > p { color: #645b76; font-size: .85rem; line-height: 1.8; max-width: 74ch; }
+.lesson-resource-links { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 14px; }
+.lesson-book-mode .lesson-workspace-header { background: #fff; color: #302b38; border: 1px solid #ded9cf; box-shadow: none; border-radius: 12px; padding: 20px 24px; }
+.lesson-book-mode .lesson-workspace-header h1 { font-size: 2rem; color: #302b38; }
+.lesson-book-mode .lesson-workspace-header p, .lesson-book-mode .lesson-source-line { color: #655c6c; }
+.lesson-book-mode .lesson-workspace-header .kicker { color: #655c6c; }
+.lesson-book-mode .source-evidence-panel { margin-block: 10px; }
+.lesson-book-mode .lesson-header-actions { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lesson-book-mode .lesson-workspace-header p { font-size: .85rem; line-height: 1.7; }
+@media(max-width: 820px) {
+  .app-main:has(.lesson-workspace) { padding-top: 0; }
+  .lesson-book-mode .lesson-workspace-header { gap: 12px; padding: 16px 18px; }
+  .lesson-book-mode .lesson-progress-pill { display: none; }
+  .lesson-book-mode .lesson-header-actions { width: 100%; }
+  .lesson-book-mode .lesson-header-actions .primary-button { width: auto; }
+}

@@ -15,6 +15,7 @@ import { defaultLanguageProfile } from "@/lib/language-profile";
 import { auditCurriculumCoverage } from "@/lib/curriculum-coverage";
 import type { RuntimeCourse } from "@/lib/content-store";
 import type { ImportJob } from "@/lib/import-jobs";
+import { linkSourcePageMedia } from "@/lib/lesson-book";
 import {
   requireImportJob,
   consumeImportJob,
@@ -119,12 +120,13 @@ async function buildRuntimeCourseForJob(job: ImportJob) {
   const bundle = parseCourseBundle(JSON.stringify(job.resultBundle));
   const coverImageDataUrl = await readCoverImage(job.id);
 
-  return buildRuntimeCourseFromBundle(
+  const course = buildRuntimeCourseFromBundle(
     job.id,
     bundle,
     coverImageDataUrl,
     job.updatedAt || job.createdAt,
   );
+  return { ...course, lessons: course.lessons.map(lesson => linkSourcePageMedia(lesson, course.id, job.documents)) };
 }
 
 async function persistLibraryCourse(course: RuntimeCourse) {

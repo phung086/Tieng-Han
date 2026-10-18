@@ -115,7 +115,7 @@ export function LessonMediaGallery({
                     type="button"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.src} alt={item.alt} />
+                    <img src={item.src} alt={item.alt} loading="lazy" decoding="async" />
                     <span><Maximize2 size={16} /> {messages.media.zoom}</span>
                   </button>
 

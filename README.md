@@ -14,6 +14,9 @@ Khôi phục và đối chiếu toàn bộ bài từ PDF gốc:
 Học mọi bài không cần mở khóa, ôn từ/ngữ pháp bằng game và thao tác chạm:
 [FLEXIBLE_LEARNING.md](docs/FLEXIBLE_LEARNING.md).
 
+Đọc giáo trình như sách điện tử, có hình gốc, phóng to và học cùng trang:
+[ILLUSTRATED_TEXTBOOK.md](docs/ILLUSTRATED_TEXTBOOK.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp
