@@ -87,3 +87,6 @@
 .lesson-workspace[data-view=study] .lesson-header-actions .primary-button { display: none; }
 @media(min-width:821px) { .lesson-workspace .lesson-workspace-header { padding-top: 16px; padding-bottom: 8px; } }
 @media(max-width:820px) { .lesson-workspace .lesson-workspace-header { padding-top: 4px; } .lesson-workspace .lesson-workspace-header p { margin-block: 4px; } }
+/* Grid entries share one reading direction; topic groups need no extra frame. */
+.zone-path-v2 .journey-stop-v2 .journey-card-v2 { text-align: center; }
+.journey-page-v2 .journey-zone-v2 { background: transparent; box-shadow: none; border: 0; padding-inline: 0; }
