@@ -26,6 +26,8 @@ import {
   getCoreLessonProgress,
   getRequiredCoreSkills,
 } from "@/lib/lesson-completion";
+import { reviewSummary } from "@/lib/review-plan";
+import { lessonSkillCount } from "@/lib/learning-model";
 
 const skillTone: Record<SkillKey, string> = {
   vocabulary: "purple",
@@ -75,12 +77,12 @@ export default function DashboardPage() {
       0,
     ) / Math.max(1, course.lessons.length),
   );
-  const dueCount = Object.values(state.mastery).filter(
-    (item) => item.dueAt <= today,
-  ).length;
+  const dueCount = reviewSummary(course, state, today).due.length;
   const completedCoreSkills = ["vocabulary", "grammar"].filter((skill) =>
     state.completedActivities.includes("lesson:" + current.id + ":" + skill),
   ).length;
+
+  const completedCurrentSkills = lessonSkillCount(state, current.id);
   const goalProgress = Math.min(
     100,
     Math.round((state.todayXp / Math.max(1, state.dailyGoal)) * 100),
@@ -164,7 +166,7 @@ export default function DashboardPage() {
               <p>
                 {dueCount
                   ? dueCount + " mục đang đến hạn hôm nay."
-                  : "Hàng đợi sạch. Bạn đang giữ trí nhớ rất ổn."}
+                  : Object.keys(state.mastery).length ? "Hôm nay chưa có mục đến hạn." : "Học bài đầu tiên để bắt đầu lịch ôn."}
               </p>
             </div>
             <Link href="/review" aria-label="Mở ôn tập">

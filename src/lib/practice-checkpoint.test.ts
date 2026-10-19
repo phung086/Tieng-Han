@@ -27,6 +27,13 @@ const state: PracticeCheckpoint = {
 };
 
 describe("long textbook practice checkpoint", () => {
+  it("restores an already graded first turn without requiring another submission", () => {
+    const graded:PracticeCheckpoint={index:0,correctCount:1,mistakeIds:[],skillStats:{vocabulary:{correct:1,total:1}},checked:true,answer:"nghĩa 0",tokens:[]};
+    expect(parsePracticeCheckpoint(serializePracticeCheckpoint(questions,graded),questions)).toEqual(graded);
+    expect(parsePracticeCheckpoint(serializePracticeCheckpoint(questions,{...graded,correctCount:2}),questions)).toBeNull();
+    const malformed=JSON.parse(serializePracticeCheckpoint(questions,graded));malformed.tokens=[null];
+    expect(parsePracticeCheckpoint(JSON.stringify(malformed),questions)).toBeNull();
+  });
   it("round trips item-level progress beyond the 8-question limit", () => {
     const raw = serializePracticeCheckpoint(questions, state);
     expect(parsePracticeCheckpoint(raw, questions)).toEqual(state);

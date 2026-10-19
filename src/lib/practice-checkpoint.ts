@@ -6,6 +6,9 @@ export type PracticeCheckpoint = {
   correctCount: number;
   mistakeIds: string[];
   skillStats: Partial<Record<SkillKey, { correct: number; total: number }>>;
+  checked?: boolean;
+  answer?: string;
+  tokens?: string[];
 };
 
 type PersistedPracticeCheckpoint = PracticeCheckpoint & {
@@ -51,6 +54,7 @@ export function serializePracticeCheckpoint(
     correctCount: data.correctCount,
     mistakeIds: data.mistakeIds,
     skillStats: data.skillStats,
+    ...(data.checked === undefined ? {} : {checked:data.checked,answer:data.answer,tokens:data.tokens}),
     savedAt: Date.now(),
   };
   return JSON.stringify(saved);
@@ -71,8 +75,9 @@ export function parsePracticeCheckpoint(
   if (data.questionIds.length !== questions.length) return null;
   if (data.contentSignature !== questionContentSignature(questions)) return null;
   if (!questions.every((question, index) => question.id === data.questionIds?.[index])) return null;
-  if (!Number.isSafeInteger(data.index) || (data.index ?? -1) < 1 || (data.index ?? Infinity) >= questions.length) return null;
-  if (!Number.isSafeInteger(data.correctCount) || (data.correctCount ?? -1) < 0 || (data.correctCount ?? Infinity) > (data.index ?? 0)) return null;
+  if (data.checked!==undefined && (typeof data.checked!=="boolean" || typeof data.answer!=="string" || !Array.isArray(data.tokens) || data.tokens.some(token=>typeof token!=="string"))) return null;
+  if (!Number.isSafeInteger(data.index) || (data.index ?? -1) < (data.checked?0:1) || (data.index ?? Infinity) >= questions.length) return null;
+  if (!Number.isSafeInteger(data.correctCount) || (data.correctCount ?? -1) < 0 || (data.correctCount ?? Infinity) > (data.index ?? 0)+(data.checked?1:0)) return null;
   if (!Number.isFinite(data.savedAt) || (data.savedAt ?? 0) > Date.now() + 3600000) return null;
   // Stale sessions do not overwrite fresh current course progress indefinitely.
   if ((data.savedAt ?? 0) < Date.now() - 180 * 24 * 60 * 60 * 1000) return null;
@@ -91,5 +96,6 @@ export function parsePracticeCheckpoint(
     correctCount: data.correctCount as number,
     mistakeIds: data.mistakeIds,
     skillStats: stats,
+    ...(data.checked === undefined ? {} : {checked:data.checked,answer:data.answer,tokens:data.tokens}),
   };
 }

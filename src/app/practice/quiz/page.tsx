@@ -8,6 +8,7 @@ const validModes = new Set<StudySessionMode>([
   "guided",
   "quick",
   "mastery",
+  "review",
 ]);
 
 const validSkills = new Set<SkillKey>([
@@ -26,9 +27,10 @@ export default async function PracticeQuizPage({
     lesson?: string;
     mode?: string;
     skill?: string;
+    item?: string;
   }>;
 }) {
-  const { lesson, mode, skill } = await searchParams;
+  const { lesson, mode, skill, item } = await searchParams;
   const parsedMode = validModes.has(mode as StudySessionMode)
     ? (mode as StudySessionMode)
     : "guided";
@@ -42,6 +44,7 @@ export default async function PracticeQuizPage({
         lessonId={lesson ? Number(lesson) : undefined}
         mode={parsedMode}
         skill={parsedSkill}
+        reviewItemId={item?.slice(0, 250)}
       />
     </div>
   );

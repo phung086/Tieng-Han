@@ -49,6 +49,7 @@ import {
   requeueMcpImportJob,
 } from "@/lib/mcp-import-client";
 import type { ImportJobStatus } from "@/lib/import-jobs";
+import { ImportMonitor } from "@/components/import-monitor";
 import {
   defaultLanguageProfile,
   getLanguageProfile,
@@ -306,11 +307,12 @@ export function IngestionStudio() {
     nextRefreshBefore: string | null;
   } | null>(null);
   const mcpRunRef = useRef(0);
+  useEffect(() => () => { mcpRunRef.current += 1; }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    void fetch("/api/ingest/status")
+    void fetch("/api/ingest/status", { signal: AbortSignal.timeout(15_000) })
       .then((response) => response.json())
       .then((result) => {
         if (!cancelled) setAiStatus(result);
@@ -319,7 +321,7 @@ export function IngestionStudio() {
         if (!cancelled) setAiStatus({ configured: false, contentModel: "", ocrModel: "" });
       });
 
-    void fetch("/api/mcp-bridge/status")
+    void fetch("/api/mcp-bridge/status", { signal: AbortSignal.timeout(15_000) })
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setBridgeSetup(data);
@@ -334,7 +336,7 @@ export function IngestionStudio() {
         }
       });
 
-    void fetch("/api/import-jobs")
+    void fetch("/api/import-jobs", { signal: AbortSignal.timeout(15_000) })
       .then((res) => res.json())
       .then((data: { jobs?: Array<{ id: string; status: ImportJobStatus }> }) => {
         if (cancelled) return;
@@ -1201,7 +1203,7 @@ export function IngestionStudio() {
             }
           >
             {bridgeSetup?.configured
-              ? copy.bridgeReady
+              ? "Đã đăng ký sự kiện MCP"
               : bridgeSetup
                 ? copy.bridgeNeedsSetup
                 : copy.bridgeChecking}
@@ -1290,9 +1292,9 @@ export function IngestionStudio() {
 
           {files.length || mcpStatus !== "idle" ? (
             <div className="ingest-progress-wrap">
-              <div className="ingest-progress">
+              {mcpStatus !== "queued" && mcpStatus !== "processing" && mcpStatus !== "failed" ? <div className="ingest-progress">
                 <span style={{ width: progress + "%" }} />
-              </div>
+              </div> : null}
               <div className="ingest-progress-label">
                 <span>
                   {message ||
@@ -1300,7 +1302,7 @@ export function IngestionStudio() {
                       ? copy.mcpSyncing + " " + mcpSyncProgress + "%"
                       : copy.autoPreparing)}
                 </span>
-                <strong>{progress}%</strong>
+                <strong>{mcpStatus === "queued" || mcpStatus === "processing" ? "Chưa xác định % biên dịch" : mcpStatus === "failed" ? "Cần xử lý lỗi" : mcpStatus === "ready" ? "Sẵn sàng nhập" : progress + "%"}</strong>
               </div>
             </div>
           ) : null}
@@ -1308,7 +1310,7 @@ export function IngestionStudio() {
           <div className="auto-import-steps">
             <div
               className={
-                files.length ? "auto-import-step done" : "auto-import-step"
+                files.length || mcpStatus !== "idle" ? "auto-import-step done" : "auto-import-step"
               }
             >
               <span>1</span>
@@ -1332,11 +1334,10 @@ export function IngestionStudio() {
             </div>
             <div
               className={
-                mcpStatus === "processing" ||
                 mcpStatus === "ready" ||
                 mcpStatus === "consumed"
                   ? "auto-import-step done"
-                  : mcpStatus === "queued"
+                  : mcpStatus === "queued" || mcpStatus === "processing"
                     ? "auto-import-step active"
                     : "auto-import-step"
               }
@@ -1369,6 +1370,8 @@ export function IngestionStudio() {
               </div>
             </div>
           </div>
+
+          <ImportMonitor jobId={mcpJobId} onConnectionUpdate={setBridgeSetup} />
 
           {bridgeSetup && !bridgeSetup.configured ? (
             <div className="ingest-warning">

@@ -7,6 +7,8 @@ import type { LessonContent } from "@/data/content";
 import { pageStudyContent, sourcePages, sourceImageUrl, type BookPage, type LessonBookManifest } from "@/lib/lesson-book";
 import { useContent } from "@/lib/content-store";
 import styles from "./lesson-book.module.css";
+import {useLearning} from "@/lib/learning-state";
+import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 
 export function LessonBook({ courseId, lesson, initialPage, initialFile }: { courseId: string; lesson: LessonContent; initialPage?: number; initialFile?: string }) {
   const [manifest, setManifest] = useState<LessonBookManifest | null>(null);
@@ -28,6 +30,7 @@ export function LessonBook({ courseId, lesson, initialPage, initialFile }: { cou
 
 function BookReader({ courseId, lesson, manifest, initialPage, initialFile }: { courseId: string; lesson: LessonContent; manifest: LessonBookManifest; initialPage?: number; initialFile?: string }) {
   const { course } = useContent();
+  const {state,progressScope,savePracticeSession}=useLearning();
   const documentPages = useMemo(() => manifest.documents.flatMap(document => Array.from({ length: document.pageCount }, (_, i): BookPage => ({ documentId: document.documentId, fileName: document.fileName, pageNumber: i + 1, role: "document" }))), [manifest.documents]);
   const storageKey = "haneul-book-position-v1:" + courseId + ":" + lesson.id;
   const [initial] = useState(() => {
@@ -40,7 +43,7 @@ function BookReader({ courseId, lesson, manifest, initialPage, initialFile }: { 
       if (original >= 0) return { whole: true, index: original };
     }
     try {
-      const saved = JSON.parse(window.localStorage.getItem(storageKey) || "null") as Partial<BookPage> | null;
+      const saved = JSON.parse(readPracticeSession(state,window.localStorage,progressScope,storageKey) || "null") as Partial<BookPage> | null;
       const whole = saved?.role === "document";
       const found = (whole ? documentPages : manifest.pages).findIndex(page => page.documentId === saved?.documentId && page.pageNumber === saved?.pageNumber);
       return { whole, index: Math.max(0, found) };
@@ -59,7 +62,8 @@ function BookReader({ courseId, lesson, manifest, initialPage, initialFile }: { 
   function navigate(next: number) {
     if (next < 0 || next >= pages.length) return;
     setIndex(next); setZoom(1);
-    try { window.localStorage.setItem(storageKey, JSON.stringify(pages[next])); } catch { /* reading remains usable */ }
+    savePracticeSession(storageKey,JSON.stringify(pages[next]));
+    try { writePracticeSession(window.localStorage,progressScope,storageKey,JSON.stringify(pages[next])); } catch { /* reading remains usable */ }
   }
   function speak(text: string) {
     if (!("speechSynthesis" in window)) return;
@@ -77,7 +81,8 @@ function BookReader({ courseId, lesson, manifest, initialPage, initialFile }: { 
         const found = nextPages.findIndex(page => page.documentId === current.documentId && page.pageNumber === current.pageNumber);
         const next = Math.max(0, found);
         setWholeBook(whole); setIndex(next); setZoom(1);
-        try { window.localStorage.setItem(storageKey, JSON.stringify(nextPages[next])); } catch { /* optional */ }
+        savePracticeSession(storageKey,JSON.stringify(nextPages[next]));
+        try { writePracticeSession(window.localStorage,progressScope,storageKey,JSON.stringify(nextPages[next])); } catch { /* optional */ }
       }}><option value="lesson" disabled={!manifest.pages.length}>Bài đang học + trang liên quan</option><option value="document">Toàn bộ tài liệu · gồm nhập môn/phụ lục</option></select></label>
       <div className={styles.paging}><button type="button" aria-label="Trang trước của bài" disabled={index === 0} onClick={() => navigate(index - 1)}><ArrowLeft aria-hidden="true" size={18} /></button>
         <label>{wholeBook ? "Trang trong tài liệu" : "Trang trong bài"}<select aria-label="Chọn trang sách trong bài" value={index} onChange={event => navigate(Number(event.target.value))}>

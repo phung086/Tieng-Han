@@ -8,7 +8,7 @@ export default async function PronunciationPage({
   const { lesson } = await searchParams;
   return (
     <div className="page">
-      <PronunciationLab lessonId={Number(lesson ?? 1)} />
+      <PronunciationLab key={lesson ?? "1"} lessonId={Number(lesson ?? 1)} />
     </div>
   );
 }

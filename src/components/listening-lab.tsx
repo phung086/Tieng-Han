@@ -1,4 +1,6 @@
 "use client";
+import {useAutoAdvance} from "@/lib/use-auto-advance";
+import {SessionFlowControl} from "./session-flow-control";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -9,7 +11,6 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
-const AUTO_ADVANCE_DELAY_MS = 850;
 
 export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -24,6 +25,8 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
   const autoAdvanceTimerRef = useRef<number | null>(null);
+  const submissionLock=useRef(false);
+  const transitionLock=useRef<string|number|null>(null);
 
   useEffect(() => {
     return () => {
@@ -32,6 +35,8 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
       }
     };
   }, []);
+
+  const flow=useAutoAdvance(index,checked&&!finished&&!playing&&selected===items[index]?.answer,advance);
 
   if (!lesson || !items.length) {
     return (
@@ -57,6 +62,8 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function advance(effectiveCorrectCount = correctCount) {
+    if(transitionLock.current===item.id)return;
+    transitionLock.current=item.id;submissionLock.current=false;
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
@@ -90,14 +97,10 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
     setChecked(true);
     recordAnswer("listening", correct, item.id);
 
-    if (correct) {
-      autoAdvanceTimerRef.current = window.setTimeout(() => {
-        advance(nextCorrectCount);
-      }, AUTO_ADVANCE_DELAY_MS);
-    }
   }
 
   function restart() {
+    submissionLock.current=false;transitionLock.current=null;
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
@@ -147,6 +150,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
         <p>{messages.listening.introCurrent}</p>
       </header>
 
+      <SessionFlowControl flow={flow} stepKey={index} />
       <section className="audio-stage">
         <div className="audio-icon"><Headphones size={33} /></div>
         <div className="sound-wave">

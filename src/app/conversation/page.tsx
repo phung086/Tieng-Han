@@ -8,7 +8,7 @@ export default async function ConversationPage({
   const { lesson } = await searchParams;
   return (
     <div className="page">
-      <ConversationLab lessonId={Number(lesson ?? 1)} />
+      <ConversationLab key={lesson ?? "1"} lessonId={Number(lesson ?? 1)} />
     </div>
   );
 }

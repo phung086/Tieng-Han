@@ -8,11 +8,13 @@ import {
   Flame,
   Home,
   PencilLine,
+  NotebookPen,
   RotateCcw,
   Shield,
   Sparkles,
   Target,
   UserRound,
+  UploadCloud,
 } from "lucide-react";
 import { LearningProvider, useLearning } from "@/lib/learning-state";
 import { ContentProvider, useContent } from "@/lib/content-store";
@@ -20,6 +22,8 @@ import { I18nProvider, useMessages } from "@/i18n/messages";
 import { productConfig } from "@/config/product";
 import { AuthProvider, useAuth } from "@/lib/auth-client";
 import { FreeLessonNavigation } from "./free-lesson-navigation";
+import { LearningLoading } from "@/components/learning-loading";
+import { LearningSyncStatus } from "@/components/learning-sync-status";
 
 const navigation = [
   { href: "/", key: "today", icon: Home },
@@ -31,8 +35,8 @@ const navigation = [
 
 function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { state } = useLearning();
-  const { course } = useContent();
+  const { state, hydrated: progressHydrated } = useLearning();
+  const { course, hydrated: contentHydrated } = useContent();
   const { configured, user } = useAuth();
   const messages = useMessages();
 
@@ -45,6 +49,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Đến nội dung học</a>
       <aside className="sidebar">
         <Link className="brand" href="/" aria-label={productConfig.name}>
           <span className="brand-mark">{productConfig.mark}</span>
@@ -62,6 +67,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 className={active ? "nav-item active" : "nav-item"}
+                aria-current={active ? "page" : undefined}
                 href={href}
                 key={href}
               >
@@ -78,6 +84,9 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         >
           <PencilLine size={20} strokeWidth={2.1} />
           <span>Luyện theo dạng bài</span>
+        </Link>
+        <Link className={pathname.startsWith("/worksheets") ? "nav-item active" : "nav-item"} aria-current={pathname.startsWith("/worksheets") ? "page" : undefined} href="/worksheets">
+          <NotebookPen size={20} strokeWidth={2.1} /><span>Vở bài tập</span>
         </Link>
 
         {user?.role === "admin" ? (
@@ -126,7 +135,11 @@ function ShellContent({ children }: { children: React.ReactNode }) {
         </Link>
       </aside>
 
-      <main className="app-main"><FreeLessonNavigation />{children}</main>
+      <main className="app-main" id="main-content">
+        <div className="flow-location"><span>{pathname.startsWith("/worksheets") ? "Bài tập riêng · không ảnh hưởng tiến độ học" : pathname.startsWith("/import") ? "Giáo trình · nhập và theo dõi biên dịch" : "Học và ôn tập theo giáo trình đang chọn"}</span><nav aria-label="Không gian làm việc Haneul"><Link href="/learn" aria-current={pathname.startsWith("/learn") ? "page" : undefined}><BookOpenText size={15} />Học tập</Link><Link href="/worksheets" aria-current={pathname.startsWith("/worksheets") ? "page" : undefined}><NotebookPen size={15} />Bài tập</Link>{user?.role === "admin" && <Link href="/import" aria-current={pathname.startsWith("/import") ? "page" : undefined}><UploadCloud size={15} />Biên dịch</Link>}</nav></div>
+        {!pathname.startsWith("/worksheets") && contentHydrated && course.lessons.length > 0 ? <LearningSyncStatus /> : null}
+        {!pathname.startsWith("/worksheets") && (!contentHydrated || (course.lessons.length > 0 && !progressHydrated)) ? <LearningLoading /> : <div key={(pathname.startsWith("/worksheets") ? "worksheets" : course.id) + ":" + (user?.id ?? "guest")}><FreeLessonNavigation />{children}</div>}
+      </main>
 
       <nav className="bottom-nav" aria-label={messages.navigation.textbook}>
         {navigation.map(({ href, key, icon: Icon }) => {
@@ -136,6 +149,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
           return (
             <Link
               className={active ? "bottom-item active" : "bottom-item"}
+              aria-current={active ? "page" : undefined}
               href={href}
               key={href}
             >
@@ -151,6 +165,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
           <span className="brand-mark">{productConfig.mark}</span>
           <strong>{productConfig.name}</strong>
         </Link>
+        <Link className="mobile-library" href="/worksheets" aria-label="Mở Vở bài tập"><NotebookPen size={20} /></Link>
         <Link
           className="mobile-library"
           href="/practice/drills"

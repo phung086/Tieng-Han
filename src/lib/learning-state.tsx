@@ -1,413 +1,247 @@
 "use client";
+import { clientFetch } from "@/lib/client-request";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { nextReviewIntervalDays } from "@/lib/review-schedule";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useContent } from "@/lib/content-store";
 import { useAuth } from "@/lib/auth-client";
 import {
-  getCoreLessonProgress,
-  getRequiredCoreSkills,
-} from "@/lib/lesson-completion";
+  activateLearningDay, completeLearningActivity, completeLearningMastery, completeLearningSkill,
+  createLearningState, localDateKey, recordLearningAnswer, refreshLearningDay, shiftedDateKey,
+  type LearningState, type SkillKey, type SkillStat,
+} from "@/lib/learning-model";
+import { parseProgressState, progressStorageKey, ProgressSaveQueue, readProgressCache } from "@/lib/progress-persistence";
 
-export type SkillKey = "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
-type SkillStat = { correct: number; total: number };
-type DailyStat = { attempts: number; correct: number; xp: number };
-type MasteryItem = { strength: number; lastReviewed: string; dueAt: string };
-
-type LearningState = {
-  version: 2;
-  xp: number;
-  streak: number;
-  dailyGoal: number;
-  todayXp: number;
-  lastActiveDate: string | null;
-  lessonProgress: Record<string, number>;
-  skills: Record<SkillKey, SkillStat>;
-  completedActivities: string[];
-  dailyStats: Record<string, DailyStat>;
-  mastery: Record<string, MasteryItem>;
+export type { SkillKey, LearningState } from "@/lib/learning-model";
+export type SyncStatus = "loading" | "local" | "saved" | "pending" | "offline" | "conflict";
+type SyncSession = {
+  scope: string; courseId: string; userId?: string; run: number;
+  revision: string | null; saved: string; latest: LearningState; allowed: boolean;
 };
-
 type LearningContextValue = {
-  state: LearningState;
-  hydrated: boolean;
+  state: LearningState; hydrated: boolean; syncStatus: SyncStatus; canImportGuest: boolean;
+  progressScope: string;
+  savePracticeSession: (key: string, value: string | null) => void;
+  retrySync: () => void; importGuestProgress: () => void;
+  resolveConflict: (useLocal: boolean) => Promise<void>;
   recordAnswer: (skill: SkillKey, correct: boolean, activityId?: string) => void;
   addXp: (amount: number) => void;
   setLessonProgress: (lessonId: number, progress: number) => void;
   completeActivity: (activityId: string, xp?: number) => void;
   completeLessonSkill: (lessonId: number, skill: SkillKey) => void;
-  resetProgress: () => void;
-  resetForCourse: (courseId?: string) => void;
+  completeLessonMastery: (lessonId: number) => void;
+  resetProgress: () => void; resetForCourse: (courseId?: string) => void;
 };
 
-const LEGACY_STORAGE_KEY = "haneul-learning-state-v2";
-const STORAGE_KEY_PREFIX = "haneul-learning-state-v2:";
-const DAY_MS = 86_400_000;
-
-function dateKey(date = new Date()) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
-}
-
-function addDaysKey(days: number) {
-  return dateKey(new Date(Date.now() + days * DAY_MS));
-}
-
-function yesterdayKey() {
-  return dateKey(new Date(Date.now() - DAY_MS));
-}
-
-const defaultState: LearningState = {
-  version: 2,
-  xp: 0,
-  streak: 0,
-  dailyGoal: 50,
-  todayXp: 0,
-  lastActiveDate: null,
-  lessonProgress: {},
-  skills: {
-    vocabulary: { correct: 0, total: 0 },
-    grammar: { correct: 0, total: 0 },
-    listening: { correct: 0, total: 0 },
-    speaking: { correct: 0, total: 0 },
-    reading: { correct: 0, total: 0 },
-    writing: { correct: 0, total: 0 },
-  },
-  completedActivities: [],
-  dailyStats: {},
-  mastery: {},
-};
-
+const defaultState = createLearningState();
 const LearningContext = createContext<LearningContextValue | null>(null);
 
-function normalizeLoadedState(raw: Partial<LearningState>): LearningState {
-  return {
-    ...defaultState,
-    ...raw,
-    version: 2,
-    skills: { ...defaultState.skills, ...(raw.skills ?? {}) },
-    lessonProgress: { ...defaultState.lessonProgress, ...(raw.lessonProgress ?? {}) },
-    dailyStats: raw.dailyStats ?? {},
-    mastery: raw.mastery ?? {},
-    completedActivities: raw.completedActivities ?? [],
-  };
+function readBrowserProgress(courseId: string, userId?: string) {
+  try { return readProgressCache(window.localStorage, courseId, userId); }
+  catch { return null; }
 }
 
-function withActiveDay(current: LearningState) {
-  const today = dateKey();
-  if (current.lastActiveDate === today) {
-    return { state: current, today };
-  }
-
-  const streak = current.lastActiveDate === yesterdayKey() ? Math.max(1, current.streak + 1) : 1;
-
-  return {
-    today,
-    state: {
-      ...current,
-      streak,
-      todayXp: 0,
-      lastActiveDate: today,
-    },
-  };
+function cacheSession(session: SyncSession) {
+  try {
+    window.localStorage.setItem(session.scope, JSON.stringify({
+      state: session.latest, pending: Boolean(session.userId && JSON.stringify(session.latest) !== session.saved), revision: session.revision,
+    }));
+  } catch { /* Account sync remains available without browser storage. */ }
 }
 
 export function LearningProvider({ children }: { children: React.ReactNode }) {
-  const { activeCourseId, hydrated: contentHydrated, course } = useContent();
-  const { user } = useAuth();
-  const [state, setState] = useState(defaultState);
-  const [hydrated, setHydrated] = useState(false);
-  const loadedCourseIdRef = useRef<string | null>(null);
-  const loadRunRef = useRef(0);
-  const serverSaveTimerRef = useRef<number | null>(null);
+  const { activeCourseId, hydrated: contentHydrated } = useContent();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
+  const scope = progressStorageKey(activeCourseId, userId);
+  const [snapshot, setSnapshot] = useState({ scope: "", generation: 0, state: defaultState });
+  const [sync, setSync] = useState<{ scope: string; status: SyncStatus }>({ scope: "", status: "loading" });
+  const [canImportGuest, setCanImportGuest] = useState(false);
+  const [reload, setReload] = useState(0);
+  const runRef = useRef(0);
+  const sessionRef = useRef<SyncSession | null>(null);
+  const saveQueue = useRef(new ProgressSaveQueue());
+  const hydrated = !authLoading && contentHydrated && snapshot.scope === scope && snapshot.generation === reload;
+  const state = hydrated ? snapshot.state : defaultState;
+  const syncStatus = hydrated && sync.scope === scope ? sync.status : "loading";
+
+  const saveSession = useCallback(async (session: SyncSession) => {
+    if (!session.allowed || !session.userId) return;
+    const serialized = JSON.stringify(session.latest);
+    if (serialized === session.saved) return;
+    const requestState = session.latest;
+    await saveQueue.current.enqueue(async () => {
+      if (!session.allowed || serialized === session.saved) return;
+      try {
+        const response = await clientFetch("/api/me/learning-state", {
+          method: "PUT", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ courseId: session.courseId, state: requestState, expectedUserId: session.userId, expectedUpdatedAt: session.revision }),
+          keepalive: serialized.length < 45_000,
+        });
+        if (!response.ok) {
+          session.allowed = false;
+          if (runRef.current === session.run) setSync({ scope: session.scope, status: response.status === 409 ? "conflict" : "offline" });
+          return;
+        }
+        const data = await response.json() as { revision: string };
+        session.revision = data.revision;
+        session.saved = serialized;
+        if (sessionRef.current === session || sessionRef.current?.scope !== session.scope) cacheSession(session);
+        if (runRef.current === session.run) setSync({ scope: session.scope, status: JSON.stringify(session.latest) === session.saved ? "saved" : "pending" });
+      } catch {
+        session.allowed = false;
+        if (runRef.current === session.run) setSync({ scope: session.scope, status: "offline" });
+      }
+    });
+  }, []);
 
   useEffect(() => {
-    if (!contentHydrated || activeCourseId === "empty") return;
-
-    const runId = loadRunRef.current + 1;
-    loadRunRef.current = runId;
-    loadedCourseIdRef.current = null;
-
-    const storageKey = STORAGE_KEY_PREFIX + activeCourseId;
-    let localState: LearningState | null = null;
-
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        localState = normalizeLoadedState(JSON.parse(saved));
-      } else {
-        const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (legacy) {
-          localState = normalizeLoadedState(JSON.parse(legacy));
-          window.localStorage.setItem(storageKey, legacy);
-          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-        }
-      }
-    } catch {
-      // Browser persistence is optional.
-    }
+    if (!contentHydrated || authLoading || activeCourseId === "empty") return;
+    const run = ++runRef.current;
+    const controller = new AbortController();
+    const cached = readBrowserProgress(activeCourseId, userId);
+    const guest = userId ? readBrowserProgress(activeCourseId) : null;
+    const session: SyncSession = { scope, courseId: activeCourseId, userId, run, revision: cached?.revision ?? null, saved: cached?.pending ? "" : JSON.stringify(cached?.state ?? defaultState), latest: cached?.state ?? createLearningState(), allowed: false };
+    sessionRef.current = session;
 
     async function hydrate() {
-      let nextState = localState ?? defaultState;
-
-      if (user) {
+      let status: SyncStatus = userId ? "offline" : "local";
+      let hasServerState = false;
+      if (userId) {
         try {
-          const response = await fetch(
-            "/api/me/learning-state?courseId=" +
-              encodeURIComponent(activeCourseId),
-            { cache: "no-store" },
-          );
-
-          if (response.ok) {
-            const data = (await response.json()) as {
-              state?: Partial<LearningState> | null;
-            };
-            if (data.state) {
-              nextState = normalizeLoadedState(data.state);
-            }
-          }
+          const response = await clientFetch("/api/me/learning-state?courseId=" + encodeURIComponent(activeCourseId), { cache: "no-store", signal: controller.signal });
+          if (!response.ok) throw new Error("Unable to load progress");
+          const data = await response.json() as { state: unknown; revision: string | null };
+          const serverState = data.state === null ? createLearningState() : parseProgressState(data.state);
+          if (!serverState) throw new Error("Invalid stored progress");
+          hasServerState = data.state !== null;
+          session.saved = JSON.stringify(serverState);
+          session.revision = data.revision;
+          session.latest = cached?.pending ? cached.state : serverState;
+          const conflict = cached?.pending && cached.revision !== data.revision;
+          session.allowed = !conflict;
+          status = conflict ? "conflict" : cached?.pending ? "pending" : "saved";
         } catch {
-          // Fall back to the course-scoped browser state.
+          if (controller.signal.aborted) return;
+          // Never upload an empty fallback when the server could not be read.
+          session.allowed = false;
         }
       }
-
-      if (loadRunRef.current !== runId) return;
-
-      loadedCourseIdRef.current = activeCourseId;
-      setState(nextState);
-      setHydrated(true);
+      if (runRef.current !== run) return;
+      setCanImportGuest(Boolean(userId && !hasServerState && !cached?.state.xp && guest?.state.xp && status !== "offline"));
+      setSnapshot({ scope, generation: reload, state: session.latest });
+      setSync({ scope, status });
     }
-
     void hydrate();
-
     return () => {
-      if (loadRunRef.current === runId) {
-        loadRunRef.current += 1;
-      }
+      controller.abort();
+      if (runRef.current === run) runRef.current += 1;
+      cacheSession(session);
+      // expectedUserId prevents an old request from writing to a new account.
+      void saveSession(session);
     };
-  }, [activeCourseId, contentHydrated, user]);
+  }, [activeCourseId, contentHydrated, authLoading, userId, scope, reload, saveSession]);
 
   useEffect(() => {
-    if (
-      !hydrated ||
-      activeCourseId === "empty" ||
-      loadedCourseIdRef.current !== activeCourseId
-    ) {
-      return;
+    if (!hydrated) return;
+    const session = sessionRef.current;
+    if (!session || session.scope !== scope) return;
+    session.latest = state;
+    cacheSession(session);
+    if (!session.userId || !session.allowed || JSON.stringify(state) === session.saved) return;
+    const timer = window.setTimeout(() => void saveSession(session), 650);
+    return () => window.clearTimeout(timer);
+  }, [hydrated, state, scope, saveSession]);
+
+  useEffect(() => {
+    function flush() {
+      const session = sessionRef.current;
+      if (session) { cacheSession(session); void saveSession(session); }
     }
-
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY_PREFIX + activeCourseId,
-        JSON.stringify(state),
-      );
-    } catch {
-      // Account sync can still work if localStorage is unavailable.
+    function resume() {
+      if (document.visibilityState !== "visible") { flush(); return; }
+      setSnapshot(current => ({ ...current, state: refreshLearningDay(current.state) }));
     }
-
-    if (!user) return;
-
-    if (serverSaveTimerRef.current) {
-      window.clearTimeout(serverSaveTimerRef.current);
-    }
-
-    serverSaveTimerRef.current = window.setTimeout(() => {
-      void fetch("/api/me/learning-state", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          courseId: activeCourseId,
-          state,
-        }),
-      }).catch(() => undefined);
-    }, 650);
-
+    function online() { setReload(value => value + 1); }
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("online", online);
+    document.addEventListener("visibilitychange", resume);
+    const timer = window.setInterval(resume, 60_000);
     return () => {
-      if (serverSaveTimerRef.current) {
-        window.clearTimeout(serverSaveTimerRef.current);
-        serverSaveTimerRef.current = null;
-      }
+      window.removeEventListener("pagehide", flush); window.removeEventListener("online", online);
+      document.removeEventListener("visibilitychange", resume); window.clearInterval(timer);
     };
-  }, [state, hydrated, activeCourseId, user]);
+  }, [saveSession]);
 
+  const update = useCallback((change: (current: LearningState) => LearningState) => {
+    if (!hydrated) return;
+    setSnapshot(current => {
+      if(current.scope!==scope) return current;
+      const next=change(current.state);
+      return next===current.state ? current : {...current,state:next};
+    });
+    if (userId && syncStatus !== "offline" && syncStatus !== "conflict") setSync({ scope, status: "pending" });
+  }, [hydrated, scope, userId, syncStatus]);
 
   const value = useMemo<LearningContextValue>(() => ({
-    state,
-    hydrated,
-    recordAnswer(skill, correct, activityId) {
-      setState((current) => {
-        const active = withActiveDay(current);
-        const base = active.state;
-        const currentSkill = base.skills[skill];
-        const gained = correct ? 10 : 2;
-        const todayStat = base.dailyStats[active.today] ?? { attempts: 0, correct: 0, xp: 0 };
-
-        let mastery = base.mastery;
-        if (activityId) {
-          const previous = base.mastery[activityId] ?? { strength: 35, lastReviewed: active.today, dueAt: active.today };
-          const strength = correct
-            ? Math.min(100, previous.strength + 15)
-            : Math.max(0, previous.strength - 20);
-          const interval = nextReviewIntervalDays(strength, correct);
-          mastery = {
-            ...base.mastery,
-            [activityId]: {
-              strength,
-              lastReviewed: active.today,
-              dueAt: interval === 0 ? active.today : addDaysKey(interval),
-            },
-          };
-        }
-
-        return {
-          ...base,
-          xp: base.xp + gained,
-          todayXp: base.todayXp + gained,
-          skills: {
-            ...base.skills,
-            [skill]: {
-              correct: currentSkill.correct + (correct ? 1 : 0),
-              total: currentSkill.total + 1,
-            },
-          },
-          dailyStats: {
-            ...base.dailyStats,
-            [active.today]: {
-              attempts: todayStat.attempts + 1,
-              correct: todayStat.correct + (correct ? 1 : 0),
-              xp: todayStat.xp + gained,
-            },
-          },
-          mastery,
-          completedActivities:
-            activityId && correct && !base.completedActivities.includes(activityId)
-              ? [...base.completedActivities, activityId]
-              : base.completedActivities,
-        };
+    state, hydrated, syncStatus, canImportGuest: hydrated && canImportGuest, progressScope:scope,
+    savePracticeSession(key,value) {
+      if(state.practiceSessions?.[key]===value || (value===null&&state.practiceSessions?.[key]===undefined)) return;
+      update(current=>{
+        if(current.practiceSessions?.[key]===value) return current;
+        const practiceSessions={...current.practiceSessions};
+        if(value===null)delete practiceSessions[key];else practiceSessions[key]=value;
+        return {...current,practiceSessions};
       });
     },
+    retrySync() { setReload(value => value + 1); },
+    importGuestProgress() {
+      if (!userId || !canImportGuest) return;
+      const guest = readBrowserProgress(activeCourseId);
+      if (guest) { update(() => guest.state); setCanImportGuest(false); }
+    },
+    async resolveConflict(useLocal) {
+      const session = sessionRef.current;
+      if (!session || session.scope !== scope || !session.userId) return;
+      try {
+        const response = await clientFetch("/api/me/learning-state?courseId=" + encodeURIComponent(activeCourseId), { cache: "no-store" });
+        if (!response.ok) throw new Error("Unable to load progress");
+        const data = await response.json() as { state: unknown; revision: string | null };
+        const remote = data.state === null ? createLearningState() : parseProgressState(data.state);
+        if (!remote || sessionRef.current !== session) return;
+        if (!useLocal) {
+          try { window.localStorage.setItem(scope + ":before-conflict", JSON.stringify(session.latest)); } catch { /* Optional backup. */ }
+        }
+        session.revision = data.revision; session.saved = JSON.stringify(remote); session.allowed = true;
+        session.latest = useLocal ? session.latest : remote;
+        cacheSession(session);
+        setSnapshot({ scope, generation: reload, state: session.latest });
+        setSync({ scope, status: useLocal ? "pending" : "saved" });
+        if (useLocal) void saveSession(session);
+      } catch { setSync({ scope, status: "offline" }); }
+    },
+    recordAnswer(skill, correct, activityId) { update(current => recordLearningAnswer(current, skill, correct, activityId)); },
     addXp(amount) {
-      setState((current) => {
-        const active = withActiveDay(current);
-        const todayStat = active.state.dailyStats[active.today] ?? { attempts: 0, correct: 0, xp: 0 };
-        return {
-          ...active.state,
-          xp: active.state.xp + amount,
-          todayXp: active.state.todayXp + amount,
-          dailyStats: {
-            ...active.state.dailyStats,
-            [active.today]: { ...todayStat, xp: todayStat.xp + amount },
-          },
-        };
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      update(current => {
+        const { state: base, today } = activateLearningDay(current);
+        const xp = Math.round(amount);
+        const daily = base.dailyStats[today] ?? { attempts: 0, correct: 0, xp: 0 };
+        return { ...base, xp: base.xp + xp, todayXp: base.todayXp + xp, dailyStats: { ...base.dailyStats, [today]: { ...daily, xp: daily.xp + xp } } };
       });
     },
-    setLessonProgress(lessonId, progress) {
-      setState((current) => ({
-        ...current,
-        lessonProgress: {
-          ...current.lessonProgress,
-          [String(lessonId)]: Math.max(0, Math.min(100, Math.round(progress))),
-        },
-      }));
-    },
-    completeActivity(activityId, xp = 10) {
-      setState((current) => {
-        if (current.completedActivities.includes(activityId)) return current;
-        const active = withActiveDay(current);
-        const todayStat = active.state.dailyStats[active.today] ?? { attempts: 0, correct: 0, xp: 0 };
-        return {
-          ...active.state,
-          xp: active.state.xp + xp,
-          todayXp: active.state.todayXp + xp,
-          completedActivities: [...active.state.completedActivities, activityId],
-          dailyStats: {
-            ...active.state.dailyStats,
-            [active.today]: { ...todayStat, xp: todayStat.xp + xp },
-          },
-        };
-      });
-    },
-    completeLessonSkill(lessonId, skill) {
-      setState((current) => {
-        const activityId = `lesson:${lessonId}:${skill}`;
-        const alreadyCompleted = current.completedActivities.includes(activityId);
-        const completedActivities = alreadyCompleted
-          ? current.completedActivities
-          : [...current.completedActivities, activityId];
-        const lesson = course.lessons.find((item) => item.id === lessonId);
-        const requiredSkills = getRequiredCoreSkills({
-          hasVocabulary: Boolean(lesson?.vocabulary.length),
-          hasGrammar: Boolean(lesson?.grammar.length),
-        });
-        const progress = getCoreLessonProgress(
-          completedActivities,
-          lessonId,
-          requiredSkills,
-        );
-
-        if (alreadyCompleted) {
-          return {
-            ...current,
-            lessonProgress: {
-              ...current.lessonProgress,
-              [String(lessonId)]: progress,
-            },
-          };
-        }
-
-        const active = withActiveDay(current);
-        const todayStat = active.state.dailyStats[active.today] ?? {
-          attempts: 0,
-          correct: 0,
-          xp: 0,
-        };
-
-        return {
-          ...active.state,
-          xp: active.state.xp + 15,
-          todayXp: active.state.todayXp + 15,
-          completedActivities,
-          lessonProgress: {
-            ...active.state.lessonProgress,
-            [String(lessonId)]: progress,
-          },
-          dailyStats: {
-            ...active.state.dailyStats,
-            [active.today]: { ...todayStat, xp: todayStat.xp + 15 },
-          },
-        };
-      });
-    },
-    resetProgress() {
-      setState(defaultState);
-      if (activeCourseId !== "empty") {
-        window.localStorage.removeItem(STORAGE_KEY_PREFIX + activeCourseId);
-      }
-      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    },
+    setLessonProgress(lessonId, progress) { update(current => ({ ...current, lessonProgress: { ...current.lessonProgress, [lessonId]: Math.max(current.lessonProgress[lessonId] ?? 0, Math.min(100, Math.max(0, Math.round(progress)))) } })); },
+    completeActivity(activityId, xp) { update(current => completeLearningActivity(current, activityId, xp)); },
+    completeLessonSkill(lessonId, skill) { update(current => completeLearningSkill(current, lessonId, skill)); },
+    completeLessonMastery(lessonId) { update(current => completeLearningMastery(current, lessonId)); },
+    resetProgress() { update(() => createLearningState()); },
     resetForCourse(courseId) {
-      const targetCourseId = courseId ?? activeCourseId;
-      if (targetCourseId === activeCourseId) {
-        setState({
-          ...defaultState,
-          lessonProgress: {},
-        });
+      const target = courseId ?? activeCourseId;
+      if (target === activeCourseId) update(() => createLearningState());
+      else {
+        try { window.localStorage.removeItem(progressStorageKey(target, userId)); } catch { /* Optional cache. */ }
       }
-      if (targetCourseId !== "empty") {
-        window.localStorage.removeItem(
-          STORAGE_KEY_PREFIX + targetCourseId,
-        );
-      }
-      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     },
-  }), [state, hydrated, activeCourseId, course.lessons]);
+  }), [state, hydrated, syncStatus, canImportGuest, userId, activeCourseId, update, scope, saveSession, reload]);
 
   return <LearningContext.Provider value={value}>{children}</LearningContext.Provider>;
 }
@@ -417,18 +251,6 @@ export function useLearning() {
   if (!context) throw new Error("useLearning must be used inside LearningProvider");
   return context;
 }
-
-export function accuracy(stat: SkillStat) {
-  return stat.total ? Math.round((stat.correct / stat.total) * 100) : 0;
-}
-
-export function todayKey() {
-  return dateKey();
-}
-
-export function lastNDays(count: number) {
-  return Array.from({ length: count }, (_, index) => {
-    const offset = count - 1 - index;
-    return dateKey(new Date(Date.now() - offset * DAY_MS));
-  });
-}
+export function accuracy(stat: SkillStat) { return stat.total ? Math.round((stat.correct / stat.total) * 100) : 0; }
+export function todayKey() { return localDateKey(); }
+export function lastNDays(count: number) { return Array.from({ length: count }, (_, index) => shiftedDateKey(index - count + 1)); }

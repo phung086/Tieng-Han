@@ -23,8 +23,10 @@ const dailyStatSchema = z
 
 const masteryItemSchema = z.object({
   strength: z.number().min(0).max(100),
-  lastReviewed: z.string().max(32),
-  dueAt: z.string().max(32),
+  lastReviewed: z.iso.date(),
+  dueAt: z.iso.date(),
+  lastResult: z.boolean().optional(),
+  lastWrongAt: z.iso.date().optional(),
 });
 
 export const learningStateSchema = z.object({
@@ -33,7 +35,7 @@ export const learningStateSchema = z.object({
   streak: z.number().int().min(0).max(100_000),
   dailyGoal: z.number().int().min(0).max(100_000),
   todayXp: z.number().int().min(0).max(1_000_000),
-  lastActiveDate: z.string().max(32).nullable(),
+  lastActiveDate: z.iso.date().nullable(),
   lessonProgress: z.record(
     z.string().max(64),
     z.number().min(0).max(100),
@@ -49,9 +51,12 @@ export const learningStateSchema = z.object({
   completedActivities: z.array(z.string().max(250)).max(50_000),
   dailyStats: z.record(z.string().max(32), dailyStatSchema),
   mastery: z.record(z.string().max(250), masteryItemSchema),
+  practiceSessions: z.record(z.string().min(1).max(500), z.string().max(200_000)).optional(),
 });
 
 export const saveLearningStateSchema = z.object({
   courseId: z.string().min(1).max(250),
   state: learningStateSchema,
+  expectedUserId: z.string().min(1).max(250).optional(),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).nullable().optional(),
 });

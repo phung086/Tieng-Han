@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Haneul workflow and interface
+
+For Haneul workflow changes, read `.agents/skills/haneul-workflow/SKILL.md`.
+For Haneul interface and interaction changes, read `.agents/skills/haneul-ui/SKILL.md` and `DESIGN.md`.
+Preserve existing modifications and the protected compiler pipeline. These skills describe project invariants; they do not authorize external messaging, credit purchases or deployments.

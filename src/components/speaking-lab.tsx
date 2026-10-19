@@ -1,7 +1,10 @@
 "use client";
+import {useAutoAdvance} from "@/lib/use-auto-advance";
+import {SessionFlowControl} from "./session-flow-control";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {speechMatchScore as similarity} from "@/lib/speech-match";
 import { CheckCircle2, Mic, MicOff, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
@@ -9,7 +12,6 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 
-const AUTO_ADVANCE_DELAY_MS = 1200;
 
 type RecognitionResultEvent = {
   results: {
@@ -31,26 +33,6 @@ type RecognitionLike = {
   start: () => void;
   stop: () => void;
 };
-
-function normalize(value: string) {
-  return value.replace(/[\s.!?]/g, "");
-}
-
-function similarity(a: string, b: string) {
-  const left = normalize(a);
-  const right = normalize(b);
-  if (!left || !right) return 0;
-
-  let hits = 0;
-  for (const char of left) {
-    if (right.includes(char)) hits += 1;
-  }
-
-  return Math.min(
-    100,
-    Math.round((hits / Math.max(left.length, right.length)) * 100),
-  );
-}
 
 export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -81,6 +63,8 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
   const target = sentences[index] ?? "";
   const nextStep = getNextLessonFlowStep(lessonId, "speaking");
   const score = similarity(transcript, target);
+
+  const flow=useAutoAdvance(index,!finished&&!listening&&!manual&&!unsupported&&scores[index]!==undefined&&scores[index]>=75,next);
 
   if (!lesson || !sentences.length) {
     return (
@@ -138,11 +122,6 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
         "speak-" + lessonId + "-" + index,
       );
 
-      if (result >= 75) {
-        autoAdvanceTimerRef.current = window.setTimeout(() => {
-          next(nextScores);
-        }, AUTO_ADVANCE_DELAY_MS);
-      }
     };
     recognition.onend = () => setListening(false);
     recognition.onerror = () => { setListening(false); setRecognitionError(true); };
@@ -232,6 +211,7 @@ export function SpeakingLab({ lessonId = 3 }: { lessonId?: number }) {
         <p>{messages.speaking.intro}</p>
       </header>
 
+      <SessionFlowControl flow={flow} stepKey={index} />
       <section className="speaking-card">
         <div className="speaking-step">
           {messages.speaking.sentence} {index + 1}/{sentences.length}

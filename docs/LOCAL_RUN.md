@@ -1,85 +1,54 @@
-# Chạy đúng bản Haneul local
+# Chạy Haneul trong một thư mục
 
-Haneul dùng một máy chủ Next.js cho cả giao diện và các API backend. Để học với
-thư viện JSON đã nhập, không cần một backend riêng, PostgreSQL hoặc AI API key.
-Tiến độ trong chế độ này được lưu tại trình duyệt, theo từng khóa học.
+Thư mục đang dùng trên máy này: D:/Tieng-Han/Tieng-Han. Mã, cấu hình riêng,
+giáo trình, job và bản sao lưu nằm ở đây. PostgreSQL lưu trong Docker volume
+haneul_postgres_data; dừng container không xóa tiến độ.
 
-## Mở ứng dụng
+Mở Start-Haneul.cmd, rồi vào http://127.0.0.1:3000. Có thể đóng cửa sổ lệnh
+sau khi báo sẵn sàng; ứng dụng và database chạy nền trong Docker. Stop-Haneul.cmd
+dừng cả hai và giữ dữ liệu. Không cần bật backend bằng một lệnh khác.
 
-Tại thư mục chứa `package.json` của bản code đã tối ưu:
+PowerShell tương đương:
 
-```powershell
-pnpm install --frozen-lockfile
-pnpm local
-```
+    Set-Location 'D:\Tieng-Han\Tieng-Han'
+    pnpm local
+    pnpm docker:status
+    pnpm docker:stop
 
-Lần đầu cần cài Node.js 22+ và pnpm theo phiên bản `packageManager` trong
-`package.json`. Máy đã có dependencies thì không cần chạy install lại.
-Windows có thể mở `Start-Haneul.cmd` trong đúng thư mục dự án.
+Máy cần Node.js 22+ và Docker Desktop. Launcher có thể mở Docker Desktop trên
+Windows, chờ engine, kiểm tra cổng, tự build nếu mã thay đổi và chờ backend/database
+sẵn sàng. Lần đầu build cần mạng; những lần sau dùng image đã có nếu mã không đổi.
+Dependencies của ứng dụng được cài trong Docker; không cần pnpm install chỉ để mở
+bản đã có. Lệnh CMD dùng node trực tiếp, pnpm là tùy chọn để dùng các alias trên.
 
-Mở http://127.0.0.1:3000 và giữ terminal chạy. Nhấn Ctrl+C tại terminal đó để
-dừng. Lệnh in đường dẫn code, Git commit, đường dẫn dữ liệu, số bài và số mục
-ngữ pháp của từng khóa trước khi khởi chạy. Nó build lại khi các file ứng dụng
-đổi hoặc chưa có production build; nếu build lỗi, nó không mở một build cũ.
-Một máy chủ khác đang chiếm cổng sẽ không bị tự dừng.
+Đăng nhập để lưu tiến độ theo tài khoản và khóa: kết quả, mục yếu/đến hạn, điểm
+dừng quiz/drill/game, bản nháp viết/sổ luyện và dấu trang. Khách vẫn có thể học,
+nhưng dữ liệu khách chỉ nằm trong trình duyệt đó. Khi có nút nhập tiến độ khách,
+người học chủ động chọn nhập vào tài khoản; không tự ghép tài khoản khác.
 
-```powershell
-pnpm local:check
-pnpm local --port 3007
-pnpm local --rebuild
-```
+Giữ cùng địa chỉ 127.0.0.1:3000 để thấy dữ liệu khách đã lưu. localhost và
+127.0.0.1 là hai origin khác nhau. Khi offline, tiến độ tài khoản được giữ trong
+cache riêng và gửi lại sau khi kết nối; nếu phiên khác đã cập nhật, ứng dụng báo
+xung đột để chọn bản cần giữ, không âm thầm ghi đè.
 
-`--check` chỉ kiểm tra dữ liệu và đường dẫn; không mở máy chủ. `--rebuild` cần
-dừng máy chủ đang dùng cổng đó trước. Lệnh local chỉ nghe tại `127.0.0.1`.
-Nếu máy chủ đang chạy, `--check` còn đối chiếu toàn bộ payload API với thư viện
-trên đĩa, gồm mọi bài, mục ngữ pháp, ví dụ, câu hỏi và các trường mở rộng. Kết
-quả không dựa riêng vào việc hai bên có cùng số lượng bản ghi.
+Dữ liệu riêng ở .haneul gồm courses, active-course.json, import-jobs, originals,
+recovered-source, mcp-events, worksheet-jobs/events và backups. Không commit dữ
+liệu này hoặc .env.docker. pnpm docker:backup sao lưu database; cần giữ cả .haneul
+để có hình/sách/job đầy đủ. Không chạy docker compose down -v: lệnh đó xóa database.
 
-## Chọn đúng dữ liệu bài học
+    pnpm local:check
 
-Code GitHub không chứa giáo trình riêng. Một clone mới chỉ có code sẽ không tự
-có lại sách đã nhập. Giữ đầy đủ các thư mục/file sau trong thư mục dữ liệu:
+Lệnh này kiểm tra đủ thư viện JSON. Khi chưa đăng nhập, API chỉ trả khóa được
+xuất bản; khác biệt quyền truy cập không có nghĩa khóa đã bị xóa. Endpoint
+/api/health kiểm tra database, migrations và thư mục dữ liệu, không lộ thông tin
+đăng nhập. Luồng nhập nguồn vẫn qua /import và MCP theo quyền; OCR/biên soạn AI
+cần kết nối provider thật, khởi chạy Docker không tự biên soạn sách.
 
-```text
-courses/                 Mọi khóa học, toàn bộ lessons và questions, gồm grammar
-active-course.json       Khóa đang được chọn mặc định
-import-jobs/             Snapshot trang, hình, nguồn gốc và kết quả import
-mcp-events/              Sự kiện import nếu sử dụng
-```
+Chế độ phát triển: pnpm install --frozen-lockfile, cấu hình .env.local rồi pnpm dev.
+Dừng app Docker trước để nhường cổng. Không dùng chế độ này cho thao tác bật hằng ngày.
+Nếu chủ động học không tài khoản/database: pnpm local:offline --data-dir .haneul.
+Chế độ offline dùng cache trình duyệt, không đồng bộ PostgreSQL.
 
-Cấu hình riêng tại `.haneul/local-settings.json` (được Git bỏ qua):
-
-```json
-{ "dataDir": ".haneul/fidelity-test" }
-```
-
-Hoặc chỉ định một thư mục khác có dữ liệu đã nhập:
-
-```powershell
-pnpm local --data-dir "D:\Haneul-Data"
-```
-
-Thứ tự chọn: `--data-dir`, biến `HANEUL_LOCAL_DATA_DIR`, file cấu hình trên,
-rồi mặc định `.haneul`. Thư mục tương đối được tính từ thư mục dự án, không phụ
-thuộc terminal đang ở đâu. Lệnh không tự ghi đè hoặc ghép nội dung hai khóa.
-Nó đọc mọi khóa/bài/ngữ pháp, báo rõ lỗi và các bài chưa có ngữ pháp; không cắt
-để vừa số câu quiz. Dữ liệu thay đổi không đòi hỏi build lại giao diện; tải lại
-trang để trình duyệt lấy toàn bộ thư viện mới từ API.
-
-Trong giao diện **Giáo trình**, chọn khóa rồi bài học. Mở **Ngữ pháp** trong bài;
-đường dẫn `/grammar?lesson=15` có nghĩa Bài 15 của khóa hiện đang chọn. Số bài
-không định danh khóa học; khi đổi giáo trình cần chọn đúng khóa trước.
-
-## Khi nào cần PostgreSQL hoặc biên soạn AI
-
-`pnpm local` cố ý chạy chế độ học local, không bật `DATABASE_URL`. Nếu cần tài
-khoản, phân quyền và đồng bộ tiến độ giữa thiết bị: cấu hình PostgreSQL,
-`DATABASE_URL`, chạy `pnpm db:migrate`, rồi chạy theo
-[PHASE_SCALE_1_SETUP.md](PHASE_SCALE_1_SETUP.md). Backend vẫn nằm cùng ứng dụng
-Next.js; PostgreSQL là dịch vụ dữ liệu bổ sung.
-
-Học các bài đã nhập không gọi AI. Tự biên soạn thêm từ sách cần một provider
-hoặc Learning Bridge được cấu hình và xác thực thật. Chạy máy chủ local không
-đồng nghĩa mọi bài sẽ tự được biên soạn lại. Đồng bộ đủ dữ liệu hiện có cũng
-không chứng nhận sách đã được biên soạn đủ: trạng thái `partial`/`unverified`
-vẫn giữ cho đến khi kiểm kê từng đơn vị nguồn.
+Thư viện hiện có 4 khóa/60 bài/194 mục ngữ pháp và 322 vùng hình đã duyệt.
+Đồng bộ dữ liệu không phải chứng nhận biên soạn toàn sách: các khóa vẫn partial;
+xem SOURCE_FIDELITY_REVIEW.md về phần cần đối chiếu nguồn.

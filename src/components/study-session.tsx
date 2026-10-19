@@ -26,10 +26,16 @@ import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
 import { parsePracticeCheckpoint, practiceCheckpointKey, serializePracticeCheckpoint } from "@/lib/practice-checkpoint";
 import { TouchAnswer } from "./touch-answer";
+import { selectReviewQuestions, type ReviewItem } from "@/lib/review-plan";
+import { todayKey } from "@/lib/learning-state";
+import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
+import {LearningLoading} from "./learning-loading";
+import {useAutoAdvance} from "@/lib/use-auto-advance";
+import {SessionFlowControl} from "./session-flow-control";
 
-export type StudySessionMode = "guided" | "quick" | "mastery";
+export type StudySessionMode = "guided" | "quick" | "mastery" | "review";
 
-const AUTO_ADVANCE_DELAY_MS = 850;
+
 
 const normalize = (value: string) =>
   value
@@ -41,14 +47,17 @@ type StudySessionProps = {
   lessonId?: number;
   mode?: StudySessionMode;
   skill?: SkillKey;
+  reviewItemId?: string;
 };
 
 export function StudySession(props: StudySessionProps) {
-  const { course } = useContent();
+  const { course, hydrated:contentReady } = useContent();
+  const { hydrated:progressReady } = useLearning();
+  if(!contentReady || !progressReady) return <LearningLoading />;
   const lessonId = props.lessonId ?? course.lessons[0]?.id ?? 1;
   return (
     <StudySessionBody
-      key={[course.id, lessonId, props.mode ?? "guided", props.skill ?? "all"].join(":")}
+      key={[course.id, lessonId, props.mode ?? "guided", props.skill ?? "all", props.reviewItemId ?? ""].join(":")}
       {...props}
     />
   );
@@ -58,14 +67,17 @@ function StudySessionBody({
   lessonId,
   mode = "guided",
   skill,
+  reviewItemId,
 }: StudySessionProps) {
-  const { recordAnswer, completeLessonSkill } = useLearning();
+  const { state, recordAnswer, completeLessonSkill, completeLessonMastery, progressScope, savePracticeSession } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
 
   const activeLessonId = lessonId ?? course.lessons[0]?.id ?? 1;
 
-  const baseQuestions = useMemo(() => {
+  const [reviewQuestions] = useState(()=>mode === "review" ? selectReviewQuestions(course,state,todayKey(),reviewItemId) : []);
+  const baseQuestions = useMemo<ReviewItem[]>(() => {
+    if (mode === "review") return reviewQuestions;
     const lesson = course.lessons.find((item) => item.id === activeLessonId);
     const bank = lesson
       ? buildLessonPracticeBank(lesson, course.questions)
@@ -75,14 +87,14 @@ function StudySessionBody({
     if (mode === "quick") return all.slice(0, 5);
     if (mode === "mastery") return all;
     return all; // Full guided practice: never silently cap textbook questions.
-  }, [course.lessons, course.questions, activeLessonId, mode, skill]);
+  }, [course.lessons, course.questions, activeLessonId, mode, skill, reviewQuestions]);
 
-  const storageKey = practiceCheckpointKey(course.id, activeLessonId, mode, skill);
+  const storageKey = practiceCheckpointKey(course.id, activeLessonId, mode, skill)+(mode==="review"?":"+(reviewItemId??"due"):"");
   const [restored] = useState(() => {
     if (typeof window === "undefined") return null;
     try {
       return parsePracticeCheckpoint(
-        window.localStorage.getItem(storageKey),
+        readPracticeSession(state,window.localStorage,progressScope,storageKey),
         baseQuestions,
       );
     } catch {
@@ -97,9 +109,9 @@ function StudySessionBody({
     : baseQuestions;
 
   const [index, setIndex] = useState(restored?.index ?? 0);
-  const [answer, setAnswer] = useState("");
-  const [tokens, setTokens] = useState<string[]>([]);
-  const [checked, setChecked] = useState(false);
+  const [answer, setAnswer] = useState(restored?.answer??"");
+  const [tokens, setTokens] = useState<string[]>(restored?.tokens??[]);
+  const [checked, setChecked] = useState(restored?.checked??false);
   const [correctCount, setCorrectCount] = useState(restored?.correctCount ?? 0);
   const [finished, setFinished] = useState(false);
   const [mistakeIds, setMistakeIds] = useState<string[]>(restored?.mistakeIds ?? []);
@@ -108,11 +120,13 @@ function StudySessionBody({
   const [focus, setFocus] = useState(3);
   const [showHint, setShowHint] = useState(false);
   const [touchInput, setTouchInput] = useState(false);
-  const [autoAdvance, setAutoAdvance] = useState(true);
+
   const [skillStats, setSkillStats] = useState<
     Partial<Record<SkillKey, { correct: number; total: number }>>
   >(restored?.skillStats ?? {});
   const autoAdvanceTimerRef = useRef<number | null>(null);
+  const submissionLock=useRef(restored?.checked??false);
+  const transitionLock=useRef<string|number|null>(null);
 
   useEffect(() => {
     return () => {
@@ -121,6 +135,11 @@ function StudySessionBody({
       }
     };
   }, []);
+
+  const candidate=questions[index];
+  const candidateAnswer=candidate?.type==="reorder"?tokens.join(" "):answer;
+  const flow=useAutoAdvance(index,checked&&!finished&&Boolean(candidate)&&normalize(candidateAnswer)===normalize(candidate?.answer??""),advance);
+  const autoAdvance=flow.enabled;
 
   if (!questions.length) {
     return (
@@ -166,19 +185,23 @@ function StudySessionBody({
       title: "Chinh phục bài",
       note: "Làm toàn bộ câu hỏi của bài để kiểm tra độ chắc.",
     },
+    review: {label:"Ôn đến hạn",title:"Nhớ lại mục đã học",note:"Ôn theo lịch ghi nhớ, không giới hạn số mục đến hạn."},
   }[mode];
 
   function advance(
     effectiveCorrectCount = correctCount,
     effectiveSkillStats = skillStats,
   ) {
+    if(transitionLock.current===question.id)return;
+    transitionLock.current=question.id;submissionLock.current=false;
     if (autoAdvanceTimerRef.current) {
       window.clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
     }
 
     if (index === questions.length - 1) {
-      try { window.localStorage.removeItem(storageKey); }
+      savePracticeSession(storageKey,null);
+    try { writePracticeSession(window.localStorage,progressScope,storageKey,null); }
       catch { /* optional local persistence */ }
       if (
         skill &&
@@ -186,6 +209,7 @@ function StudySessionBody({
       ) {
         completeLessonSkill(activeLessonId, skill);
       } else if (mode === "mastery" && !retryIds) {
+        if (masteryPassed(effectiveCorrectCount, questions.length)) completeLessonMastery(activeLessonId);
         for (const [skillKey, stat] of Object.entries(
           effectiveSkillStats,
         )) {
@@ -200,15 +224,9 @@ function StudySessionBody({
 
     if (!retryIds) {
       try {
-        window.localStorage.setItem(
-          storageKey,
-          serializePracticeCheckpoint(baseQuestions, {
-            index: index + 1,
-            correctCount: effectiveCorrectCount,
-            mistakeIds,
-            skillStats: effectiveSkillStats,
-          }),
-        );
+        const serialized=serializePracticeCheckpoint(baseQuestions,{index:index+1,correctCount:effectiveCorrectCount,mistakeIds,skillStats:effectiveSkillStats});
+        writePracticeSession(window.localStorage,progressScope,storageKey,serialized);
+        savePracticeSession(storageKey,serialized);
       } catch {
         // Continue learning even if storage is unavailable.
       }
@@ -222,7 +240,8 @@ function StudySessionBody({
 
   function submit(answerOverride?: string, skipped = false) {
     const candidate = skipped ? "" : answerOverride ?? submittedAnswer;
-    if ((!candidate && !skipped) || checked) return;
+    if ((!candidate && !skipped) || checked || submissionLock.current) return;
+    submissionLock.current=true;
 
     const correct =
       !skipped && normalize(candidate) === normalize(question.answer);
@@ -263,16 +282,18 @@ function StudySessionBody({
     }
 
     recordAnswer(question.skill, correct, question.id);
-
-    if (correct && autoAdvance) {
-      autoAdvanceTimerRef.current = window.setTimeout(() => {
-        advance(nextCorrectCount, nextSkillStats);
-      }, AUTO_ADVANCE_DELAY_MS);
+    if(!retryIds){
+      const serialized=serializePracticeCheckpoint(baseQuestions,{index,correctCount:nextCorrectCount,mistakeIds:correct?mistakeIds:[...new Set([...mistakeIds,question.id])],skillStats:nextSkillStats,checked:true,answer:candidate,tokens});
+      try{writePracticeSession(window.localStorage,progressScope,storageKey,serialized);}catch{/* Account queue remains available. */}
+      savePracticeSession(storageKey,serialized);
     }
+
   }
 
   function resetSession(nextRetryIds: string[] | null) {
-    try { window.localStorage.removeItem(storageKey); }
+    submissionLock.current=false;transitionLock.current=null;
+    savePracticeSession(storageKey,null);
+    try { writePracticeSession(window.localStorage,progressScope,storageKey,null); }
     catch { /* optional local persistence */ }
     setResumed(false);
     if (autoAdvanceTimerRef.current) {
@@ -416,6 +437,12 @@ function StudySessionBody({
         <div className="question-prompt korean-text">
           {question.prompt}
         </div>
+        {question.context ? <p className="question-translation">{question.context}</p> : null}
+        {question.audioText ? <button className="secondary-button" type="button" onClick={()=>{
+          if (!("speechSynthesis" in window)) return;
+          window.speechSynthesis.cancel();
+          const utterance=new SpeechSynthesisUtterance(question.audioText);utterance.lang=course.language?.locale??"ko-KR";window.speechSynthesis.speak(utterance);
+        }}>Nghe câu mẫu</button> : null}
 
         {question.translation ? (
           <p className="question-translation">
@@ -491,7 +518,8 @@ function StudySessionBody({
           </div>
         ) : null}
 
-        {question.type === "input" ? (
+        {question.reviewKind ? <div className="session-options"><p>Tự nhớ câu trả lời rồi đánh giá. Lượt này không chấm phát âm hoặc bài viết tự động.</p><button className="secondary-button" type="button" disabled={checked} onClick={()=>submit(undefined,true)}>Cần ôn lại</button><button className="primary-button" type="button" disabled={checked} onClick={()=>submit(question.answer)}>Đã nhớ</button></div> : null}
+        {question.type === "input" && !question.reviewKind ? (
           <div className="input-answer-wrap">
             <button className="secondary-button" type="button" disabled={checked} onClick={() => { setTouchInput(value => !value); setAnswer(""); }}>
               {touchInput ? "Chuyển sang tự gõ" : "Không có bàn phím tiếng Hàn · chạm để xếp"}
@@ -568,10 +596,7 @@ function StudySessionBody({
         ) : null}
 
         {!checked ? <button className="text-button" type="button" onClick={() => submit(undefined, true)}>Chưa làm được · xem đáp án và ôn lại</button> : null}
-        <p><label><input type="checkbox" checked={autoAdvance} onChange={event => {
-          setAutoAdvance(event.target.checked);
-          if (!event.target.checked && autoAdvanceTimerRef.current) window.clearTimeout(autoAdvanceTimerRef.current);
-        }} /> Tự chuyển sau câu đúng</label></p>
+        <SessionFlowControl flow={flow} stepKey={index} />
 
         {checked ? (
           <div

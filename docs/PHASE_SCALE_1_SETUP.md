@@ -36,6 +36,34 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 
 Do not commit `.env.local`.
 
+### Existing PostgreSQL 18 cluster on Windows
+
+If `C:\Program Files\PostgreSQL\18\data` already exists, do not run
+`initdb` again. Check the existing cluster first:
+
+```powershell
+$pgBin = 'C:\Program Files\PostgreSQL\18\bin'
+$pgData = 'C:\Program Files\PostgreSQL\18\data'
+& "$pgBin\pg_ctl.exe" status -D $pgData
+```
+
+If it is stopped, start it and check readiness:
+
+```powershell
+& "$pgBin\pg_ctl.exe" start -D $pgData -l "$env:LOCALAPPDATA\haneul-postgres-start.log"
+& "$pgBin\pg_isready.exe" -h localhost -p 5432
+```
+
+Keep the startup log outside the data directory to avoid a Windows file-sharing
+conflict during crash recovery. If startup fails, inspect the startup log and
+the PostgreSQL logs identified by `data\current_logfiles`.
+Without a Windows service, repeat the start command after restarting Windows.
+
+Use a dedicated login such as `haneul_app` that owns the `haneul` database.
+Configure its password only in the local environment file. Each Git worktree
+has its own `.env.local`; configure the checkout from which you run Next.js
+and migrations. Restart Next.js after changing the environment file.
+
 ## 2. Install dependencies
 
 ```powershell
@@ -85,13 +113,17 @@ When a signed-in learner opens a course:
 
 1. Haneul checks PostgreSQL for `user_id + course_id`.
 2. If a server state exists, it becomes authoritative.
-3. If no server state exists, the existing course-scoped browser state is
-   loaded.
-4. That browser state is then synced to PostgreSQL after hydration.
-5. Subsequent progress changes are debounced and synced automatically.
+3. Browser caches are scoped by both account and course. Guest study is never
+   silently copied into a signed-in account.
+4. If the account has no server progress and guest progress exists for this
+   course, the learner can explicitly import it using the sync bar.
+5. Subsequent progress changes are debounced and saved in order. A conflicting
+   server revision requires the learner to choose the server or browser copy.
 
-This keeps current local progress instead of resetting learners on the first
-login.
+Existing course-scoped local progress is migrated into the guest cache. The
+explicit import preserves it without attributing another person's shared-browser
+study to a newly signed-in account. A failed server read never uploads an empty
+fallback over existing account progress.
 
 ## 7. Course publication
 

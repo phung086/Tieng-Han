@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { AuthStatus, AuthUser } from "@/lib/auth/types";
+import { clientFetch } from "@/lib/client-request";
 
 type AuthContextValue = AuthStatus & {
   loading: boolean;
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/me", {
+      const response = await clientFetch("/api/auth/me", {
         cache: "no-store",
       });
       const data = (await response.json()) as AuthStatus;
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    void fetch("/api/auth/me", { cache: "no-store" })
+    void clientFetch("/api/auth/me", { cache: "no-store" })
       .then((response) => response.json())
       .then((data: AuthStatus) => {
         if (cancelled) return;
@@ -72,7 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       refresh,
       async logout() {
-        await fetch("/api/auth/logout", { method: "POST" });
+        const response = await clientFetch("/api/auth/logout", { method: "POST" });
+        if (!response.ok) throw new Error("Chưa đăng xuất được. Vui lòng thử lại.");
         setUser(null);
       },
     }),

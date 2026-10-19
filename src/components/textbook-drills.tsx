@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpenText, CheckCircle2, Headphones, RotateCcw, Volume2 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
+import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import {
   buildTextbookDrills,
   countDrillModes,
@@ -34,9 +35,8 @@ function fingerprint(items: TextbookDrill[]): string {
   return String(hash >>> 0);
 }
 
-function readSavedSession(key: string, signature: string, items: TextbookDrill[]): SessionState | null {
+function readSavedSession(raw: string | null, signature: string, items: TextbookDrill[]): SessionState | null {
   try {
-    const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const data: unknown = JSON.parse(raw);
     if (!data || typeof data !== "object" || Array.isArray(data)) return null;
@@ -153,12 +153,14 @@ function DrillSession({
   items: TextbookDrill[];
   locale: string;
 }) {
-  const { recordAnswer } = useLearning();
+  const {state,recordAnswer,progressScope,savePracticeSession} = useLearning();
   const signature = useMemo(() => fingerprint(items), [items]);
   const storageKey = ["haneul-drill-progress-v1", encodeURIComponent(courseId), lessonId, mode].join(":");
+  const [initialSaved]=useState(()=>typeof window==="undefined"?null:readPracticeSession(state,window.localStorage,progressScope,storageKey));
   const [progress, setProgress] = useState<SessionState>({ index: 0, correct: 0, missed: [] });
   const [response, setResponse] = useState("");
   const [checked, setChecked] = useState(false);
+  const grading=useRef(false);
   const [result, setResult] = useState<"right" | "wrong" | "skipped" | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [restored, setRestored] = useState(false);
@@ -168,7 +170,7 @@ function DrillSession({
 
   useEffect(() => {
     const animationFrame = window.requestAnimationFrame(() => {
-      const saved = readSavedSession(storageKey, signature, items);
+      const saved = readSavedSession(initialSaved, signature, items);
       if (saved) {
         setProgress(saved);
         setRestored(saved.index > 0);
@@ -176,7 +178,7 @@ function DrillSession({
       setReady(true);
     });
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [storageKey, signature, items]);
+  }, [storageKey, signature, items, initialSaved]);
 
   const item = items[progress.index];
   const completed = progress.index >= items.length;
@@ -197,15 +199,20 @@ function DrillSession({
   }
 
   function evaluate(skipped = false) {
-    if (!item || checked || (!response.trim() && !skipped)) return;
+    if (!item || checked || grading.current || (!response.trim() && !skipped)) return;
+    grading.current=true;
     const right = !skipped && matchesSourceAnswer(response, item.answer);
     setResult(skipped ? "skipped" : right ? "right" : "wrong");
     setChecked(true);
     recordAnswer(item.skill, right, item.id);
+    const serialized=JSON.stringify({index:progress.index+1,correct:progress.correct+Number(right),missed:right?progress.missed:[...progress.missed,item.id],signature});
+    savePracticeSession(storageKey,serialized);
+    writePracticeSession(window.localStorage,progressScope,storageKey,serialized);
   }
 
   function next() {
     if (!item || !checked) return;
+    grading.current=false;
     const right = result === "right";
     const nextProgress: SessionState = {
       index: progress.index + 1,
@@ -220,18 +227,22 @@ function DrillSession({
     setAudioError(false);
     setRestored(false);
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ ...nextProgress, signature }));
+      const serialized=JSON.stringify({...nextProgress,signature});
+      savePracticeSession(storageKey,serialized);
+      writePracticeSession(window.localStorage,progressScope,storageKey,serialized);
     } catch { /* Browser may deny storage; session remains usable. */ }
   }
 
   function restart() {
+    grading.current=false;
     setProgress({ index: 0, correct: 0, missed: [] });
     setResponse("");
     setChecked(false);
     setResult(null);
     setShowHint(false);
     setRestored(false);
-    try { window.localStorage.removeItem(storageKey); } catch { /* optional */ }
+    savePracticeSession(storageKey,null);
+    try { writePracticeSession(window.localStorage,progressScope,storageKey,null); } catch { /* optional */ }
   }
 
   if (!ready) return <div className={styles.empty}>Đang khôi phục phiên luyện…</div>;

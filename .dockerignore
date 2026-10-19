@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.haneul
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+coverage
+out
+.agents
+
+test-results
+playwright-report
+tests
+*.dump
