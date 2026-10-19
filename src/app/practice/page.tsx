@@ -28,6 +28,7 @@ import {
   getCoreLessonProgress,
   getRequiredCoreSkills,
 } from "@/lib/lesson-completion";
+import { reviewSummary } from "@/lib/review-plan";
 
 const skillModes = [
   { path: "/vocabulary", key: "vocabulary", icon: Layers3, tone: "blue" },
@@ -69,9 +70,7 @@ export default function PracticePage() {
     course.lessons[course.lessons.length - 1];
 
   const today = todayKey();
-  const dueCount = Object.values(state.mastery).filter(
-    (item) => item.dueAt <= today,
-  ).length;
+  const dueCount = reviewSummary(course, state, today).due.length;
   const currentProgress = coreProgressFor(current);
 
   const modes = [

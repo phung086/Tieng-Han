@@ -31,6 +31,7 @@ import {
   getCoreLessonProgress,
   getRequiredCoreSkills,
 } from "@/lib/lesson-completion";
+import { LessonCoach } from "@/components/lesson-coach";
 
 type LessonTabKey = "study" | "book" | "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
 const tabKeys: LessonTabKey[] = ["study", "overview", "vocabulary", "grammar", "reading", "supplement", "book"];
@@ -143,6 +144,14 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
       href: "/writing?lesson=" + lessonId,
       available: Boolean(lesson.writing),
     },
+    {
+      skill: "mastery",
+      ko: "확인",
+      title: "Kiểm tra cuối bài",
+      desc: "Hoàn thành 6 chặng và đạt ít nhất 75% bài kiểm tra để mở bài tiếp theo",
+      href: "/practice/quiz?lesson=" + lessonId + "&mode=mastery",
+      available: course.questions.some((question) => question.lessonId === lessonId),
+    },
   ].filter((step) => step.available);
 
   const isMissionDone = (skill: string) =>
@@ -219,10 +228,10 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
           <p>{lesson.vi} · {lesson.objective}</p>
           <div className="lesson-source-line">
             {lesson.sourceRef ? <span>{lesson.sourceRef}</span> : null}
-            {lesson.quality ? (
+            {lesson.sourceRef ? (
               <span className="grounding-badge">
                 <ShieldCheck size={13} />
-                AI tự đánh giá nguồn: {lesson.quality.groundingScore}%
+                AI tự đánh giá nguồn: {lesson.quality?.groundingScore}%
               </span>
             ) : null}
           </div>
@@ -260,7 +269,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
               className="secondary-button"
               href={"/practice/quiz?lesson=" + lessonId + "&mode=mastery"}
             >
-              Mastery Check
+              Làm lại kiểm tra
             </Link>
             {nextLesson ? (
               <Link className="primary-button" href={"/learn/" + nextLesson.id}>
@@ -378,6 +387,8 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
               );
             })}
           </div>
+
+          <p className="session-note">Sáu chặng kỹ năng tương ứng 86% tiến độ. Bài đạt 100% khi bạn hoàn thành thêm kiểm tra cuối bài. Luyện nhanh và ôn từng câu không thay thế bước này.</p>
 
           <aside className="lesson-coach-v3">
             <div>
@@ -549,6 +560,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
           ))}
         </section>
       ) : null}
+      <LessonCoach key={course.id + ":" + lessonId} lessonId={lessonId} />
     </div>
   );
 }

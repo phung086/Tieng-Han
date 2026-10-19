@@ -4,6 +4,8 @@ import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./game-theme.css";
 import "./experience-v2.css";
+import "./learning-experience.css";
+import "./workflow-experience.css";
 
 const vietnamese = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],

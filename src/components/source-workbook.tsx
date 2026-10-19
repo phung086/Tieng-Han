@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
+import {useLearning} from "@/lib/learning-state";
+import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
 import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
-function readProgress(key: string, valid: Set<string>): string[] {
+function readProgress(input: string | null, valid: Set<string>): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved: unknown = JSON.parse(window.localStorage.getItem(key) || "[]");
+    const saved: unknown = JSON.parse(input || "[]");
     return Array.isArray(saved)
       ? saved.filter((item): item is string => typeof item === "string" && valid.has(item))
       : [];
@@ -20,10 +22,10 @@ function readProgress(key: string, valid: Set<string>): string[] {
   }
 }
 
-function readDrafts(key: string): Record<string, string> {
+function readDrafts(input: string | null): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
-    const raw: unknown = JSON.parse(window.localStorage.getItem(key) || "{}");
+    const raw: unknown = JSON.parse(input || "{}");
     return raw && typeof raw === "object" && !Array.isArray(raw)
       ? Object.fromEntries(
           Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
@@ -36,13 +38,16 @@ function readDrafts(key: string): Record<string, string> {
 
 export function SourceWorkbook({ lessonId }: { lessonId: number }) {
   const { course, hydrated } = useContent();
-  if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
+  const {hydrated:learningReady,progressScope}=useLearning();
+  if (!hydrated || !learningReady) return <p role="status">Đang mở nội dung bài học…</p>;
   // Remount when a server-loaded course replaces the initial empty course.
-  return <WorkbookContent key={course.id + ":" + lessonId} lessonId={lessonId} />;
+  return <WorkbookContent key={progressScope + ":" + course.id + ":" + lessonId} lessonId={lessonId} />;
 }
 
 function WorkbookContent({ lessonId }: { lessonId: number }) {
   const { getLesson, course } = useContent();
+  const {state,progressScope,savePracticeSession}=useLearning();
+  const read=(key:string)=>typeof window==="undefined"?null:readPracticeSession(state,window.localStorage,progressScope,key);
   const lesson = getLesson(lessonId);
   const items = useMemo(
     () => lesson ? buildSourceWorkbook(lesson, course.questions) : [],
@@ -51,9 +56,9 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
   const storageKey = "haneul-source-workbook-v1:" + course.id + ":" + lessonId;
   const draftKey = storageKey + ":drafts";
   const [done, setDone] = useState<string[]>(() =>
-    readProgress(storageKey, new Set(items.map(item => item.id))),
+    readProgress(read(storageKey), new Set(items.map(item => item.id))),
   );
-  const [drafts, setDrafts] = useState<Record<string, string>>(() => readDrafts(draftKey));
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => readDrafts(read(draftKey)));
   const [revealed, setRevealed] = useState<string[]>([]);
 
   if (!lesson) {
@@ -79,8 +84,9 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
   function toggleDone(id: string) {
     const next = completed.has(id) ? done.filter(item => item !== id) : [...done, id];
     setDone(next);
+    savePracticeSession(storageKey,JSON.stringify(next));
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      writePracticeSession(window.localStorage,progressScope,storageKey,JSON.stringify(next));
     } catch {
       // Browser storage is optional. Session checkmarks still work.
     }
@@ -90,16 +96,18 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
     setDone([]);
     setDrafts({});
     setRevealed([]);
+    savePracticeSession(storageKey,null);savePracticeSession(draftKey,null);
     try {
-      window.localStorage.removeItem(storageKey);
-      window.localStorage.removeItem(draftKey);
+      writePracticeSession(window.localStorage,progressScope,storageKey,null);
+      writePracticeSession(window.localStorage,progressScope,draftKey,null);
     } catch { /* optional */ }
   }
 
   function updateDraft(id: string, value: string) {
     const next = { ...drafts, [id]: value };
     setDrafts(next);
-    try { window.localStorage.setItem(draftKey, JSON.stringify(next)); }
+    savePracticeSession(draftKey,JSON.stringify(next));
+    try { writePracticeSession(window.localStorage,progressScope,draftKey,JSON.stringify(next)); }
     catch { /* keep the session draft available */ }
   }
 

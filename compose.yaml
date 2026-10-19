@@ -1,0 +1,54 @@
+name: haneul
+services:
+  db:
+    image: postgres:18.1-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run pnpm docker:setup first}
+      POSTGRES_DB: haneul
+      HANEUL_DB_PASSWORD: ${HANEUL_DB_PASSWORD:?Run pnpm docker:setup first}
+    ports:
+      - "127.0.0.1:${HANEUL_DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/init-app-role.sh:/docker-entrypoint-initdb.d/01-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d haneul"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 30s
+  app:
+    build: .
+    restart: unless-stopped
+    init: true
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: ${HANEUL_DOCKER_DATABASE_URL:?Run pnpm docker:setup first}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      HANEUL_IMPORT_DIR: /app/.haneul/import-jobs
+      HANEUL_COURSE_LIBRARY: /app/.haneul/courses
+      HANEUL_ACTIVE_COURSE_FILE: /app/.haneul/active-course.json
+      HANEUL_EVENT_DIR: /app/.haneul/mcp-events
+      HANEUL_IMPORT_MONITOR_DIR: /app/.haneul/import-monitor
+      HANEUL_WORKSHEET_DIR: /app/.haneul/worksheet-jobs
+      HANEUL_WORKSHEET_EVENTS_DIR: /app/.haneul/worksheet-events
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${HANEUL_WEB_PORT:-3000}:3000"
+    volumes:
+      - ./.haneul:/app/.haneul
+    healthcheck:
+      test: ["CMD", "node", "scripts/docker-health.mjs"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    stop_grace_period: 30s
+volumes:
+  postgres_data:

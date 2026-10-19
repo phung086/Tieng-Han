@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Gamepad2, RotateCcw, Volume2 } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
+import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import { arcadeChoices, buildArcadeCards, prioritizeArcade, type ArcadeCard, type ArcadeMode } from "@/lib/review-arcade";
 import { matchesSourceAnswer } from "@/lib/textbook-drills";
 import { TouchAnswer } from "./touch-answer";
@@ -63,10 +64,10 @@ export function ReviewArcade() {
 }
 
 type SavedRound = { remaining: string[]; missed: string[]; correct: number; done: number; signature: string };
-function restoreRound(key: string, cards: ArcadeCard[], signature: string): SavedRound | null {
+function restoreRound(input: string | null, cards: ArcadeCard[], signature: string): SavedRound | null {
   if (typeof window === "undefined") return null;
   try {
-    const value = JSON.parse(window.localStorage.getItem(key) || "null") as SavedRound | null;
+    const value = JSON.parse(input || "null") as SavedRound | null;
     const ids = new Set(cards.map(card => card.id));
     if (!value || value.signature !== signature || !Array.isArray(value.remaining) || !Array.isArray(value.missed)) return null;
     if (![...value.remaining, ...value.missed].every(id => typeof id === "string" && ids.has(id)) || new Set(value.remaining).size !== value.remaining.length || new Set(value.missed).size !== value.missed.length) return null;
@@ -78,24 +79,27 @@ function restoreRound(key: string, cards: ArcadeCard[], signature: string): Save
 function ArcadeSession({ cards, all, locale, storageKey, onExit, onRetry }: {
   cards: ArcadeCard[]; all: ArcadeCard[]; locale: string; storageKey: string; onExit: () => void; onRetry: (cards: ArcadeCard[]) => void;
 }) {
-  const { recordAnswer } = useLearning();
+  const {state,recordAnswer,progressScope,savePracticeSession} = useLearning();
   const { getLesson } = useContent();
   const signature = JSON.stringify(cards.map(card => [card.id, card.answer]).sort((a, b) => a[0].localeCompare(b[0])));
-  const [saved] = useState(() => restoreRound(storageKey, cards, signature));
+  const [saved] = useState(() => restoreRound(typeof window==="undefined"?null:readPracticeSession(state,window.localStorage,progressScope,storageKey), cards, signature));
   const [remaining, setRemaining] = useState(saved?.remaining ?? cards.map(card => card.id));
   const [missed, setMissed] = useState<string[]>(saved?.missed ?? []);
   const [done, setDone] = useState(saved?.done ?? 0);
   const [correct, setCorrect] = useState(saved?.correct ?? 0);
   const [response, setResponse] = useState("");
   const [checked, setChecked] = useState(false);
+  const grading=useRef(false);
   const [combo, setCombo] = useState(0);
   const [audioError, setAudioError] = useState(false);
   const card = cards.find(item => item.id === remaining[0]);
   function save(value: SavedRound) {
-    try { window.localStorage.setItem(storageKey, JSON.stringify(value)); } catch { /* Games work without storage. */ }
+    const serialized=JSON.stringify(value);savePracticeSession(storageKey,serialized);
+    try { writePracticeSession(window.localStorage,progressScope,storageKey,serialized); } catch { /* Games work without storage. */ }
   }
   function check(answer: string) {
-    if (!card || checked) return;
+    if (!card || checked || grading.current) return;
+    grading.current=true;
     const right = matchesSourceAnswer(answer, card.answer);
     setResponse(answer); setChecked(true); setCombo(value => right ? value + 1 : 0);
     // Recognition and construction both exercise the same knowledge item, not a fabricated lesson completion.
@@ -108,18 +112,19 @@ function ArcadeSession({ cards, all, locale, storageKey, onExit, onRetry }: {
   }
   function next() {
     if (!checked) return;
+    grading.current=false;
     setRemaining(value => value.slice(1)); setDone(value => value + 1);
     setResponse(""); setChecked(false); setAudioError(false);
   }
   function retry() {
-    try { window.localStorage.removeItem(storageKey); } catch { /* optional */ }
+    savePracticeSession(storageKey,null);try { writePracticeSession(window.localStorage,progressScope,storageKey,null); } catch { /* optional */ }
     onRetry(cards.filter(item => missed.includes(item.id)));
   }
   if (!card) return <div className={styles.result} role="status">
     <Check size={28} /><h3>Đã đi qua toàn bộ lượt ôn</h3>
     <p>{correct}/{done} lượt nhớ đúng · {missed.length} mục cần gặp lại. Các mục sai được đưa vào lịch ôn.</p>
     <div className={styles.actions}>{missed.length ? <button type="button" className="primary-button" onClick={retry}><RotateCcw size={17} />Chơi lại các mục sai</button> : null}
-      <button type="button" className="secondary-button" onClick={() => { try { window.localStorage.removeItem(storageKey); } catch { /* optional */ } onRetry(cards); }}>Chơi lại toàn bộ</button>
+      <button type="button" className="secondary-button" onClick={() => { savePracticeSession(storageKey,null);try { writePracticeSession(window.localStorage,progressScope,storageKey,null); } catch { /* optional */ } onRetry(cards); }}>Chơi lại toàn bộ</button>
       <button type="button" className="secondary-button" onClick={onExit}>Chọn bài / trò chơi khác</button></div>
   </div>;
   const choices = arcadeChoices(card, all);

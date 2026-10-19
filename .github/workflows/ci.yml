@@ -12,6 +12,17 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.1-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-password
+          POSTGRES_DB: haneul_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres -d haneul_test" --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      HANEUL_TEST_DATABASE_URL: postgresql://postgres:synthetic-ci-password@127.0.0.1:5432/haneul_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +35,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:local
+      - run: node --test scripts/runtime.test.mjs
       - run: python3 -m unittest discover -s scripts -p 'test_recover*.py'
       - run: node --test scripts/apply-reviewed-source-units.test.mjs
       - run: node --test scripts/apply-reviewed-illustrations.test.mjs
@@ -32,3 +44,18 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  docker-image:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/docker-setup.mjs
+      - run: docker compose --env-file .env.docker up -d --wait db
+      - run: docker build -t haneul-app:consolidation-test .
+      - run: node scripts/docker-smoke.mjs
+      - if: always()
+        run: docker compose --env-file .env.docker down --volumes

@@ -1,4 +1,5 @@
 "use client";
+import { clientFetch } from "@/lib/client-request";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@/data/content";
 import type { LanguageProfile } from "@/lib/language-profile";
 import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
+import { useAuth } from "@/lib/auth-client";
 import {
   clearStoredCourse,
   readStoredCourse,
@@ -46,6 +48,7 @@ type ContentContextValue = {
 const LEGACY_STORAGE_KEY = "haneul-course-v2";
 const FALLBACK_STORAGE_KEY = "haneul-course-fallback-v1";
 const ACTIVE_COURSE_ID_KEY = "haneul-active-course-id-v1";
+const CACHE_AUDIENCE_KEY = "haneul-course-cache-audience-v1";
 
 const emptyRuntimeCourse: RuntimeCourse = {
   id: "empty",
@@ -92,7 +95,7 @@ function readLocalFallback() {
 
 async function readServerLibrary() {
   try {
-    const response = await fetch("/api/courses", { cache: "no-store" });
+    const response = await clientFetch("/api/courses", { cache: "no-store" });
     if (!response.ok) return null;
 
     const data = (await response.json()) as {
@@ -102,24 +105,24 @@ async function readServerLibrary() {
     const courses = Array.isArray(data.courses)
       ? data.courses.filter(isPersistableCourse)
       : [];
-    if (!courses.length) return null;
 
     return {
       courses,
       activeCourseId:
         typeof data.activeCourseId === "string"
           ? data.activeCourseId
-          : courses[0].id,
+          : courses[0]?.id,
     };
   } catch {
     return null;
   }
 }
 
-async function restoreCourse() {
+async function restoreCourse(audience: string, configured: boolean) {
   const serverLibrary = await readServerLibrary();
 
   if (serverLibrary) {
+    if (!serverLibrary.courses.length) return { course: emptyRuntimeCourse, courses: [] };
     let preferredId: string | null = null;
     try {
       preferredId = window.localStorage.getItem(ACTIVE_COURSE_ID_KEY);
@@ -153,6 +156,7 @@ async function restoreCourse() {
     try {
       await writeStoredCourse(selected);
       window.localStorage.setItem(ACTIVE_COURSE_ID_KEY, selected.id);
+      window.localStorage.setItem(CACHE_AUDIENCE_KEY, audience);
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
     } catch {
@@ -161,6 +165,12 @@ async function restoreCourse() {
 
     return { course: selected, courses: serverLibrary.courses };
   }
+
+  try {
+    const cachedAudience = window.localStorage.getItem(CACHE_AUDIENCE_KEY);
+    // A failed auth request must not expose an earlier admin's cached draft.
+    if (cachedAudience ? cachedAudience !== audience : configured) return null;
+  } catch { if (configured) return null; }
 
   try {
     const stored = await readStoredCourse();
@@ -176,30 +186,34 @@ async function restoreCourse() {
 }
 
 export function ContentProvider({ children }: { children: React.ReactNode }) {
+  const { user, configured, loading: authLoading } = useAuth();
+  const audience = (user?.id ?? "guest") + ":" + (user?.role ?? "learner");
   const [course, setCourse] = useState<RuntimeCourse>(emptyRuntimeCourse);
   const [courses, setCourses] = useState<RuntimeCourse[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [loaded, setHydrated] = useState(false);
+  const [loadedAudience, setLoadedAudience] = useState("");
+  const hydrated = loaded && loadedAudience === audience && !authLoading;
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
 
-    void restoreCourse()
+    void restoreCourse(audience, configured)
       .then((restored) => {
         if (cancelled) return;
-        if (restored) {
-          setCourse(restored.course);
-          setCourses(restored.courses);
-        }
+        setCourse(restored?.course ?? emptyRuntimeCourse);
+        setCourses(restored?.courses ?? []);
+        setLoadedAudience(audience);
         setHydrated(true);
       })
       .catch(() => {
-        if (!cancelled) setHydrated(true);
+        if (!cancelled) { setCourse(emptyRuntimeCourse); setCourses([]); setLoadedAudience(audience); setHydrated(true); }
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, audience, configured]);
 
   useEffect(() => {
     if (!hydrated || course.id === "empty") return;

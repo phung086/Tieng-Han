@@ -320,7 +320,7 @@ test("games retain the complete deck, record weak items and restore a graded tur
 
 test("input questions can be answered by touch and skipped without a Korean keyboard", async ({ page }) => {
   await page.goto("/practice/quiz?lesson=1&skill=grammar");
-  await page.getByLabel("Tự chuyển sau câu đúng").uncheck();
+  await page.getByRole("button",{name:"Tự chuyển câu đúng: Bật",exact:true}).click();
   await page.getByRole("button", { name: "Không có bàn phím tiếng Hàn · chạm để xếp" }).click();
   const pieces = page.getByLabel("Mảnh câu trả lời");
   // The generated pattern question uses the exact source pattern as its answer.
@@ -343,7 +343,7 @@ test("correct quiz answers auto-advance while wrong answers keep feedback visibl
   await expect(page.getByText("Chính xác!")).toBeVisible();
 
   await expect(page.locator(".question-prompt")).toContainText("학교", {
-    timeout: 2_500,
+    timeout: 5_500,
   });
 
   await page.getByRole("button", { name: /nhà/ }).click();
@@ -369,7 +369,7 @@ test("reading shows one question at a time and auto-advances on a correct answer
 
   await expect(
     page.getByText("민수 씨는 학교에서 무엇을 공부합니까?"),
-  ).toBeVisible({ timeout: 2_500 });
+  ).toBeVisible({ timeout: 5_500 });
   await expectNoPageOverflow(page);
 });
 

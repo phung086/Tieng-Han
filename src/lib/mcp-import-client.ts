@@ -117,7 +117,7 @@ export async function queueMcpImportJob(input: QueueInput) {
 export async function getMcpImportJob(jobId: string) {
   const response = await fetch(
     "/api/import-jobs/" + encodeURIComponent(jobId),
-    { cache: "no-store" },
+    { cache: "no-store", signal: AbortSignal.timeout(15_000) },
   );
   return (await jsonResponse<{ job: ImportJob }>(response)).job;
 }

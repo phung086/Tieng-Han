@@ -10,6 +10,7 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+.env.docker
 
 data/*.db
 data/*.db-shm
@@ -22,3 +23,4 @@ storage/
 # Browser UX test artifacts
 playwright-report/
 test-results/
+*.tsbuildinfo

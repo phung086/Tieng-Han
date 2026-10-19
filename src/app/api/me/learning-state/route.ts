@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     configured: true,
-    state: await getLearningState(user.id, courseId),
+    ...(await getLearningState(user.id, courseId)),
   });
 }
 
@@ -74,7 +74,9 @@ export async function PUT(request: Request) {
     );
   }
 
-  const body = await request.json();
+  let body: unknown;
+  try { body = await request.json(); }
+  catch { return NextResponse.json({ error: "Dữ liệu gửi lên không hợp lệ." }, { status: 400 }); }
   const parsed = saveLearningStateSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -96,11 +98,19 @@ export async function PUT(request: Request) {
     );
   }
 
-  await saveLearningState({
+  if (parsed.data.expectedUserId && parsed.data.expectedUserId !== user.id) {
+    return NextResponse.json({ error: "Tài khoản đã thay đổi. Vui lòng tải lại tiến độ.", code: "account_changed" }, { status: 409 });
+  }
+
+  const revision = await saveLearningState({
     userId: user.id,
     courseId: parsed.data.courseId,
     state: parsed.data.state,
+    expectedUpdatedAt: parsed.data.expectedUpdatedAt,
   });
 
-  return NextResponse.json({ ok: true });
+  if (!revision) {
+    return NextResponse.json({ error: "Tiến độ đã được cập nhật ở một phiên khác.", code: "progress_conflict" }, { status: 409 });
+  }
+  return NextResponse.json({ ok: true, revision });
 }
