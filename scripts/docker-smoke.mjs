@@ -22,7 +22,8 @@ try{
   await writeFile(path.join(directory,"active-course.json"),JSON.stringify(course));
   const envFile=path.join(directory,"runtime.env");
   await writeFile(envFile,["DATABASE_URL="+url.href,"HANEUL_MCP_TOKEN="+token,"HANEUL_COURSE_LIBRARY=/app/.haneul/courses","HANEUL_ACTIVE_COURSE_FILE=/app/.haneul/active-course.json","HANEUL_IMPORT_DIR=/app/.haneul/import-jobs","HANEUL_EVENT_DIR=/app/.haneul/mcp-events"].join("\n"),{mode:0o600});
-  docker(["run","-d","--name",container,"--network",network,"--env-file",envFile,"-p","127.0.0.1:3108:3000","--mount","type=bind,source="+directory+",target=/app/.haneul",process.argv[2]??"haneul-app:consolidation-test"]);started=true;
+  const fileOwner=typeof process.getuid==="function"?["--user",process.getuid()+":"+process.getgid()]:[];
+  docker(["run","-d","--name",container,"--network",network,...fileOwner,"--env-file",envFile,"-p","127.0.0.1:3108:3000","--mount","type=bind,source="+directory+",target=/app/.haneul",process.argv[2]??"haneul-app:consolidation-test"]);started=true;
   for(let i=0;i<60;i++){try{const r=await fetch(base+"/api/health",{signal:AbortSignal.timeout(1000)});if(r.ok)break;}catch{/* Wait for migration and startup. */}if(i===59)throw Error("Smoke app did not become ready");await new Promise(resolve=>setTimeout(resolve,500));}
   const request=(route,{cookie,body,method="GET",...rest}={})=>fetch(base+route,{method,headers:{Origin:base,...(cookie?{Cookie:cookie}:{}),...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),...rest});
   const register=async name=>{const r=await request("/api/auth/register",{method:"POST",body:{name,email:name+"@example.invalid",password:randomBytes(24).toString("base64url")}});assert.equal(r.status,201);const data=await r.json();return{id:data.user.id,cookie:r.headers.get("set-cookie").split(";")[0]};};
