@@ -92,10 +92,10 @@ export default function DashboardPage() {
     <div className="page home-v2">
       <header className="home-head-v2">
         <div>
-          <span className="experience-kicker">HANEUL SKY JOURNEY</span>
-          <h1>오늘도 한 걸음 더.</h1>
+
+          <h1>Hôm nay, học một chút.</h1>
           <p>
-            Một phiên ngắn hôm nay vẫn đủ để giữ nhịp và tiến gần hơn đến phản xạ tự nhiên.
+            Chọn một chặng ngắn, hiểu một điều mới, rồi ôn lại khi cần.
           </p>
           <ActiveCourseChip compact />
         </div>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
               </Link>
               <Link className="ghost-game-button-v2" href="/learn">
                 <BookOpen size={16} />
-                Xem bản đồ
+                Chọn bài học
               </Link>
             </div>
           </div>

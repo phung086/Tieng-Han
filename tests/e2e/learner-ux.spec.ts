@@ -280,14 +280,14 @@ test("all lessons remain open with zero progress and no completed activities", a
     hasText: "Bài 02",
   });
 
-  await expect(lessonTwoCard).toHaveClass(/current/);
+  await expect(lessonTwoCard).toHaveClass(/available/);
   await expect(lessonTwoCard).toContainText("TỰ DO HỌC");
   await expect(
     lessonTwoCard.locator('a[href="/learn/2"]'),
   ).toHaveCount(1);
   await lessonTwoCard.locator('a[href="/learn/2"]').click();
   await expect(page).toHaveURL(/\/learn\/2$/);
-  await page.getByLabel("Học theo nhịp của bạn").selectOption("1");
+  await page.getByLabel("Đổi bài").selectOption("1");
   await expect(page).toHaveURL(/\/learn\/1$/);
   await expect(page.getByRole("link", { name: "Sang Bài 2", exact: true })).toBeVisible();
 });

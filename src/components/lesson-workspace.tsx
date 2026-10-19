@@ -12,7 +12,6 @@ import {
   Mic2,
   PenLine,
   Play,
-  ShieldCheck,
   Sparkles,
   Volume2,
 } from "lucide-react";
@@ -21,7 +20,7 @@ import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { GrammarExplanation } from "./grammar-explanation";
 import { LessonBook } from "./lesson-book";
-import { IllustratedLesson } from "./illustrated-lesson";
+import { FocusedLesson } from "./focused-lesson";
 import { ItemIllustrations } from "./learning-illustration";
 import { useMessages } from "@/i18n/messages";
 import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
@@ -148,7 +147,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
       skill: "mastery",
       ko: "확인",
       title: "Kiểm tra cuối bài",
-      desc: "Hoàn thành 6 chặng và đạt ít nhất 75% bài kiểm tra để mở bài tiếp theo",
+      desc: "Tự kiểm tra và tìm phần cần ôn lại",
       href: "/practice/quiz?lesson=" + lessonId + "&mode=mastery",
       available: course.questions.some((question) => question.lessonId === lessonId),
     },
@@ -220,29 +219,21 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
   </>;
 
   return (
-    <div className={"lesson-workspace" + (tab === "book" || tab === "study" ? " lesson-book-mode" : "")}>
+    <div data-view={tab} className={"lesson-workspace" + (tab === "book" || tab === "study" ? " lesson-book-mode" : "")}>
       <header className="lesson-workspace-header">
         <div>
-          <span className="kicker">{course.level} · {messages.common.lesson.toUpperCase()} {lessonId}</span>
+          <p className="lesson-number">Bài {lessonId} · {lesson.vi}</p>
           <h1 className="korean-text">{lesson.title}</h1>
-          <p>{lesson.vi} · {lesson.objective}</p>
-          <div className="lesson-source-line">
-            {lesson.sourceRef ? <span>{lesson.sourceRef}</span> : null}
-            {lesson.sourceRef ? (
-              <span className="grounding-badge">
-                <ShieldCheck size={13} />
-                AI tự đánh giá nguồn: {lesson.quality?.groundingScore}%
-              </span>
-            ) : null}
-          </div>
+          <p>{lesson.objective}</p>
+
         </div>
         <div className="lesson-header-actions">
-          <span className="lesson-progress-pill">{progress}% phần cốt lõi</span>
+          {progress > 0 ? <span className="lesson-progress-pill">{progress}% phần cốt lõi</span> : null}
           <Link
             className="primary-button"
-            href={primaryNextHref}
+            href={tab === "study" ? "/practice/quiz?lesson=" + lessonId + "&mode=quick" : primaryNextHref}
           >
-            <Play size={17} /> {tab === "book" ? "Ôn bài" : primaryNextLabel}
+            <Play size={17} /> {tab === "study" ? "Luyện nhanh" : tab === "book" ? "Ôn bài" : primaryNextLabel}
           </Link>
           <Link className="secondary-button" href={nextLesson ? "/learn/" + nextLesson.id : "/learn"}>
             {nextLesson ? "Sang Bài " + nextLesson.id : "Chọn bài khác"}
@@ -250,7 +241,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
         </div>
       </header>
 
-      {tab !== "book" && tab !== "study" ? sourceResources : null}
+
 
       {coreComplete && tab !== "book" ? (
         <section className="lesson-complete-banner-v4">
@@ -301,7 +292,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
       </nav>
 
       {tab === "book" ? <><LessonBook key={String(initialPage) + initialFile} courseId={course.id} lesson={lesson} initialPage={initialPage} initialFile={initialFile} />{sourceResources}</> : null}
-      {tab === "study" ? <><IllustratedLesson lesson={lesson} speak={speak} onSupplement={()=>setTab("supplement")} />{sourceResources}</> : null}
+      {tab === "study" ? <FocusedLesson lesson={lesson} speak={speak} onSupplement={()=>setTab("supplement")} /> : null}
 
       {tab === "overview" ? (
         <section className="lesson-overview-v3">
@@ -388,7 +379,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             })}
           </div>
 
-          <p className="session-note">Sáu chặng kỹ năng tương ứng 86% tiến độ. Bài đạt 100% khi bạn hoàn thành thêm kiểm tra cuối bài. Luyện nhanh và ôn từng câu không thay thế bước này.</p>
+
 
           <aside className="lesson-coach-v3">
             <div>
@@ -467,7 +458,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
                   <strong className="korean-text">{word.ko}</strong>
                   <span>{word.vi}</span>
                   <p className="korean-text">{word.example}</p>
-                  {word.sourceRef ? <small className="source-ref">{word.sourceRef}</small> : null}
+
                 </article>
               ))}
             </div>
@@ -485,7 +476,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
                 <h2>{grammar.pattern}</h2>
                 <ItemIllustrations lesson={lesson} kind="grammar" itemId={grammar.id} />
                 <GrammarExplanation item={grammar} onSpeak={speak} />
-                {grammar.sourceRef ? <small className="source-ref">{grammar.sourceRef}</small> : null}
+
               </div>
             </article>
           )) : <div className="inline-empty-state">{messages.lesson.noGrammar}</div>}
@@ -498,7 +489,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             <div className="reading-label"><BookOpen size={19} /><span>읽기</span></div>
             <h2>{lesson.reading.title}</h2>
             <p className="reading-korean korean-text">{lesson.reading.text}</p>
-            {lesson.reading.sourceRef ? <small className="source-ref">{lesson.reading.sourceRef}</small> : null}
+
             <details><summary>{messages.lesson.showTranslation}</summary><p>{lesson.reading.translation}</p></details>
             <div className="reading-actions">
               <Link className="secondary-button" href={"/reading?lesson=" + lessonId}><BookOpen size={16} /> {messages.lesson.readingPractice}</Link>
@@ -530,7 +521,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
                   </button>
                 ))}
               </div>
-              {dialogue.sourceRef ? <small className="source-ref">{dialogue.sourceRef}</small> : null}
+
             </article>
           ))}
 
@@ -539,7 +530,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
               <div className="supplement-heading"><Volume2 size={20} /><div><span className="eyebrow">{messages.lesson.pronunciation}</span><h2>{item.title}</h2></div></div>
               <p>{item.explanation}</p>
               <div className="grammar-examples">{item.examples.map((example) => <button className="korean-text" key={example} onClick={() => speak(example)}><Volume2 size={15} /> {example}</button>)}</div>
-              {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
+
             </article>
           ))}
 
@@ -547,7 +538,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             <article className="supplement-card" key={item.id}>
               <div className="supplement-heading"><BookOpen size={20} /><div><span className="eyebrow">{messages.lesson.culture}</span><h2>{item.title}</h2></div></div>
               <p>{item.text}</p>
-              {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
+
             </article>
           ))}
 
@@ -555,7 +546,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             <article className="supplement-card" key={item.id}>
               <div className="supplement-heading"><FileText size={20} /><div><span className="eyebrow">{item.kind}</span><h2>{item.title}</h2></div></div>
               <div className="extra-content">{item.content.map((line, index) => <p key={item.id + "-" + index}>{line}</p>)}</div>
-              {item.sourceRef ? <small className="source-ref">{item.sourceRef}</small> : null}
+
             </article>
           ))}
         </section>
