@@ -1,6 +1,13 @@
 .reader { max-width: 74ch; color: #352e47; }
 .reader h3 { font-size: .85rem; font-weight: 700; margin: 26px 0 10px; color: #655a79; }
 .reader .meaning { color: #50358c; font-weight: 700; line-height: 1.8; margin-block: 14px; }
+.map { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin: 20px 0 28px; padding: 20px; background: #f5f2fb; border-radius: 12px; }
+.map figcaption { color: #655a79; font-size: .8rem; }
+.map > strong { font-size: 1.2rem; }
+.map ol { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.map button { min-height: 44px; padding: 8px 12px; color: #302745; font: inherit; background: #fff; border: 1px solid #c8bfdc; border-radius: 8px; cursor: pointer; }
+.map button:focus-visible { outline: 3px solid #6746bc; outline-offset: 3px; }
+.map > p { margin: 0; color: #645b76; line-height: 1.8; }
 .reader .prose { white-space: pre-line; line-height: 1.95; margin-block: 12px 22px; overflow-wrap: anywhere; }
 .example { margin: 14px 0 20px; padding: 16px 20px; background: #f5f2fb; border-radius: 12px; }
 .example > div { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; }
@@ -8,4 +15,9 @@
 .example button { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; background: #fff; border: 1px solid #c8bfdc; border-radius: 50%; color: #6041ba; cursor: pointer; }
 .example button:focus-visible { outline: 3px solid #6746bc; outline-offset: 3px; }
 .example figcaption { color: #645b76; line-height: 1.8; padding-top: 8px; }
+.construction { margin-top: 16px; font-size: .8rem; color: #503580; line-height: 1.8; }
+.construction summary { cursor: pointer; }
+.construction ol { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 12px 0 0; }
+.construction li { display: flex; align-items: center; gap: 8px; }
+.construction li button { width: auto; height: auto; min-height: 44px; padding: 8px 12px; border-radius: 8px; font: inherit; color: #302745; }
 @media(max-width: 600px) { .example { padding: 12px; } }

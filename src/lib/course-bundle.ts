@@ -613,11 +613,18 @@ export function parseCourseBundle(rawText: string): CompiledCourseBundle {
   const lessons = course.lessons as unknown[];
   if (!lessons.length) lessonErrors.push({ path: "course.lessons", reason: "at least one lesson is required" });
   const seenLessonIds = new Set<unknown>();
+  const seenIllustrationIds = new Set<string>();
   for (let i = 0; i < lessons.length; i++) {
     lessonErrors.push(...validateLesson(lessons[i], i));
     const id = (lessons[i] as { id?: unknown } | null)?.id;
     if (seenLessonIds.has(id)) lessonErrors.push({ path: `lesson[${i}].id`, reason: "duplicate lesson id" });
     seenLessonIds.add(id);
+    const figures = (lessons[i] as LessonContent)?.illustrations;
+    for (const [index,image] of (Array.isArray(figures) ? figures : []).entries()) {
+      if (!image || typeof image.id !== "string") continue;
+      if (seenIllustrationIds.has(image.id)) lessonErrors.push({ path: `lesson[${i}].illustrations[${index}].id`, reason: "Illustration IDs must be unique across the course" });
+      seenIllustrationIds.add(image.id);
+    }
   }
 
   // Collect valid lesson IDs for question cross-referencing
@@ -701,6 +708,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "Create source-grounded practice for all six skills without introducing unsupported curriculum. Preserve each original exercise instruction and its motif; do not replace every task with multiple choice.",
       "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>, preferring item-level anchors. Never count repeated drills for one item as coverage of another item.",
       "Do not invent unreadable source content; record uncertainty instead.",
+      "Author learning illustrations inside each lesson. Use illustrations with explicit kind, targetIds, source file/page and a normalized [x,y,width,height] crop. A whole-page preview is a reference document, not an item illustration. Bind exact vocabulary cues only after checking the picture and its caption; generic situation pictures must be relation=context. Never guess a picture from a page match alone. Preserve uncropped source pages separately and record unreviewed/missing visual items in the inventory.",
       "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
       "Treat job.courseHint as a hint only. Infer the actual course title, level and edition from the textbook source when the source supports them, and pass those values to finalize_course_bundle instead of preserving a guessed/default level.",
       "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
@@ -816,6 +824,7 @@ export function getCompilationContract(language: LanguageProfile) {
         extraSections:
           "{id:string,kind:string,title:string,content:string[],sourceRef?:string}[] optional",
         media: "LessonMedia[] optional",
+        illustrations: "LearningIllustration[] optional: {id unique across course,kind:vocabulary|grammar|dialogue|context,targetIds:string[],relation:exact|context,fileName,pageNumber,region:[normalized x,y,width,height],alt,caption,sourceRef}. Crop must stay inside the source page and cover less than 80% of it. Exact cues require one existing vocabulary target; context has no invented exact association.",
         sourceRef: "string optional",
         quality:
           "{coverageScore:number,groundingScore:number,issues:string[],missingTopics:string[]} optional",

@@ -1,0 +1,11 @@
+.figure, .compact { margin: 0; min-width: 0; }
+.figure img, .compact img { display: block; width: 100%; height: auto; object-fit: contain; background: #fff; border-radius: 8px; }
+.figure img { aspect-ratio: 4/3; max-height: 340px; }
+.compact img { height: 120px; width: auto; max-width: 100%; margin-inline: auto; }
+.figure figcaption { color: #554b66; font-size: .85rem; line-height: 1.7; margin-top: 10px; }
+.source { color: #655b72; font-size: .75rem; line-height: 1.7; margin-top: 8px; }
+.source summary { cursor: pointer; text-underline-offset: 3px; }
+.source small { display: block; overflow-wrap: anywhere; }
+.failure { padding: 12px; font-size: .8rem; line-height: 1.7; background: #f4f0f8; }
+.failure button { min-height: 44px; padding: 8px 14px; border: 1px solid #b9accd; border-radius: 8px; background: #fff; color: #503580; cursor: pointer; }
+.figure :is(button,summary):focus-visible { outline: 3px solid #7250bb; outline-offset: 3px; }

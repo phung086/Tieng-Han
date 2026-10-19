@@ -17,6 +17,9 @@ Học mọi bài không cần mở khóa, ôn từ/ngữ pháp bằng game và t
 Đọc giáo trình như sách điện tử, có hình gốc, phóng to và học cùng trang:
 [ILLUSTRATED_TEXTBOOK.md](docs/ILLUSTRATED_TEXTBOOK.md).
 
+Hình cắt được biên soạn vào mục từ, flashcard và bài học:
+[INLINE_LEARNING_ILLUSTRATIONS.md](docs/INLINE_LEARNING_ILLUSTRATIONS.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp

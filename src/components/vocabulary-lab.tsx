@@ -16,11 +16,17 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
-import { LessonSourceFigures } from "./lesson-source-figures";
+import { ItemIllustrations } from "./learning-illustration";
 
 type VocabMode = "cards" | "match";
 
 export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
+  const { course, hydrated } = useContent();
+  if (!hydrated) return <p role="status">Đang mở từ vựng và hình minh họa…</p>;
+  return <VocabularySession key={course.id+":"+lessonId} lessonId={lessonId} />;
+}
+
+function VocabularySession({ lessonId }: { lessonId: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
   const { getLesson, course } = useContent();
   const messages = useMessages();
@@ -246,7 +252,6 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </button>
         </div>
       </header>
-      <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={deck.map(item => item.sourceRef)} title="Học từ qua hình trong giáo trình" />
 
 
       {mode === "cards" ? (
@@ -286,6 +291,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
             </button>
 
             <div className="flash-front">
+              <ItemIllustrations lesson={lesson} kind="vocabulary" itemId={card.id} exactOnly compact />
               <strong>{card.ko}</strong>
               <span>{messages.vocabulary.tapMeaning}</span>
             </div>

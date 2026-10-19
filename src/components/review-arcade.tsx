@@ -9,6 +9,7 @@ import { todayKey, useLearning } from "@/lib/learning-state";
 import { arcadeChoices, buildArcadeCards, prioritizeArcade, type ArcadeCard, type ArcadeMode } from "@/lib/review-arcade";
 import { matchesSourceAnswer } from "@/lib/textbook-drills";
 import { TouchAnswer } from "./touch-answer";
+import { ItemIllustrations } from "./learning-illustration";
 import styles from "./review-arcade.module.css";
 
 const modes: { id: ArcadeMode; label: string; description: string }[] = [
@@ -78,6 +79,7 @@ function ArcadeSession({ cards, all, locale, storageKey, onExit, onRetry }: {
   cards: ArcadeCard[]; all: ArcadeCard[]; locale: string; storageKey: string; onExit: () => void; onRetry: (cards: ArcadeCard[]) => void;
 }) {
   const { recordAnswer } = useLearning();
+  const { getLesson } = useContent();
   const signature = JSON.stringify(cards.map(card => [card.id, card.answer]).sort((a, b) => a[0].localeCompare(b[0])));
   const [saved] = useState(() => restoreRound(storageKey, cards, signature));
   const [remaining, setRemaining] = useState(saved?.remaining ?? cards.map(card => card.id));
@@ -126,6 +128,7 @@ function ArcadeSession({ cards, all, locale, storageKey, onExit, onRetry }: {
     <div className={styles.roundBar}><span>Đã làm {done}/{cards.length} · Bài {card.lessonId}</span><strong>Chuỗi nhớ đúng: {combo}</strong>
       <button type="button" className="text-button" onClick={onExit}>Dừng / đổi bài</button></div>
     <div className={styles.question} key={card.id}>
+      {card.skill === "vocabulary" && getLesson(card.lessonId) ? <ItemIllustrations lesson={getLesson(card.lessonId)!} kind="vocabulary" itemId={card.knowledgeId} exactOnly compact /> : null}
       <h3>{card.prompt}</h3>
       {card.mode === "sentence" || choices.length < 2 ? <>
         <TouchAnswer key={card.id} answer={card.answer} disabled={checked} onChange={setResponse} />

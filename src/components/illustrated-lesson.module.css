@@ -1,0 +1,22 @@
+.lesson { color: #30283b; }
+.contents { display: flex; gap: 12px 24px; flex-wrap: wrap; padding: 18px 0; border-bottom: 1px solid #ddd4e8; margin-bottom: 24px; }
+.contents a, .heading a { color: #503580; text-decoration: underline; text-underline-offset: 4px; line-height: 1.8; }
+.lesson section { scroll-margin-top: 90px; margin-bottom: 40px; }
+.heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.heading h2 { font-size: 1.4rem; line-height: 1.6; margin: 0; }
+.heading p { font-size: .9rem; line-height: 1.8; color: #61546f; max-width: 70ch; }
+.words { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(220px,100%),1fr)); gap: 28px; }
+.word { min-width: 0; padding: 16px; background: #fff; border-radius: 12px; }
+.wordHeading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.wordHeading h3 { margin: 0; font-size: 1.25rem; line-height: 1.7; overflow-wrap: anywhere; }
+.wordHeading button { display: grid; place-items: center; border: 0; background: #f2edf8; color: #503580; border-radius: 8px; min-width: 44px; min-height: 44px; cursor: pointer; }
+.meaning { padding: 8px 0; border: 0; text-align: left; background: transparent; color: #52405f; font: inherit; line-height: 1.8; cursor: pointer; min-height: 44px; }
+.word > p { color: #61546f; font-size: .85rem; line-height: 1.8; overflow-wrap: anywhere; }
+.grammar { background: #fff; padding: 28px; border-radius: 12px; margin-block: 24px; }
+.grammar > h3 { font-size: 1.5rem; margin: 0 0 20px; }
+.grammar > figure { max-width: 600px; margin-bottom: 24px; }
+.situations { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(260px,100%),1fr)); gap: 28px; }
+.situations > figure { background: #fff; padding: 16px; border-radius: 12px; }
+.line { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: #30283b; font: inherit; text-align: left; cursor: pointer; line-height: 1.9; min-height: 44px; }
+.lesson :is(button,a):focus-visible { outline: 3px solid #7250bb; outline-offset: 4px; }
+@media(max-width:600px) { .words { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .word { padding: 12px; } .wordHeading { flex-wrap: wrap; } .grammar { padding: 18px; } .situations { grid-template-columns: minmax(0,1fr); } }

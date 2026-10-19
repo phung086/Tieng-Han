@@ -19,7 +19,7 @@ describe.skipIf(!library)("read-only regression against existing imported course
         expect(parsed.course.lessons.length).toBe(course.lessons.length);
         expect(parsed.course.questions.length).toBe(course.questions.length);
         for (let index = 0; index < course.lessons.length; index++) {
-          for (const key of ["vocabulary", "grammar", "listening", "speaking", "dialogues", "pronunciation", "culture", "extraSections"] as const) {
+          for (const key of ["vocabulary", "grammar", "listening", "speaking", "dialogues", "pronunciation", "culture", "extraSections", "illustrations"] as const) {
             expect(parsed.course.lessons[index][key]?.length ?? 0).toBe(course.lessons[index][key]?.length ?? 0);
           }
           const lesson = parsed.course.lessons[index];

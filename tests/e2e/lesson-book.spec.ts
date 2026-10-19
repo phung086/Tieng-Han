@@ -19,6 +19,8 @@ test("illustrated book opens every page, zooms locally and restores reading posi
   const requested: string[] = [];
   page.on("request", request => { if (request.url().includes("/source-image?")) requested.push(new URL(request.url()).searchParams.get("page")!); });
   await page.goto("/learn/1");
+  await expect(page.getByRole("button", { name: "Bài học có hình", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   const book = page.getByRole("region", { name: "Sách điện tử có hình minh họa", exact: true });
   await expect(book.getByRole("img", { name: /Trang sách gốc 1 / })).toBeVisible();
   await expect(book.getByLabel("Chọn trang sách trong bài").locator("option")).toHaveCount(25);
@@ -34,6 +36,7 @@ test("illustrated book opens every page, zooms locally and restores reading posi
   await expect(book.getByRole("img", { name: /Trang sách gốc/ })).toHaveCount(1);
   await expect(book.getByRole("definition")).toHaveCount(28);
   await page.reload();
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 2 / })).toBeVisible();
   await expect.poll(() => book.getByRole("img", { name: /Trang sách gốc/ }).evaluate(img => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await book.getByLabel("Phạm vi đọc sách").selectOption("document");
@@ -42,11 +45,12 @@ test("illustrated book opens every page, zooms locally and restores reading posi
   await expect(book.getByRole("img", { name: /Trang sách gốc 40 / })).toBeVisible();
   await expect(book.getByRole("img", { name: /Trang sách gốc/ })).toHaveCount(1);
   await page.reload();
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await expect(book.getByLabel("Phạm vi đọc sách")).toHaveValue("document");
   await expect(book.getByRole("img", { name: /Trang sách gốc 40 / })).toBeVisible();
   await page.getByRole("button", { name: "Từ vựng", exact: true }).click();
-  await page.getByRole("img", { name: /Trang minh họa/ }).click();
-  await expect(page.getByRole("button", { name: "Sách có hình", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/learn/1?page=2&file=book.pdf");
+  await expect(page.getByRole("button", { name: "Sách gốc", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(book.getByRole("img", { name: /Trang sách gốc 2 / })).toBeVisible();
 });
 
