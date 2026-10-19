@@ -712,6 +712,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "Keep the compiler language-neutral. Use job.language instead of assuming Korean, Vietnamese, English, or Chinese.",
       "Treat job.courseHint as a hint only. Infer the actual course title, level and edition from the textbook source when the source supports them, and pass those values to finalize_course_bundle instead of preserving a guessed/default level.",
       "For vocabulary prefer targetText and learnerMeaning. For dialogue lines prefer targetText and learnerMeaning. Legacy ko/vi aliases are accepted and normalized automatically.",
+      "Dialogue origin=source requires checking every original turn against its cited pages. Use origin=derived for added practice, and translationOrigin=derived for an added learner-language translation. A reference to the lesson topic does not prove that a composed dialogue is printed on that page. Retain an existing dialogue ID when reviewing the same model; do not duplicate it.",
       "During long lessons, call save_work_checkpoint after meaningful source-reading chunks and before long drafting or QA work so the exact page cursor and partial state survive interruption.",
       "After finishing and checking each lesson, call save_lesson_draft immediately. Saving the lesson clears its mid-lesson work checkpoint.",
       "Before source reading in any new or resumed run, call get_compilation_progress. Resume activeWork from its sourceCursor/phase, skip completedLessonIds, and never restart verified work unless deliberate correction is required.",
@@ -816,7 +817,7 @@ export function getCompilationContract(language: LanguageProfile) {
           sourceRef: "string optional",
         },
         dialogues:
-          "{id:string,title?:string,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string,sourceRef?:string}[],sourceRef?:string}[] optional",
+          "{id:string,title?:string,origin?:source|derived,translationOrigin?:source|derived,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string,sourceRef?:string}[],sourceRef?:string}[] optional",
         pronunciation:
           "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string}[] optional",
         culture:

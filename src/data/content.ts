@@ -62,6 +62,9 @@ export type LessonMedia = {
 export type DialogueItem = {
   id: string;
   title?: string;
+  /** Only mark source after checking the actual turns against the cited pages. */
+  origin?: "source" | "derived";
+  translationOrigin?: "source" | "derived";
   lines: Array<{
     speaker?: string;
     targetText?: string;

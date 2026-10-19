@@ -20,6 +20,9 @@ Học mọi bài không cần mở khóa, ôn từ/ngữ pháp bằng game và t
 Hình cắt được biên soạn vào mục từ, flashcard và bài học:
 [INLINE_LEARNING_ILLUSTRATIONS.md](docs/INLINE_LEARNING_ILLUSTRATIONS.md).
 
+Nhập vai, tự nhớ từ và quy trình duyệt lời thoại với PDF gốc:
+[SOURCE_FIDELITY_REVIEW.md](docs/SOURCE_FIDELITY_REVIEW.md).
+
 Nền tảng học tiếng Hàn **source-grounded**, bám sát giáo trình dành cho người Việt Nam.
 
 ## Curriculum đã tích hợp
@@ -40,7 +43,7 @@ Dữ liệu nằm trong `curriculum/`:
 ## Nguyên tắc
 
 1. Mọi câu hỏi phải có `sourceEvidence`.
-2. Không sinh kiến thức ngoài syllabus đã mở khóa.
+2. Nội dung học cần bám nguồn giáo trình; người học được tự do chọn bài và phần muốn học.
 3. Workbook/ngân hàng dịch là nguồn bổ trợ, không thay giáo trình chính.
 4. PDF/scan có bản quyền **không được commit vào repo công khai**; khi triển khai đặt file nguồn cục bộ và chạy pipeline import.
 5. Kiến trúc curriculum là data-driven để sau này mở rộng tiếng Anh/Trung mà không hard-code.
