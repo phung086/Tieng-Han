@@ -1,14 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { unlink, writeFile, mkdir, rm } from "node:fs/promises";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { unlink, writeFile, mkdir, rm, mkdtemp } from "node:fs/promises";
 import path from "node:path";
-import {
+import { tmpdir } from "node:os";
+
+// Never let cleanup hooks address the owner's real textbook store.
+const sandbox = await mkdtemp(path.join(tmpdir(), "haneul-course-consumer-test-"));
+vi.stubEnv("HANEUL_ACTIVE_COURSE_FILE", path.join(sandbox, "active-course.json"));
+vi.stubEnv("HANEUL_COURSE_LIBRARY", path.join(sandbox, "courses"));
+afterAll(async () => { await rm(sandbox, { recursive: true, force: true }); vi.unstubAllEnvs(); });
+const {
   activeCourseFilePath,
   courseLibraryDir,
   buildRuntimeCourseFromBundle,
   consumeReadyImportJob,
   getActiveCourse,
   getCourseLibrary,
-} from "@/lib/course-consumer";
+} = await import("@/lib/course-consumer");
 import { parseCourseBundle } from "@/lib/course-bundle";
 import type { ImportJob } from "@/lib/import-jobs";
 import {

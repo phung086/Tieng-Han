@@ -62,6 +62,6 @@ test("missing illustrations remain visible and never block text or the next page
   await expect(book.getByText("Complete source transcript, independent of illustration status.")).toBeVisible();
   await book.getByRole("button", { name: "Trang sau của bài" }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 32 / })).toBeVisible();
-  await page.getByLabel("Học theo nhịp của bạn").selectOption("2");
+  await page.getByLabel("Đổi bài").selectOption("2");
   await expect(page).toHaveURL(/\/learn\/2$/);
 });

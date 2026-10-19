@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -18,6 +19,8 @@ import { ItemIllustrations } from "./learning-illustration";
 export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
   const { getLesson, course, courses, hydrated } = useContent();
   const { state } = useLearning();
+  const [active, setActive] = useState(0);
+  const [all, setAll] = useState(false);
   const lesson = getLesson(lessonId);
 
   if (!hydrated) return <p role="status">Đang mở ngữ pháp của bài…</p>;
@@ -45,9 +48,9 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
     <div className="grammar-lab-v4">
       <header className="grammar-lab-head-v4">
         <div>
-          <h1>Ngữ pháp Bài {lessonId} · Hiểu rồi dùng ngay.</h1>
+          <h1>Ngữ pháp · Bài {lessonId}</h1>
           <p>
-            {lesson.grammar.length} mẫu câu · Giải thích, lưu ý và ví dụ đã nhập được giữ đầy đủ, kèm nguồn để đối chiếu.
+            {lesson.grammar.length} mẫu câu · Hiểu cách dùng, nghe ví dụ, rồi tự thử.
           </p>
         </div>
 
@@ -97,10 +100,11 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
       </section>
 
       <nav className="grammar-contents" aria-label="Các mẫu ngữ pháp trong bài">
-        {lesson.grammar.map((item, index) => <a href={"#grammar-" + index} key={item.id}>{item.pattern}</a>)}
+        {lesson.grammar.map((item, index) => <button type="button" aria-pressed={!all && active === index} onClick={() => { setActive(index); setAll(false); }} key={item.id}>{item.pattern}</button>)}
+        <button type="button" aria-pressed={all} onClick={() => setAll(value => !value)}>{all ? "Học từng mẫu" : "Xem toàn bộ ngữ pháp"}</button>
       </nav>
       <section className="grammar-concept-grid-v4">
-        {lesson.grammar.map((item, index) => (
+        {lesson.grammar.map((item, index) => !all && index !== Math.min(active, lesson.grammar.length - 1) ? null : (
           <article className="grammar-concept-card-v4" key={item.id} id={"grammar-" + index}>
             <div className="grammar-concept-index-v4">
               {String(index + 1).padStart(2, "0")}
@@ -109,16 +113,14 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
             <div className="grammar-concept-copy-v4">
               <h2 className="korean-text">{item.pattern}</h2>
               <ItemIllustrations lesson={lesson} kind="grammar" itemId={item.id} />
-              <GrammarExplanation item={item} onSpeak={speak} />
+              <GrammarExplanation key={item.id} item={item} onSpeak={speak} guided={!all} practiceHref={"/practice/quiz?lesson=" + lessonId + "&mode=guided&skill=grammar"} />
 
-              {item.sourceRef ? (
-                <small className="source-ref">{item.sourceRef}</small>
-              ) : null}
+
               {relatedGrammar(item, course.id, courses).map(related => <details className="grammar-related" key={related.courseId + related.lessonId + related.grammar.id}>
                 <summary>Đọc thêm cùng mẫu · {related.courseTitle} · Bài {related.lessonId}</summary>
-                <p>Phần tham khảo từ giáo trình khác trong thư viện, giữ nguồn riêng; không thay thế nội dung của bài đang học.</p>
+
                 <GrammarExplanation item={related.grammar} onSpeak={speak} />
-                <small className="source-ref">{related.grammar.sourceRef}</small>
+
               </details>)}
             </div>
           </article>
@@ -127,7 +129,7 @@ export function GrammarLab({ lessonId = 1 }: { lessonId?: number }) {
 
       <section className="grammar-practice-callout-v4">
         <div>
-          <h2>Đừng chỉ đọc hiểu — hãy tự chọn, điền và sắp xếp câu.</h2>
+          <h2>Đã hiểu mẫu? Thử dùng trong câu.</h2>
           <p>
             Điểm số giúp chọn nội dung cần ôn lại. Bạn có thể chuyển bài bất cứ lúc nào; dùng mảnh câu thay cho bàn phím khi cần.
           </p>

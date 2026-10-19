@@ -37,11 +37,9 @@ function StudyDialogue({ lesson, dialogue, speak }: { lesson: LessonContent; dia
   const speakers = [...new Set(dialogue.lines.map(line=>line.speaker).filter((value): value is string=>Boolean(value)))];
   return <article className={styles.grammar}>
     <h3>{dialogue.title || "Hội thoại"}</h3>
-    {dialogue.origin || dialogue.translationOrigin==="derived" ? <p className={styles.provenance}>{dialogue.origin==="source" ? "Mẫu hội thoại trong giáo trình" : dialogue.origin==="derived" ? "Hội thoại biên soạn bổ trợ" : "Hội thoại đã nhập"}{dialogue.translationOrigin==="derived" ? " · Bản dịch Việt bổ trợ" : ""}</p> : null}
     <ItemIllustrations lesson={lesson} kind="dialogue" itemId={dialogue.id} />
     {speakers.length>1 ? <label className={styles.role}>Nhập vai để tự nhớ câu <select value={role} onChange={event=>setRole(event.target.value)}><option value="">Đọc tất cả các lượt</option>{speakers.map(speaker=><option key={speaker} value={speaker}>Ẩn lời của {speaker}</option>)}</select></label> : null}
     <DialogueTurns key={role} dialogue={dialogue} speak={speak} role={role} />
-    {dialogue.sourceRef ? <details className={styles.source}><summary>Xuất xứ hội thoại</summary><p>{dialogue.sourceRef}</p></details> : null}
   </article>;
 }
 
@@ -52,15 +50,14 @@ export function IllustratedLesson({ lesson, speak, onSupplement }: { lesson: Les
   const lead = context.filter(image=>image.pageNumber===firstSourcePage);
   const further = context.filter(image=>!lead.includes(image));
   return <div className={styles.lesson}>
-    <section className={styles.guide} aria-label="Gợi ý một vòng học"><h2>Học theo cách bạn thấy dễ nhớ</h2><ol><li><a href="#visual-vocabulary">Nhìn hình, gọi tên</a><p>Đọc và nghe từ. Bật tự nhớ để che nghĩa, rồi chạm từng từ để kiểm tra.</p></li><li><a href="#visual-grammar">Hiểu mẫu, đọc câu</a><p>Đọc cách dùng và lưu ý trước; nghe ví dụ rồi thử đổi một từ đã học.</p></li><li><a href={(lesson.dialogues?.length ?? 0) ? "#visual-dialogues" : "#visual-practice"}>Đặt vào tình huống</a><p>Nhập vai hoặc tự ôn bằng trò chơi. Có thể nhẩm trong đầu, không cần ghi âm.</p></li></ol><p>Bạn có thể chọn bất kỳ phần nào, quay lại hay đổi bài bất cứ lúc nào.</p></section>
     <nav className={styles.contents} aria-label="Nội dung bài học có hình"><a href="#visual-vocabulary">{lesson.vocabulary.length} từ vựng</a><a href="#visual-grammar">{lesson.grammar.length} mục ngữ pháp</a>{lesson.dialogues?.length ? <a href="#visual-dialogues">{lesson.dialogues.length} hội thoại</a> : null}{further.length ? <a href="#visual-situations">Tình huống bằng hình</a> : null}<a href="#visual-practice">Ôn và vận dụng</a></nav>
     {lead.length ? <section aria-label="Hình khởi động bài học"><header className={styles.heading}><h2>Nhìn hình, thử nói về chủ đề bài học</h2></header><div className={styles.situations}>{lead.map(image=><LearningFigure key={image.id} image={image} />)}</div></section> : null}
-    <section id="visual-vocabulary" aria-label="Học từ vựng cùng hình"><header className={styles.heading}><div><h2>Từ vựng · Nhìn, nghe và ghi nhớ</h2><p>Hình đi cùng mục từ có chú thích tương ứng. Chạm nghĩa để ẩn hoặc tự kiểm tra trí nhớ.</p></div><Link href={"/vocabulary?lesson="+lesson.id}>Ôn bằng flashcard</Link></header>
+    <section id="visual-vocabulary" aria-label="Học từ vựng cùng hình"><header className={styles.heading}><div><h2>Từ vựng · Nhìn, nghe và ghi nhớ</h2><p>Chạm nghĩa để tự kiểm tra trí nhớ.</p></div><Link href={"/vocabulary?lesson="+lesson.id}>Ôn bằng flashcard</Link></header>
       <button className={styles.recallToggle} type="button" aria-pressed={recall.enabled} onClick={()=>setRecall(value=>({enabled:!value.enabled,revision:value.revision+1}))}>{recall.enabled ? "Đang tự nhớ · Hiện lại các nghĩa" : "Tự nhớ · Che nghĩa tất cả từ"}</button>
       <div className={styles.words}>{lesson.vocabulary.map(word=><Word key={word.id} lesson={lesson} word={word} speak={speak} recall={recall} />)}</div>
     </section>
     <section id="visual-grammar" aria-label="Học ngữ pháp cùng hình"><header className={styles.heading}><h2>Ngữ pháp · Hiểu rồi dùng</h2><Link href={"/grammar?lesson="+lesson.id}>Luyện từng mẫu</Link></header>
-      {lesson.grammar.map(grammar=><article className={styles.grammar} key={grammar.id}><h3 className="korean-text">{grammar.pattern}</h3><ItemIllustrations lesson={lesson} kind="grammar" itemId={grammar.id} /><GrammarExplanation item={grammar} onSpeak={speak} />{grammar.sourceRef ? <details className={styles.source}><summary>Xuất xứ mẫu ngữ pháp</summary><p>{grammar.sourceRef}</p></details> : null}</article>)}
+      {lesson.grammar.map(grammar=><article className={styles.grammar} key={grammar.id}><h3 className="korean-text">{grammar.pattern}</h3><ItemIllustrations lesson={lesson} kind="grammar" itemId={grammar.id} /><GrammarExplanation item={grammar} onSpeak={speak} /></article>)}
     </section>
     {further.length ? <section id="visual-situations" aria-label="Tình huống minh họa của bài"><header className={styles.heading}><div><h2>Quan sát tình huống</h2><p>Hình trong các hoạt động của bài. Thử gọi tên sự vật hoặc nói một câu bằng mẫu vừa học.</p></div></header><details><summary>Mở {further.length} hình tình huống của bài</summary><div className={styles.situations}>{further.map(image=><LearningFigure key={image.id} image={image} />)}</div></details></section> : null}
     {lesson.dialogues?.length ? <section id="visual-dialogues" aria-label="Luyện hội thoại theo vai"><header className={styles.heading}><div><h2>Hội thoại · Thử nói lời của bạn</h2><p>Đọc một lượt, chọn vai để che lời rồi tự nhớ câu. Chạm để xem lại khi cần.</p></div></header>{lesson.dialogues.map(dialogue=><StudyDialogue key={dialogue.id} lesson={lesson} dialogue={dialogue} speak={speak} />)}</section> : null}

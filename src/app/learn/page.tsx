@@ -190,7 +190,7 @@ export default function LearnPage() {
                       ? " · " + item.source.pageCount + " trang"
                       : ""}
                   </small>
-                  <small>{item.source?.fileName ?? "Haneul Course"}</small>
+
                 </div>
                 <div className="course-library-state-v2">
                   {active ? "ĐANG HỌC" : "CHỌN"}
@@ -230,7 +230,7 @@ export default function LearnPage() {
           <span className="experience-kicker">LEARNING WORLD</span>
           <h1>{course.title}</h1>
           <p>
-            Tự do chọn bất kỳ bài nào. Tiến độ giúp bạn theo dõi việc ôn tập, không khóa bài học. Gợi ý tiếp tục: Bài {current.id}.
+            Chọn một chủ đề để bắt đầu. Gợi ý tiếp tục: Bài {current.id}.
           </p>
         </div>
 
@@ -260,7 +260,7 @@ export default function LearnPage() {
             {lessons.map((lesson) => {
               const progress = coreProgressFor(lesson);
               const done = progress >= 100;
-              const status = done ? "done" : "current";
+              const status = done ? "done" : lesson.id === current.id ? "current" : "available";
 
               return (
                 <article
@@ -321,7 +321,7 @@ export default function LearnPage() {
           <div>
             <strong>{completed}/{course.lessons.length} bài hoàn thành</strong>
             <p>
-              Chỉ cần nắm Từ vựng + Ngữ pháp để mở bài tiếp theo; các kỹ năng còn lại có thể quay lại luyện khi thuận tiện.
+              Từ vựng và ngữ pháp giúp bạn theo dõi tiến độ. Mọi bài học luôn mở sẵn.
             </p>
           </div>
           <Link href="/stats" aria-label="Xem tiến độ">

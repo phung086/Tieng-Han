@@ -222,11 +222,11 @@ function VocabularySession({ lessonId }: { lessonId: number }) {
           <span className="eyebrow">
             어휘 · {messages.common.lesson.toUpperCase()} {lessonId}
           </span>
-          <h1>Từ vựng chủ động</h1>
+          <h1>Từ vựng · Bài {lessonId}</h1>
           <p>
             {mode === "cards"
-              ? "Nhớ trước khi lật: ép não tự gọi lại nghĩa thay vì chỉ đọc."
-              : "Ghép lần lượt toàn bộ từ trong bài theo các nhóm 6 để không bỏ sót từ nào."}
+              ? "Nhìn từ, thử nhớ nghĩa, rồi lật thẻ để kiểm tra."
+              : "Ghép từ với nghĩa · mỗi lượt 6 cặp."}
           </p>
         </div>
 

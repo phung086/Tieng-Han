@@ -6,6 +6,7 @@ import "./game-theme.css";
 import "./experience-v2.css";
 import "./learning-experience.css";
 import "./workflow-experience.css";
+import "./focused-learning.css";
 
 const vietnamese = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],

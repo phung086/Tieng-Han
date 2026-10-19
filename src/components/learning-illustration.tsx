@@ -14,7 +14,6 @@ export function LearningFigure({ image, compact = false }: { image: LearningIllu
       /* eslint-disable-next-line @next/next/no-img-element -- Authenticated, authored crop of private source pixels. */
       <img key={image.id+retry} src={illustrationUrl(course.id,image)+"&retry="+retry} alt={compact ? "Hình gợi nhớ của mục từ" : image.alt} width={400} height={Math.max(1,Math.round(400*image.region[3]/image.region[2]))} loading="lazy" decoding="async" onError={()=>setFailed(true)} />}
     {!compact && image.caption ? <figcaption>{image.caption}</figcaption> : null}
-    {!compact ? <details className={styles.source}><summary>Nguồn hình</summary><small>{image.fileName} · trang PDF {image.pageNumber} · {image.relation === "exact" ? "Ảnh theo chú thích của mục từ" : "Hình ngữ cảnh của mục học"}</small></details> : null}
   </figure>;
 }
 

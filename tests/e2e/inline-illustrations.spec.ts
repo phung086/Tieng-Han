@@ -16,6 +16,8 @@ test("teaches with an item image in the lesson, without opening a source page",a
  await expect(words.getByRole("heading",{name:"도서관"})).toBeVisible();
  await words.getByRole("button",{name:"trường học",exact:true}).click();
  await expect(words.getByRole("button",{name:"Hiện nghĩa để kiểm tra"})).toBeVisible();
+ await page.getByRole("navigation",{name:"Các chặng học"}).getByRole("button",{name:"Mẫu câu"}).click();
+ await page.getByRole("navigation",{name:"Các bước học mẫu 에 가다"}).getByRole("button",{name:"Ví dụ",exact:true}).click();
  await expect(page.getByRole("figure",{name:"Sơ đồ câu ví dụ của mẫu 에 가다"})).toBeVisible();
  expect(sourceRequests).toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
@@ -38,6 +40,10 @@ test("recalls every vocabulary item and dialogue role without typing, a micropho
  await page.route("**/api/courses",r=>r.fulfill({json:{activeCourseId:"course-inline",courses:[{id:"course-inline",title:"Synthetic",level:"test",lessons:[guided],questions:[]}]}}));
  await page.goto("/learn/1");
  const words=page.getByRole("region",{name:"Học từ vựng cùng hình"});
+ await expect(words.getByRole("heading",{level:3})).toHaveCount(6);
+ await page.getByRole("combobox",{name:"Nhóm từ",exact:true}).selectOption("5");
+ await expect(words.getByRole("heading",{name:"단어 28",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Xem toàn bộ",exact:true}).click();
  await expect(words.getByRole("heading",{level:3})).toHaveCount(31);
  await words.getByRole("button",{name:"Tự nhớ · Che nghĩa tất cả từ",exact:true}).click();
  await expect(words.getByRole("button",{name:"Hiện nghĩa để kiểm tra",exact:true})).toHaveCount(31);
@@ -46,7 +52,7 @@ test("recalls every vocabulary item and dialogue role without typing, a micropho
  await words.getByRole("button",{name:"Đang tự nhớ · Hiện lại các nghĩa",exact:true}).click();
  await expect(words.getByRole("button",{name:"trường học",exact:true})).toBeVisible();
  const dialogue=page.getByRole("region",{name:"Luyện hội thoại theo vai"});
- await expect(dialogue.getByText("Mẫu hội thoại trong giáo trình · Bản dịch Việt bổ trợ")).toBeVisible();
+ await expect(dialogue.getByText("Mẫu hội thoại trong giáo trình · Bản dịch Việt bổ trợ")).toHaveCount(0);
  await dialogue.getByRole("combobox",{name:"Nhập vai để tự nhớ câu"}).selectOption("A");
  await expect(dialogue.getByRole("button",{name:"여기는 어디입니까?",exact:true})).toHaveCount(0);
  await expect(dialogue.getByText("Đây là đâu?",{exact:true})).toBeVisible();

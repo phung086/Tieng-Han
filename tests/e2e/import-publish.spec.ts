@@ -67,9 +67,11 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
   await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
   await expect(page.locator(".lesson-coach-stats-v3")).toContainText("7 câu luyện");
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await page.getByRole("link", { name: "Luyện toàn bộ nội dung bài", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Luyện đủ từng mục trong bài", exact: true })).toBeVisible();
   await page.goto("/learn/1");
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await page.getByText("Nội dung đã nhập · Đã đối chiếu inventory", { exact: false }).click();
   await expect(page.getByText("Kết quả dưới đây đối chiếu với inventory", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "Đối chiếu toàn bộ giáo trình gốc" }).click();

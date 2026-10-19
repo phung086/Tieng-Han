@@ -21,3 +21,26 @@
 .construction li { display: flex; align-items: center; gap: 8px; }
 .construction li button { width: auto; height: auto; min-height: 44px; padding: 8px 12px; border-radius: 8px; font: inherit; color: #302745; }
 @media(max-width: 600px) { .example { padding: 12px; } }
+.phases { display: flex; gap: 6px; padding-bottom: 20px; margin-bottom: 24px; border-bottom: 1px solid #e4deee; }
+.phases button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; color: #655a79; font: inherit; font-size: 14px; font-weight: 600; min-height: 44px; padding: 8px; border-radius: 8px; cursor: pointer; }
+.phases button[aria-pressed=true] { background: #eee8fb; color: #5331a2; }
+.phases button span { font-size: 12px; }
+.next { display: flex; justify-content: flex-end; margin-top: 24px; }
+.next button, .recall > button { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; border: 0; border-radius: 10px; background: #5c36ae; color: #fff; padding: 12px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+.examplePager { display: flex; align-items: center; justify-content: center; gap: 24px; margin-top: 24px; font-size: 14px; color: #655a79; }
+.examplePager button { min-width: 44px; min-height: 44px; display: grid; place-items: center; background: #eee8fb; color: #5331a2; border: 0; border-radius: 8px; cursor: pointer; }
+.examplePager button:disabled { opacity: .4; cursor: default; }
+.recall { text-align: center; padding-block: 12px; }
+.recall h4 { font-size: 21px; margin: 0 0 16px; }
+.recall > p { line-height: 1.9; }
+.recall .hint { font-size: 14px; color: #655a79; margin-block: 20px; }
+.reader :is(button,a):focus-visible { outline: 3px solid #7950c2; outline-offset: 3px; }
+.reader .example button { min-width: 44px; min-height: 44px; }
+.reader .map { align-items: center; text-align: center; }
+.reader .map ol { justify-content: center; }
+@media(max-width:600px) { .phases button { font-size: 12px; flex-direction: column; padding-inline: 4px; } }
+.reader .phases button { background: #f7f4fc; color: #655a79; flex-direction: row; font-size: 14px; line-height: 1.5; }
+.reader .phases button[aria-pressed=true] { background: #5c36ae; color: #fff; }
+.reader .next button, .reader .recall > button { background: #5c36ae; color: #fff; }
+.reader .next button:hover, .reader .recall > button:hover { background: #48258e; }
+@media(max-width:600px) { .reader .phases button { font-size: 12px; gap: 4px; } }
