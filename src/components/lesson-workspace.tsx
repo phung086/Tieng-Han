@@ -292,7 +292,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
       </nav>
 
       {tab === "book" ? <><LessonBook key={String(initialPage) + initialFile} courseId={course.id} lesson={lesson} initialPage={initialPage} initialFile={initialFile} />{sourceResources}</> : null}
-      {tab === "study" ? <><IllustratedLesson lesson={lesson} speak={speak} />{sourceResources}</> : null}
+      {tab === "study" ? <><IllustratedLesson lesson={lesson} speak={speak} onSupplement={()=>setTab("supplement")} />{sourceResources}</> : null}
 
       {tab === "overview" ? (
         <section className="lesson-overview-v3">
@@ -509,6 +509,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
           {dialogues.map((dialogue) => (
             <article className="supplement-card" key={dialogue.id}>
               <div className="supplement-heading"><MessageCircle size={20} /><div><span className="eyebrow">{messages.lesson.dialogue}</span><h2>{dialogue.title || messages.lesson.dialogueTitle}</h2></div></div>
+              {dialogue.origin || dialogue.translationOrigin === "derived" ? <p>{dialogue.origin === "source" ? "Mẫu hội thoại trong giáo trình" : dialogue.origin === "derived" ? "Hội thoại biên soạn bổ trợ" : "Hội thoại đã nhập"}{dialogue.translationOrigin === "derived" ? " · Bản dịch Việt bổ trợ" : ""}</p> : null}
               <div className="dialogue-lines">
                 {dialogue.lines.map((line, index) => (
                   <button key={dialogue.id + "-" + index} onClick={() => speak(line.ko)}>

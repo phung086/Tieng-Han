@@ -138,7 +138,7 @@ export function TextbookDrills({ requestedLessonId }: { requestedLessonId?: numb
         <Link className="secondary-button" href={"/practice/workbook?lesson=" + lesson.id}>
           Xem tất cả mục của bài trong Sổ luyện nguồn <ArrowRight size={16} />
         </Link>
-        <p>Bài dịch được đối chiếu với cách viết trong giáo trình, không phải hệ thống chấm mọi cách diễn đạt tương đương. Giữ nguyên nguồn nhập; không chỉnh pipeline PDF.</p>
+        <p>Bài dịch so với câu mẫu đã nhập, không chấm mọi cách diễn đạt tương đương. Bản dịch Việt bổ trợ được ghi nhãn riêng.</p>
       </footer>
     </div>
   );
@@ -241,8 +241,8 @@ function DrillSession({
       <section className={styles.card}>
         <CheckCircle2 size={38} />
         <span className={styles.eyebrow}>ĐÃ HOÀN THÀNH DẠNG BÀI</span>
-        <h2>{progress.correct}/{items.length} câu khớp bản gốc</h2>
-        <p>{progress.missed.length} câu cần xem lại. Hãy ôn lại các câu không khớp trong giáo trình rồi làm lại lượt này.</p>
+        <h2>{progress.correct}/{items.length} câu khớp câu mẫu</h2>
+        <p>{progress.missed.length} câu cần xem lại. Hãy xem lại các câu mẫu rồi làm lại lượt này.</p>
         <div className={styles.actions}>
           <button type="button" className="primary-button" onClick={restart}>
             <RotateCcw size={16} /> Luyện lại toàn bộ
@@ -307,8 +307,8 @@ function DrillSession({
           </>
         ) : (
           <div className={result === "right" ? styles.feedbackRight : styles.feedbackWrong} role="status">
-            <strong>{result === "right" ? "Khớp bản gốc!" : result === "skipped" ? "Đã bỏ qua câu này" : "Chưa khớp bản gốc"}</strong>
-            <p>Đáp án trong giáo trình: <span className="korean-text">{item.answer}</span></p>
+            <strong>{result === "right" ? "Khớp câu mẫu!" : result === "skipped" ? "Đã bỏ qua câu này" : "Chưa khớp câu mẫu"}</strong>
+            <p>Câu mẫu để đối chiếu: <span className="korean-text">{item.answer}</span></p>
             {item.mode === "translation" ? <small>Các bản dịch đúng khác có thể được chấp nhận khi giáo viên đánh giá.</small> : null}
           </div>
         )}

@@ -1,4 +1,30 @@
 .lesson { color: #30283b; }
+.guide { border-bottom: 1px solid #ddd4e8; padding-bottom: 20px; }
+.guide h2 { font-size: 1.4rem; line-height: 1.6; }
+.guide ol { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; padding-left: 24px; }
+.guide li { padding-left: 4px; }
+.guide a, .practiceLinks a { color: #503580; text-underline-offset: 4px; font-weight: 600; }
+.guide p, .lesson section > p { max-width: 70ch; line-height: 1.8; }
+.guide li p { margin-bottom: 0; color: #61546f; }
+.recallToggle, .recallTurn, .role select { font: inherit; min-height: 44px; border: 1px solid #a99ab9; border-radius: 8px; color: #503580; background: #fff; padding: 10px 14px; }
+.recallToggle { margin-bottom: 24px; cursor: pointer; }
+.recallToggle[aria-pressed=true] { background: #f2edf8; }
+.role { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; line-height: 1.8; }
+.role select { max-width: 100%; }
+.turns { max-width: 70ch; }
+.turn { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 8px 16px; padding: 18px 0; border-bottom: 1px solid #eee8f4; }
+.turn > strong { padding-top: 10px; overflow-wrap: anywhere; }
+.turn p { grid-column: 2; margin: 0; color: #61546f; line-height: 1.8; }
+.recallTurn { text-align: left; cursor: pointer; }
+.source { font-size: .85rem; margin-top: 20px; line-height: 1.8; overflow-wrap: anywhere; }
+.source summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
+.provenance { color: #61546f; font-size: .85rem; line-height: 1.8; }
+.practiceLinks { display: flex; gap: 12px 24px; flex-wrap: wrap; margin-block: 20px; }
+.practiceLinks a { min-height: 44px; padding-block: 10px; }
+.lesson button { transition: background-color 180ms ease-out, color 180ms ease-out; }
+.lesson button:hover { background-color: #e9e1f2; }
+.line span { overflow-wrap: anywhere; }
+@media(prefers-reduced-motion:reduce) { .lesson button { transition: none; } }
 .contents { display: flex; gap: 12px 24px; flex-wrap: wrap; padding: 18px 0; border-bottom: 1px solid #ddd4e8; margin-bottom: 24px; }
 .contents a, .heading a { color: #503580; text-decoration: underline; text-underline-offset: 4px; line-height: 1.8; }
 .lesson section { scroll-margin-top: 90px; margin-bottom: 40px; }
@@ -19,4 +45,4 @@
 .situations > figure { background: #fff; padding: 16px; border-radius: 12px; }
 .line { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: #30283b; font: inherit; text-align: left; cursor: pointer; line-height: 1.9; min-height: 44px; }
 .lesson :is(button,a):focus-visible { outline: 3px solid #7250bb; outline-offset: 4px; }
-@media(max-width:600px) { .words { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .word { padding: 12px; } .wordHeading { flex-wrap: wrap; } .grammar { padding: 18px; } .situations { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:600px) { .guide ol { grid-template-columns: minmax(0,1fr); gap: 16px; } .turn { grid-template-columns: 48px minmax(0,1fr); gap: 8px; } .words { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .word { padding: 12px; } .wordHeading { flex-wrap: wrap; } .grammar { padding: 18px; } .situations { grid-template-columns: minmax(0,1fr); } }

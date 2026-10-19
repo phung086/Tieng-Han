@@ -101,6 +101,18 @@ describe("real exercises from imported lesson content", () => {
     const count = countDrillModes(drills);
     expect(count.cloze + count.translation + count.dictation).toBe(drills.length);
   });
+  it("distinguishes source turns, added translations and added dialogue practice without claiming an unreviewed book original", () => {
+    const lesson = makeLesson(0);
+    const translation = () => buildTextbookDrills(lesson).find(item=>item.mode === "translation")!;
+    expect(translation().context).toContain("xuất xứ chưa được xác nhận");
+    lesson.dialogues![0].origin = "derived";
+    expect(translation().context).toContain("biên soạn bổ trợ");
+    expect(translation().context).not.toContain("trong giáo trình");
+    lesson.dialogues![0].origin = "source";
+    lesson.dialogues![0].translationOrigin = "derived";
+    expect(translation().context).toContain("Mẫu hội thoại trong giáo trình");
+    expect(translation().context).toContain("Bản dịch Việt bổ trợ");
+  });
 
   it("falls back to a sourced meaning prompt where an example cannot be clozed", () => {
     const lesson = makeLesson(1);

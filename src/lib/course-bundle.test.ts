@@ -179,6 +179,16 @@ describe("parseCourseBundle", () => {
     const bundle = parseCourseBundle(validBundleJson({ course: { title: "Test", level: "L1", lessons: [lesson], questions: [] } }));
     expect(bundle.course.lessons[0].dialogues?.[0].lines[0].sourceRef).toBe(ref);
   });
+  it("retains separate dialogue/translation origins and rejects unsupported origin labels", () => {
+    const lesson = minimalLesson();
+    Object.assign(lesson.dialogues[0], { origin: "source", translationOrigin: "derived" });
+    const json = () => validBundleJson({ course: { title: "Test", level: "L1", lessons: [lesson], questions: [] } });
+    const dialogue = parseCourseBundle(json()).course.lessons[0].dialogues?.[0];
+    expect(dialogue?.origin).toBe("source");
+    expect(dialogue?.translationOrigin).toBe("derived");
+    Object.assign(lesson.dialogues[0], { origin: "assumed" });
+    expect(() => parseCourseBundle(json())).toThrow(CourseBundleValidationError);
+  });
 
   it.each([null, { name: "bad.pdf" }, { ...sampleSourceManifest[0], pageCount: -1 }])("rejects a malformed manifest row without silently dropping it: %j", row => {
     expect(() => parseCourseBundle(validBundleJson({ sourceManifest: [sampleSourceManifest[0], row] }))).toThrow(CourseBundleValidationError);

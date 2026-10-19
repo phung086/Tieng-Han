@@ -69,7 +69,7 @@ test("real textbook drill screen grades one entry and resumes the next across re
   await expect(page.getByText("저는 ＿＿＿ 좋아합니다.")).toBeVisible();
   await page.getByLabel("Câu trả lời của bạn").fill("단어0");
   await page.getByRole("button", { name: "Kiểm tra câu trả lời" }).click();
-  await expect(page.getByText("Khớp bản gốc!")).toBeVisible();
+  await expect(page.getByText("Khớp câu mẫu!")).toBeVisible();
   await page.getByRole("button", { name: "Câu tiếp theo" }).click();
   await expect(page.getByText("Điền từ vựng 2")).toBeVisible();
   await page.reload();
@@ -83,7 +83,7 @@ test("translation and dictation modes use the imported dialogue, not invented ex
   await expect(page.getByText("Xin chào.", { exact: true })).toBeVisible();
   await page.getByLabel("Câu trả lời của bạn").fill("안녕하세요.");
   await page.getByRole("button", { name: "Kiểm tra câu trả lời" }).click();
-  await expect(page.getByText("Khớp bản gốc!")).toBeVisible();
+  await expect(page.getByText("Khớp câu mẫu!")).toBeVisible();
 
   await page.getByRole("button", { name: /Nghe chép.*\d+ câu/ }).click();
   await expect(page.getByRole("button", { name: "Nghe chậm" })).toBeVisible();

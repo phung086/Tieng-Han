@@ -53,7 +53,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
         mode: "dictation",
         skill: "vocabulary",
         title: "Nghe câu ví dụ " + (i + 1),
-        prompt: "Nghe và viết chính xác câu ví dụ trong giáo trình.",
+        prompt: "Nghe và viết chính xác câu ví dụ đã nhập.",
         answer: example,
         audioText: example,
         hint: "Ví dụ của từ: " + term,
@@ -97,6 +97,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
   });
 
   (lesson.dialogues ?? []).forEach((dialogue, i) => {
+    const provenance = (dialogue.origin === "source" ? "Mẫu hội thoại trong giáo trình." : dialogue.origin === "derived" ? "Hội thoại biên soạn bổ trợ." : "Hội thoại đã nhập; xuất xứ chưa được xác nhận.") + (dialogue.translationOrigin === "derived" ? " Bản dịch Việt bổ trợ." : "");
     (dialogue.lines ?? []).forEach((line, j) => {
       const korean = clean(line.targetText || line.ko);
       const vietnamese = clean(line.learnerMeaning || line.vi);
@@ -108,8 +109,8 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           title: (dialogue.title || "Hội thoại") + " · " + (line.speaker || j + 1),
           prompt: vietnamese,
           answer: korean,
-          context: "Viết lại câu tiếng Hàn theo bản gốc giáo trình.",
-          hint: "Đối chiếu nguyên văn với câu trong sách; không chấm ngữ nghĩa các cách diễn đạt khác.",
+          context: provenance + " Viết lại câu tiếng Hàn đã học.",
+          hint: "Đối chiếu với câu mẫu đã nhập; không chấm ngữ nghĩa các cách diễn đạt khác.",
           sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
         });
       }
@@ -122,6 +123,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           prompt: "Nghe và chép lời của " + (line.speaker || "nhân vật " + (j + 1)) + ".",
           answer: korean,
           audioText: korean,
+          context: provenance,
           hint: vietnamese || "Đọc lại đoạn hội thoại trong bài.",
           sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
         });
