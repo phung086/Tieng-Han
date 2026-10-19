@@ -41,12 +41,13 @@ Không rút gọn bài, ngữ pháp, ví dụ, câu hỏi hoặc sửa tiến đ
 
 ## Kiểm chứng local ngày 19/10/2026
 
-317 hình duyệt trong 4 khóa: 195 hình mục từ, 122 hình ngữ cảnh. 46/60 bài có
+318 hình duyệt trong 4 khóa: 195 hình mục từ, 122 hình ngữ cảnh và một bảng
+số từ thuần Hàn đặt trong đúng mục ngữ pháp. 46/60 bài có
 hình nguồn được duyệt. Sơ cấp 2 Bài 5 và 13 bài sách bài tập chưa có hình rời
 đủ rõ được duyệt. Không gắn ảnh sai hay nguyên trang chữ để tạo số bao phủ.
 Ngữ pháp vẫn có sơ đồ từ các câu ví dụ đã nhập.
 
-317/317 ảnh HTTP khớp bytes vùng cắt từ snapshot. Mọi trường ngoài
+318/318 ảnh HTTP khớp bytes vùng cắt từ snapshot. Mọi trường ngoài
 `illustrations` trong khóa khớp bản sao lưu. Các khóa vẫn có trạng thái biên
 soạn `partial`; số ảnh không chứng minh đã kiểm kê đủ nội dung sách.
 
