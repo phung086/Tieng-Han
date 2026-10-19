@@ -3,18 +3,20 @@ import { z } from "zod";
 const skillStatSchema = z.object({
   correct: z.number().int().min(0),
   total: z.number().int().min(0),
-});
+}).refine(value => value.correct <= value.total, "Số câu đúng không thể lớn hơn tổng số câu.");
 
 const dailyStatSchema = z.object({
   attempts: z.number().int().min(0),
   correct: z.number().int().min(0),
   xp: z.number().int().min(0),
-});
+}).refine(value => value.correct <= value.attempts, "Số câu đúng không thể lớn hơn số lượt trả lời.");
 
 const masteryItemSchema = z.object({
   strength: z.number().min(0).max(100),
-  lastReviewed: z.string().max(32),
-  dueAt: z.string().max(32),
+  lastReviewed: z.iso.date(),
+  dueAt: z.iso.date(),
+  lastResult: z.boolean().optional(),
+  lastWrongAt: z.iso.date().optional(),
 });
 
 export const learningStateSchema = z.object({
@@ -23,7 +25,7 @@ export const learningStateSchema = z.object({
   streak: z.number().int().min(0).max(100_000),
   dailyGoal: z.number().int().min(0).max(100_000),
   todayXp: z.number().int().min(0).max(1_000_000),
-  lastActiveDate: z.string().max(32).nullable(),
+  lastActiveDate: z.iso.date().nullable(),
   lessonProgress: z.record(
     z.string().max(64),
     z.number().min(0).max(100),
@@ -44,4 +46,6 @@ export const learningStateSchema = z.object({
 export const saveLearningStateSchema = z.object({
   courseId: z.string().min(1).max(250),
   state: learningStateSchema,
+  expectedUserId: z.string().min(1).max(250).optional(),
+  expectedUpdatedAt: z.iso.datetime({ offset: true }).nullable().optional(),
 });

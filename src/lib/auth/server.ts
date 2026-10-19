@@ -8,6 +8,7 @@ import { dbQuery, isDatabaseConfigured } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { normalizeEmail } from "@/lib/auth/validation";
 import type { AuthUser, UserRole } from "@/lib/auth/types";
+export { isSameOrigin } from "@/lib/auth/request-origin";
 
 const SESSION_COOKIE = "haneul_session";
 const SESSION_DAYS = 30;
@@ -241,12 +242,6 @@ export async function requireAdmin() {
     );
   }
   return user;
-}
-
-export function isSameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  return origin === new URL(request.url).origin;
 }
 
 export async function recordAuditEvent(input: {

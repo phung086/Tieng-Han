@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAutoAdvance } from "@/lib/use-auto-advance";
+import { SessionFlowControl } from "@/components/session-flow-control";
 import Link from "next/link";
-import { CheckCircle2, Headphones, Pause, Play, RotateCcw } from "lucide-react";
+import { CheckCircle2, Headphones, Square, Play, RotateCcw } from "lucide-react";
 import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
@@ -19,8 +21,13 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const [selected, setSelected] = useState("");
   const [checked, setChecked] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [audioError, setAudioError] = useState("");
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const submissionLock = useRef(false);
+  const transitionLock = useRef<string | null>(null);
+  const flow = useAutoAdvance(index, checked && !finished && !playing && selected === items[index]?.answer, next);
+  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
 
   if (!lesson || !items.length) {
     return (
@@ -35,25 +42,32 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
   const nextStep = getNextLessonFlowStep(lessonId, "listening");
 
   function play(rate = 0.72) {
-    if (!("speechSynthesis" in window)) return;
+    if (!("speechSynthesis" in window)) { setAudioError("Thiết bị này chưa hỗ trợ giọng đọc. Thử trình duyệt có hỗ trợ tổng hợp tiếng Hàn."); return; }
+    setAudioError("");
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(item.text);
     utterance.lang = course.language?.locale ?? "ko-KR";
     utterance.rate = rate;
     utterance.onstart = () => setPlaying(true);
     utterance.onend = () => setPlaying(false);
+    utterance.onerror = () => { setPlaying(false); setAudioError("Chưa phát được giọng mẫu. Kiểm tra giọng tiếng Hàn của thiết bị và thử lại."); };
     window.speechSynthesis.speak(utterance);
   }
 
-  function submit() {
-    if (!selected || checked) return;
-    const correct = selected === item.answer;
+  function submit(response = selected) {
+    if (!response || checked || submissionLock.current) return;
+    submissionLock.current = true;
+    const correct = response === item.answer;
     if (correct) setCorrectCount((value) => value + 1);
     setChecked(true);
     recordAnswer("listening", correct, item.id);
   }
 
   function next() {
+    if (!checked || transitionLock.current === item.id) return;
+    transitionLock.current = item.id;
+    window.speechSynthesis?.cancel();
+    setPlaying(false);
     if (index === items.length - 1) {
       if (correctCount / items.length >= 0.75) {
         completeLessonSkill(lessonId, "listening");
@@ -65,9 +79,13 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
     setIndex((current) => current + 1);
     setSelected("");
     setChecked(false);
+    submissionLock.current = false;
   }
 
   function restart() {
+    submissionLock.current = false;
+    transitionLock.current = null;
+    flow.reset();
     setIndex(0);
     setSelected("");
     setChecked(false);
@@ -113,6 +131,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
         <span className="eyebrow">듣기 · {messages.common.lesson.toUpperCase()} {lessonId}</span>
         <h1>{messages.listening.titleCurrent}</h1>
         <p>{messages.listening.introCurrent}</p>
+        <p>Giọng mẫu được tổng hợp từ câu trong giáo trình bằng giọng đọc của thiết bị.</p>
       </header>
 
       <section className="audio-stage">
@@ -123,17 +142,19 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
           ))}
         </div>
 
-        <button className="audio-play" onClick={() => play()}>
-          {playing ? <Pause size={22} /> : <Play size={22} />}
-          {playing ? messages.listening.playing : messages.listening.listenSentence}
+        <button className="audio-play" onClick={() => { if (playing) { window.speechSynthesis.cancel(); setPlaying(false); } else play(); }}>
+          {playing ? <Square size={22} /> : <Play size={22} />}
+          {playing ? "Dừng phát" : messages.listening.listenSentence}
         </button>
 
         <button className="audio-replay" onClick={() => play(0.56)}>
           <RotateCcw size={15} /> {messages.listening.replaySlow}
         </button>
       </section>
+      {audioError ? <p role="alert">{audioError}</p> : null}
 
-      <section className="listening-question">
+      <SessionFlowControl flow={flow} stepKey={index} />
+      <section key={item.id} className="listening-question question-scene">
         <span>{messages.reading.question} {index + 1}/{items.length}</span>
         <h2>{messages.listening.questionMeaning}</h2>
 
@@ -154,7 +175,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
                 className={state}
                 disabled={checked}
                 key={choice}
-                onClick={() => setSelected(choice)}
+                onClick={() => { setSelected(choice); submit(choice); }}
               >
                 {choice}
               </button>
@@ -174,7 +195,7 @@ export function ListeningLab({ lessonId = 3 }: { lessonId?: number }) {
           <button
             className="primary-button"
             disabled={!selected}
-            onClick={checked ? next : submit}
+            onClick={checked ? next : () => submit()}
           >
             {checked
               ? index === items.length - 1

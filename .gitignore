@@ -8,6 +8,7 @@ coverage
 .env
 .env.local
 .env.*.local
+.env.docker
 
 data/*.db
 data/*.db-shm
@@ -16,3 +17,4 @@ storage/
 
 # Local Haneul import/MCP queue
 .haneul/
+*.tsbuildinfo

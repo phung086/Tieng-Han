@@ -20,6 +20,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { useMessages } from "@/i18n/messages";
+import { LessonCoach } from "@/components/lesson-coach";
 
 type LessonTabKey = "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
 const tabKeys: LessonTabKey[] = ["overview", "vocabulary", "grammar", "reading", "supplement"];
@@ -105,6 +106,14 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
       href: "/writing?lesson=" + lessonId,
       available: Boolean(lesson.writing),
     },
+    {
+      skill: "mastery",
+      ko: "확인",
+      title: "Kiểm tra cuối bài",
+      desc: "Hoàn thành 6 chặng và đạt ít nhất 75% bài kiểm tra để mở bài tiếp theo",
+      href: "/practice/quiz?lesson=" + lessonId + "&mode=mastery",
+      available: course.questions.some((question) => question.lessonId === lessonId),
+    },
   ].filter((step) => step.available);
 
   const isMissionDone = (skill: string) =>
@@ -114,7 +123,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
   ).length;
   const nextMission =
     missionSteps.find((step) => !isMissionDone(step.skill)) ??
-    missionSteps[0];
+    { skill: "mastery", title: "Kiểm tra cuối bài", href: "/practice/quiz?lesson=" + lessonId + "&mode=mastery" };
   const lessonIndex = course.lessons.findIndex((item) => item.id === lessonId);
   const nextLesson =
     lessonIndex >= 0 ? course.lessons[lessonIndex + 1] : undefined;
@@ -137,10 +146,10 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           <p>{lesson.vi} · {lesson.objective}</p>
           <div className="lesson-source-line">
             {lesson.sourceRef ? <span>{lesson.sourceRef}</span> : null}
-            {lesson.quality ? (
+            {lesson.sourceRef ? (
               <span className="grounding-badge">
                 <ShieldCheck size={13} />
-                {messages.lesson.grounding} {lesson.quality.groundingScore}%
+                Có dẫn nguồn
               </span>
             ) : null}
           </div>
@@ -162,10 +171,9 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
             <CheckCircle2 size={28} />
           </div>
           <div>
-            <span className="experience-kicker">LESSON COMPLETE</span>
             <h2>Bạn đã hoàn thành Bài {lessonId}.</h2>
             <p>
-              Sáu kỹ năng cốt lõi đã đủ. Bạn có thể làm Mastery Check để củng cố hoặc đi tiếp sang bài mới.
+              Bạn đã hoàn thành sáu chặng kỹ năng và đạt bài kiểm tra cuối bài. Tiếp tục ôn các mục đến hạn để củng cố.
             </p>
           </div>
           <div className="lesson-complete-actions-v4">
@@ -173,7 +181,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               className="secondary-button"
               href={"/practice/quiz?lesson=" + lessonId + "&mode=mastery"}
             >
-              Mastery Check
+              Làm lại kiểm tra
             </Link>
             {nextLesson ? (
               <Link className="primary-button" href={"/learn/" + nextLesson.id}>
@@ -227,9 +235,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
                   href={nextMission?.href ?? ("/practice/quiz?lesson=" + lessonId + "&mode=guided")}
                 >
                   <Sparkles size={17} />
-                  {completedMissions === missionSteps.length
-                    ? "Luyện lại bài"
-                    : "Tiếp tục: " + (nextMission?.title ?? "Bài học nhanh")}
+                  {"Tiếp tục: " + nextMission.title}
                 </Link>
                 <Link
                   className="secondary-button"
@@ -281,6 +287,8 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
               );
             })}
           </div>
+
+          <p className="session-note">Sáu chặng kỹ năng tương ứng 86% tiến độ. Bài đạt 100% khi bạn hoàn thành thêm kiểm tra cuối bài. Luyện nhanh và ôn từng câu không thay thế bước này.</p>
 
           <aside className="lesson-coach-v3">
             <div>
@@ -457,6 +465,7 @@ export function LessonWorkspace({ lessonId }: { lessonId: number }) {
           ))}
         </section>
       ) : null}
+      <LessonCoach key={course.id + ":" + lessonId} lessonId={lessonId} />
     </div>
   );
 }

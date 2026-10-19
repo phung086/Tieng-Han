@@ -21,6 +21,7 @@ import { useContent } from "@/lib/content-store";
 import { todayKey, useLearning } from "@/lib/learning-state";
 import { useMessages } from "@/i18n/messages";
 import { EmptyCourseState } from "@/components/empty-course-state";
+import { reviewSummary } from "@/lib/review-plan";
 
 const skillModes = [
   { path: "/vocabulary", key: "vocabulary", icon: Layers3, tone: "blue" },
@@ -50,9 +51,7 @@ export default function PracticePage() {
     ) ?? course.lessons[course.lessons.length - 1];
 
   const today = todayKey();
-  const dueCount = Object.values(state.mastery).filter(
-    (item) => item.dueAt <= today,
-  ).length;
+  const dueCount = reviewSummary(course, state, today).due.length;
   const currentProgress = state.lessonProgress[String(current.id)] ?? 0;
 
   const modes = [

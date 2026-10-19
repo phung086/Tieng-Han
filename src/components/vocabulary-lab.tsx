@@ -69,6 +69,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
   }
 
   function rate(correct: boolean) {
+    if (!revealed || finished) return;
     recordAnswer("vocabulary", correct, card.id);
     if (correct) setKnown((value) => value + 1);
 
@@ -122,7 +123,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
         }
       }
     } else {
-      recordAnswer("vocabulary", false);
+      recordAnswer("vocabulary", false, targetId);
       setMatchMessage("Chưa khớp. Thử một cặp khác nhé.");
     }
 
@@ -217,9 +218,10 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </p>
         </div>
 
-        <div className="vocab-mode-switch-v4" role="tablist" aria-label="Chế độ luyện từ vựng">
+        <div className="vocab-mode-switch-v4" role="group" aria-label="Chế độ luyện từ vựng">
           <button
             className={mode === "cards" ? "active" : ""}
+            aria-pressed={mode === "cards"}
             onClick={() => setMode("cards")}
             type="button"
           >
@@ -227,6 +229,7 @@ export function VocabularyLab({ lessonId = 3 }: { lessonId?: number }) {
           </button>
           <button
             className={mode === "match" ? "active" : ""}
+            aria-pressed={mode === "match"}
             onClick={() => setMode("match")}
             type="button"
           >

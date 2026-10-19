@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useAutoAdvance } from "@/lib/use-auto-advance";
+import { SessionFlowControl } from "@/components/session-flow-control";
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,41 +26,50 @@ import {
   pickBalancedQuestions,
 } from "@/lib/study-session-plan";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+import { LearningLoading } from "@/components/learning-loading";
+import { answersMatch, availableTokenIndexes } from "@/lib/answer-check";
+import { formatReviewDate, selectReviewQuestions, skillNames, type ReviewItem } from "@/lib/review-plan";
+import { lessonSkillCount, localDateKey } from "@/lib/learning-model";
+import { LessonCoach } from "@/components/lesson-coach";
 
-export type StudySessionMode = "guided" | "quick" | "mastery";
+export type StudySessionMode = "guided" | "quick" | "mastery" | "review";
 
-const normalize = (value: string) =>
-  value
-    .trim()
-    .replace(/[.!?。！？]/g, "")
-    .replace(/\s+/g, " ");
+type SessionProps = { lessonId?: number; mode?: StudySessionMode; skill?: SkillKey; reviewItemId?: string };
 
-export function StudySession({
+export function StudySession(props: SessionProps) {
+  const { course, hydrated: contentHydrated } = useContent();
+  const { state, hydrated } = useLearning();
+  if (!contentHydrated || (course.lessons.length > 0 && !hydrated)) return <LearningLoading />;
+  const lessonId = props.lessonId ?? course.lessons.find(lesson => (state.lessonProgress[lesson.id] ?? 0) < 100)?.id ?? course.lessons[0]?.id;
+  return <StudySessionRunner key={[course.id, lessonId, props.mode, props.skill, props.reviewItemId].join(":")} {...props} lessonId={lessonId} />;
+}
+
+function StudySessionRunner({
   lessonId,
   mode = "guided",
   skill,
-}: {
-  lessonId?: number;
-  mode?: StudySessionMode;
-  skill?: SkillKey;
-}) {
-  const { recordAnswer, completeLessonSkill } = useLearning();
+  reviewItemId,
+}: SessionProps) {
+  const { state, recordAnswer, completeLessonSkill, completeLessonMastery } = useLearning();
   const { course } = useContent();
   const messages = useMessages();
 
   const activeLessonId = lessonId ?? course.lessons[0]?.id ?? 1;
+  const [reviewQuestions] = useState(() => selectReviewQuestions(course, state, localDateKey(), reviewItemId));
 
-  const baseQuestions = useMemo(() => {
+  const baseQuestions = useMemo<ReviewItem[]>(() => {
+    if (mode === "review") return reviewQuestions;
     const all = course.questions.filter(
       (item) =>
         item.lessonId === activeLessonId &&
         (!skill || item.skill === skill),
     );
 
-    if (mode === "quick") return all.slice(0, 5);
+    if (skill) return all;
+    if (mode === "quick") return pickBalancedQuestions(all, 5);
     if (mode === "mastery") return all;
     return pickBalancedQuestions(all, 8);
-  }, [course.questions, activeLessonId, mode, skill]);
+  }, [course.questions, activeLessonId, mode, skill, reviewQuestions]);
 
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
   const questions = retryIds
@@ -67,7 +78,8 @@ export function StudySession({
 
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
-  const [tokens, setTokens] = useState<string[]>([]);
+  const [tokens, setTokens] = useState<number[]>([]);
+  const [rating, setRating] = useState<boolean | null>(null);
   const [checked, setChecked] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -79,8 +91,17 @@ export function StudySession({
   const [skillStats, setSkillStats] = useState<
     Partial<Record<SkillKey, { correct: number; total: number }>>
   >({});
+  const submissionLock = useRef(false);
+  const transitionLock = useRef<string | null>(null);
+  const candidate = questions[index];
+  const flow = useAutoAdvance(index, checked && !finished && Boolean(candidate) && (candidate?.reviewKind ? rating === true : answersMatch(candidate?.type === "reorder" ? tokens.map(token => candidate.tokens?.[token]).join(" ") : answer, candidate?.answer ?? "")), next);
 
   if (!questions.length) {
+    if (mode === "review") return <div className="skill-complete-card">
+      <Check size={32} /><h1>Đã xong hàng đợi ôn tập.</h1>
+      <p>Phiên ôn chỉ chứa những mục đã học và đến hạn trong giáo trình đang chọn.</p>
+      <Link className="primary-button" href="/review">Xem lịch ôn tiếp theo <ArrowRight size={17} /></Link>
+    </div>;
     return (
       <EmptySkillState
         lessonId={activeLessonId}
@@ -91,9 +112,10 @@ export function StudySession({
 
   const question = questions[index];
   const submittedAnswer =
-    question.type === "reorder" ? tokens.join(" ") : answer;
+    question.type === "reorder" ? tokens.map(index => question.tokens?.[index]).join(" ") : answer;
   const isCorrect =
-    normalize(submittedAnswer) === normalize(question.answer);
+    question.reviewKind ? rating === true : answersMatch(submittedAnswer, question.answer);
+  const canSubmit = question.type === "reorder" ? tokens.length === question.tokens?.length : Boolean(submittedAnswer.trim());
 
   const progress = Math.round(
     ((index + (checked ? 1 : 0)) / questions.length) * 100,
@@ -124,14 +146,18 @@ export function StudySession({
       title: "Chinh phục bài",
       note: "Làm toàn bộ câu hỏi của bài để kiểm tra độ chắc.",
     },
+    review: { label: "Ôn đến hạn", title: "Củng cố điều đã học", note: "Tối đa 10 mục mỗi phiên, ưu tiên mục quá hạn. Không mở bài mới." },
   }[mode];
 
-  function submit() {
-    if (!submittedAnswer || checked) return;
+  function submit(selfRating?: boolean, response?: string) {
+    if (submissionLock.current || checked || (selfRating === undefined && !response && !canSubmit)) return;
+    submissionLock.current = true;
+    const answerCorrect = selfRating ?? answersMatch(response ?? submittedAnswer, question.answer);
+    if (selfRating !== undefined) setRating(selfRating);
 
     setChecked(true);
 
-    if (isCorrect) {
+    if (answerCorrect) {
       setCorrectCount((value) => value + 1);
       const nextCombo = combo + 1;
       setCombo(nextCombo);
@@ -151,25 +177,23 @@ export function StudySession({
       return {
         ...current,
         [question.skill]: {
-          correct: previous.correct + (isCorrect ? 1 : 0),
+          correct: previous.correct + (answerCorrect ? 1 : 0),
           total: previous.total + 1,
         },
       };
     });
 
-    recordAnswer(question.skill, isCorrect, question.id);
+    recordAnswer(question.skill, answerCorrect, question.id);
   }
 
   function next() {
+    if (!checked || transitionLock.current === question.id) return;
+    transitionLock.current = question.id;
     if (index === questions.length - 1) {
-      if (skill && masteryPassed(correctCount, questions.length)) {
+      if (mode !== "review" && !retryIds && skill && masteryPassed(correctCount, questions.length)) {
         completeLessonSkill(activeLessonId, skill);
-      } else if (mode === "mastery" && !retryIds) {
-        for (const [skillKey, stat] of Object.entries(skillStats)) {
-          if (stat && masteryPassed(stat.correct, stat.total)) {
-            completeLessonSkill(activeLessonId, skillKey as SkillKey);
-          }
-        }
+      } else if (mode === "mastery" && !retryIds && masteryPassed(correctCount, questions.length)) {
+        completeLessonMastery(activeLessonId);
       }
       setFinished(true);
       return;
@@ -180,9 +204,14 @@ export function StudySession({
     setTokens([]);
     setChecked(false);
     setShowHint(false);
+    setRating(null);
+    submissionLock.current = false;
   }
 
   function resetSession(nextRetryIds: string[] | null) {
+    submissionLock.current = false;
+    transitionLock.current = null;
+    flow.reset();
     setRetryIds(nextRetryIds);
     setIndex(0);
     setAnswer("");
@@ -196,6 +225,7 @@ export function StudySession({
     setFocus(3);
     setShowHint(false);
     setSkillStats({});
+    setRating(null);
   }
 
   if (finished) {
@@ -204,7 +234,8 @@ export function StudySession({
     );
     const estimatedXp =
       correctCount * 10 + (questions.length - correctCount) * 2;
-    const nextSkillStep = skill
+    const passed = masteryPassed(correctCount, questions.length);
+    const nextSkillStep = skill && passed && !retryIds
       ? getNextLessonFlowStep(activeLessonId, skill)
       : null;
 
@@ -222,6 +253,10 @@ export function StudySession({
         <p>
           Bạn trả lời đúng {correctCount}/{questions.length} câu trong phiên này.
         </p>
+        {mode === "mastery" && (!passed || retryIds || lessonSkillCount(state, activeLessonId) < 6) ? <p className="session-note">
+          {retryIds ? "Luyện lại câu sai giúp củng cố. Hãy làm lại bài kiểm tra đầy đủ để ghi nhận kết quả." : !passed ? "Chưa đạt ngưỡng 75%. Bài học chưa được đánh dấu hoàn thành." : "Đã đạt bài kiểm tra. Hãy hoàn thành đủ 6 chặng kỹ năng để kết thúc bài học."}
+        </p> : null}
+        {mode === "review" ? <p className="session-note">Lịch ôn đã cập nhật cho đúng từng mục. Tự đánh giá không thay thế chấm phát âm hoặc bài viết.</p> : null}
 
         <div className="session-result-grid-v3">
           <article>
@@ -243,6 +278,7 @@ export function StudySession({
         </div>
 
         <div className="complete-actions">
+          <div className="session-skill-results">{Object.entries(skillStats).map(([key, stat]) => stat ? <span key={key}>{skillNames[key as SkillKey]}: {stat.correct}/{stat.total}</span> : null)}</div>
           {mistakeIds.length ? (
             <button
               className="secondary-button"
@@ -260,12 +296,12 @@ export function StudySession({
           )}
           <Link
             className="primary-button"
-            href={nextSkillStep?.href ?? ("/learn/" + activeLessonId)}
+            href={mode === "review" ? "/review" : nextSkillStep?.href ?? ("/learn/" + activeLessonId)}
           >
-            {nextSkillStep
+            {mode === "review" ? "Xem lịch ôn" : nextSkillStep
               ? "Tiếp: " + nextSkillStep.label
               : mode === "mastery"
-                ? "Hoàn tất bài học"
+                ? "Xem kết quả bài học"
                 : "Quay lại bài học"}
             <ArrowRight size={17} />
           </Link>
@@ -279,7 +315,7 @@ export function StudySession({
       <header className="session-header session-header-v3">
         <Link
           className="icon-button"
-          href={"/learn/" + activeLessonId}
+          href={mode === "review" ? "/review" : "/learn/" + activeLessonId}
           aria-label={messages.quiz.exit}
         >
           <ArrowLeft size={18} />
@@ -305,18 +341,31 @@ export function StudySession({
         </div>
       </header>
 
-      <main className="session-body session-body-v3">
+      <SessionFlowControl flow={flow} stepKey={index} />
+      <main key={question.id} className="session-body session-body-v3 question-scene">
         <div className="session-mode-copy-v3">
           <span className="pill pill-soft">
-            {skillLabel} · {messages.common.lesson} {activeLessonId}
+            {skillLabel} · {messages.common.lesson} {question.lessonId}
           </span>
           <small>{modeCopy.note}</small>
         </div>
 
         <h1>{question.title}</h1>
+        {question.context ? <p className="session-source-context korean-text">{question.context}</p> : null}
         <div className="question-prompt korean-text">
           {question.prompt}
         </div>
+        {question.audioText ? <button className="secondary-button" type="button" onClick={() => {
+          if (!("speechSynthesis" in window)) return;
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(question.audioText!);
+          utterance.lang = course.language?.locale ?? "ko-KR"; utterance.rate = 0.75;
+          window.speechSynthesis.speak(utterance);
+        }}>Nghe giọng đọc tổng hợp</button> : null}
+        {question.reviewKind ? <div className="recall-card">
+          <p>{question.reviewKind === "speaking" ? "Đọc to câu phía trên, rồi tự đánh giá mức độ nhớ." : question.reviewKind === "writing" ? "Thử viết theo yêu cầu trước khi xem gợi ý." : "Nhớ lại nghĩa tiếng Việt trước khi mở đáp án."}</p>
+          {showHint || checked ? <div className="recall-answer"><strong>{question.answer}</strong><p>{question.explanation}</p></div> : null}
+        </div> : null}
 
         {question.translation ? (
           <p className="question-translation">
@@ -324,7 +373,7 @@ export function StudySession({
           </p>
         ) : null}
 
-        {!checked ? (
+        {!checked && !question.reviewKind ? (
           <button
             className="session-hint-button-v3"
             type="button"
@@ -335,7 +384,7 @@ export function StudySession({
           </button>
         ) : null}
 
-        {showHint && !checked ? (
+        {showHint && !checked && !question.reviewKind ? (
           <div className="session-hint-v3">
             <Sparkles size={17} />
             <span>
@@ -365,7 +414,7 @@ export function StudySession({
                   className={"session-option" + state}
                   disabled={checked}
                   key={choice}
-                  onClick={() => setAnswer(choice)}
+                  onClick={() => { setAnswer(choice); submit(undefined, choice); }}
                   type="button"
                 >
                   <span>
@@ -392,10 +441,11 @@ export function StudySession({
           </div>
         ) : null}
 
-        {question.type === "input" ? (
+        {question.type === "input" && !question.reviewKind ? (
           <div className="input-answer-wrap">
             <input
               autoComplete="off"
+              aria-label="Câu trả lời của bạn"
               autoFocus
               className={
                 "text-answer" +
@@ -407,9 +457,7 @@ export function StudySession({
               }
               disabled={checked}
               onChange={(event) => setAnswer(event.target.value)}
-              onKeyDown={(event) =>
-                event.key === "Enter" && submit()
-              }
+              onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }}
               placeholder={messages.quiz.inputPlaceholder}
               value={answer}
             />
@@ -421,9 +469,10 @@ export function StudySession({
           <div className="reorder-area">
             <div className="built-sentence">
               {tokens.length ? (
-                tokens.map((token, tokenIndex) => (
+                tokens.map((sourceIndex, tokenIndex) => (
                   <button
-                    key={token + "-" + tokenIndex}
+                    key={sourceIndex}
+                    disabled={checked}
                     onClick={() =>
                       setTokens((current) =>
                         current.filter(
@@ -433,7 +482,7 @@ export function StudySession({
                       )
                     }
                   >
-                    {token}
+                    {question.tokens?.[sourceIndex]}
                   </button>
                 ))
               ) : (
@@ -442,20 +491,18 @@ export function StudySession({
             </div>
 
             <div className="token-bank">
-              {question.tokens
-                ?.filter((token) => !tokens.includes(token))
-                .map((token) => (
+              {availableTokenIndexes(question.tokens ?? [], tokens).map(sourceIndex => (
                   <button
                     disabled={checked}
-                    key={token}
+                    key={sourceIndex}
                     onClick={() =>
                       setTokens((current) => [
                         ...current,
-                        token,
+                        sourceIndex,
                       ])
                     }
                   >
-                    {token}
+                    {question.tokens?.[sourceIndex]}
                   </button>
                 ))}
             </div>
@@ -464,6 +511,8 @@ export function StudySession({
 
         {checked ? (
           <div
+            role="status"
+            aria-live="polite"
             className={
               "answer-coach-v3 " + (isCorrect ? "success" : "error")
             }
@@ -476,6 +525,9 @@ export function StudySession({
                 {isCorrect ? "Chính xác!" : "Chưa đúng, nhưng đây là điểm cần nhớ."}
               </strong>
               <p>{question.explanation}</p>
+              {question.audioText ? <p className="korean-text">{question.audioText}</p> : null}
+              {question.sourceRef ? <small>Nguồn: {question.sourceRef}</small> : null}
+              {mode === "review" && state.mastery[question.id] ? <small>Lần ôn tiếp: {formatReviewDate(state.mastery[question.id].dueAt)}</small> : null}
               {!isCorrect ? (
                 <small>
                   Đáp án đúng: <b>{question.answer}</b>
@@ -484,6 +536,7 @@ export function StudySession({
             </div>
           </div>
         ) : null}
+        {checked ? <LessonCoach key={question.id} lessonId={question.lessonId} questionId={question.id} compact /> : null}
       </main>
 
       <footer
@@ -513,10 +566,15 @@ export function StudySession({
           )}
         </div>
 
-        <button
+        {question.reviewKind && !checked ? <div className="recall-actions">
+          {!showHint ? <button className="primary-button" onClick={() => setShowHint(true)}>Xem đáp án / gợi ý</button> : <>
+            <button className="secondary-button" onClick={() => submit(false)}>Cần ôn lại</button>
+            <button className="primary-button" onClick={() => submit(true)}>Đã nhớ</button>
+          </>}
+        </div> : <button
           className="primary-button"
-          disabled={!submittedAnswer}
-          onClick={checked ? next : submit}
+          disabled={!checked && !canSubmit}
+          onClick={checked ? next : () => submit()}
         >
           {checked
             ? index === questions.length - 1
@@ -524,7 +582,7 @@ export function StudySession({
               : messages.quiz.continue
             : messages.quiz.check}
           <ArrowRight size={18} />
-        </button>
+        </button>}
       </footer>
     </div>
   );

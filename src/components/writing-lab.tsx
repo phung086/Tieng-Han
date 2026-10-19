@@ -8,6 +8,8 @@ import { useLearning } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
+import { writingChecks } from "@/lib/writing-rubric";
+import { useWritingDraft } from "@/lib/learning-draft";
 
 export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   const { recordAnswer, completeLessonSkill } = useLearning();
@@ -16,34 +18,13 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   const lesson = getLesson(lessonId);
   const content = lesson?.writing;
   const nextStep = getNextLessonFlowStep(lessonId, "writing");
-  const [text, setText] = useState("");
+  const [text, setText] = useWritingDraft(lessonId);
   const [submitted, setSubmitted] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
 
   const checks = useMemo(() => {
-    const targets = content?.targetWords ?? [];
-
-    return [
-      {
-        label: messages.writing.threeSentences,
-        passed:
-          text
-            .split(/[.!?\n]+/)
-            .filter((item) => item.trim()).length >= 3,
-      },
-      {
-        label: messages.writing.particles,
-        passed: /에|에서/.test(text),
-      },
-      {
-        label: messages.writing.sentenceEnding,
-        passed: /니다|어요|아요/.test(text),
-      },
-      {
-        label: messages.writing.targetWords,
-        passed: targets.some((word) => text.includes(word)),
-      },
-    ];
-  }, [content?.targetWords, messages, text]);
+    return writingChecks(text, lesson);
+  }, [lesson, text]);
 
   if (!lesson || !content) {
     return (
@@ -59,6 +40,7 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
   );
 
   function evaluate() {
+    if (submitted || !confirmed) return;
     setSubmitted(true);
     recordAnswer("writing", score >= 75, "writing-" + lessonId);
 
@@ -75,6 +57,7 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
         </span>
         <h1>{messages.writing.title}</h1>
         <p>{messages.writing.intro}</p>
+        <p>Kiểm tra sơ bộ theo đề và ví dụ của bài. Kết quả này không chấm độ đúng của ngữ pháp hoặc ý nghĩa toàn bài viết.</p>
       </header>
 
       <section className="writing-workspace">
@@ -89,16 +72,19 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
 
         <div className="writing-area">
           <textarea
+            maxLength={8000}
+            aria-label="Bài viết tiếng Hàn của bạn"
             onChange={(event) => {
               setText(event.target.value);
               setSubmitted(false);
+              setConfirmed(false);
             }}
             placeholder={messages.writing.placeholder}
             value={text}
           />
           <div className="writing-toolbar">
             <span>{text.length} {messages.writing.characters}</span>
-            <span>{messages.writing.draft}</span>
+            <span>Bản nháp được giữ trên máy này</span>
           </div>
         </div>
 
@@ -129,35 +115,37 @@ export function WritingLab({ lessonId = 3 }: { lessonId?: number }) {
             <div>
               <strong>
                 {score >= 75
-                  ? messages.writing.passed
+                  ? "Đạt checklist sơ bộ; đã ghi nhận lượt tự luyện."
                   : messages.writing.failed}
               </strong>
               <p>
                 {checks
                   .filter((item) => !item.passed)
                   .map((item) => item.label)
-                  .join(" · ") || messages.writing.allPassed}
+                  .join(" · ") || "Đối chiếu thêm với đề, gợi ý và ví dụ trong giáo trình."}
               </p>
             </div>
           </div>
         ) : null}
 
         <div className="writing-actions">
+          <label className="writing-self-check"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />Tôi đã đối chiếu bài viết với đề và gợi ý giáo trình.</label>
           <button
             className="secondary-button"
             onClick={() => {
               setText("");
               setSubmitted(false);
+              setConfirmed(false);
             }}
           >
             <RotateCcw size={16} /> {messages.writing.rewrite}
           </button>
           <button
             className="primary-button writing-submit"
-            disabled={text.trim().length < 8}
+            disabled={text.trim().length < 8 || !confirmed || submitted}
             onClick={evaluate}
           >
-            {messages.writing.grade}
+            {submitted ? "Đã kiểm tra" : "Kiểm tra bài viết"}
           </button>
         </div>
 

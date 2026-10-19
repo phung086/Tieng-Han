@@ -4,9 +4,9 @@ export async function getLearningState(
   userId: string,
   courseId: string,
 ) {
-  const result = await dbQuery<{ state: unknown }>(
+  const result = await dbQuery<{ state: unknown; revision: string }>(
     `
-      SELECT state
+      SELECT state, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS revision
       FROM haneul_learning_states
       WHERE user_id = $1 AND course_id = $2
       LIMIT 1
@@ -14,37 +14,44 @@ export async function getLearningState(
     [userId, courseId],
   );
 
-  return result.rows[0]?.state ?? null;
+  return result.rows[0] ?? { state: null, revision: null };
 }
 
 export async function saveLearningState(input: {
   userId: string;
   courseId: string;
   state: unknown;
+  expectedUpdatedAt?: string | null;
 }) {
   const serialized = JSON.stringify(input.state);
 
-  await dbQuery(
+  const result = await dbQuery<{ revision: string }>(
     `
-      INSERT INTO haneul_learning_states
+      WITH saved AS (INSERT INTO haneul_learning_states
         (user_id, course_id, state, updated_at)
-      VALUES ($1, $2, $3::jsonb, NOW())
+      SELECT $1, $2, $3::jsonb, clock_timestamp()
+      WHERE $4::boolean = FALSE OR $5::timestamptz IS NULL OR EXISTS (
+        SELECT 1 FROM haneul_learning_states
+        WHERE user_id = $1 AND course_id = $2 AND updated_at = $5::timestamptz
+      )
       ON CONFLICT (user_id, course_id)
       DO UPDATE SET
         state = EXCLUDED.state,
-        updated_at = NOW()
+        updated_at = clock_timestamp()
+      WHERE $4::boolean = FALSE
+        OR haneul_learning_states.updated_at = $5::timestamptz
+      RETURNING updated_at), enrolled AS (
+        INSERT INTO haneul_course_enrollments (user_id, course_id, enrolled_at, last_opened_at)
+        SELECT $1, $2, NOW(), NOW() FROM saved
+        ON CONFLICT (user_id, course_id) DO UPDATE SET last_opened_at = NOW()
+        RETURNING user_id
+      )
+      SELECT to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS revision FROM saved
     `,
-    [input.userId, input.courseId, serialized],
+    [input.userId, input.courseId, serialized, input.expectedUpdatedAt !== undefined, input.expectedUpdatedAt ?? null],
   );
 
-  await dbQuery(
-    `
-      INSERT INTO haneul_course_enrollments
-        (user_id, course_id, enrolled_at, last_opened_at)
-      VALUES ($1, $2, NOW(), NOW())
-      ON CONFLICT (user_id, course_id)
-      DO UPDATE SET last_opened_at = NOW()
-    `,
-    [input.userId, input.courseId],
-  );
+  if (!result.rowCount) return null;
+
+  return result.rows[0].revision;
 }

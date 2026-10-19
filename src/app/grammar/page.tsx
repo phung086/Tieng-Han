@@ -9,7 +9,7 @@ export default async function GrammarPage({
 
   return (
     <div className="page">
-      <GrammarLab lessonId={Number(lesson ?? 1)} />
+      <GrammarLab key={lesson ?? "1"} lessonId={Number(lesson ?? 1)} />
     </div>
   );
 }

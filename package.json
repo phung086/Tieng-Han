@@ -15,29 +15,38 @@
     "check": "pnpm lint && pnpm typecheck && pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:learning-flow": "node scripts/check-learning-flow.mjs",
     "mcp:check": "node -e \"console.log('MCP endpoint: /mcp')\"",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:promote-admin": "node scripts/promote-admin.mjs"
+    "db:promote-admin": "node scripts/promote-admin.mjs",
+    "docker:setup": "node scripts/docker-setup.mjs",
+    "docker:up": "docker compose --env-file .env.docker up -d --build",
+    "docker:stop": "docker compose --env-file .env.docker stop",
+    "docker:start": "docker compose --env-file .env.docker start",
+    "docker:logs": "docker compose --env-file .env.docker logs --tail=100 -f",
+    "docker:status": "docker compose --env-file .env.docker ps",
+    "docker:backup": "node scripts/docker-backup.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.0",
     "lucide-react": "^0.468.0",
     "next": "16.3.8",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
+    "pg": "^8.13.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "standardwebhooks": "^1.0.0",
-    "zod": "^4.6.5",
-    "pg": "^8.13.1"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
+    "@types/pg": "^8.11.10",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.37.0",
     "eslint-config-next": "16.3.8",
     "typescript": "^5.9.3",
-    "vitest": "^5.0.3",
-    "@types/pg": "^8.11.10"
+    "vitest": "^5.0.3"
   }
 }
