@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { illustrationSchema } from "@/lib/learning-illustrations";
 import type { BundleValidationError } from "@/lib/course-bundle";
 
 const text = z.string();
@@ -31,6 +32,7 @@ const nestedLessonSchema = z.object({
     ...withId, type: z.enum(["image", "video", "audio", "document"]),
     role: z.enum(["illustration", "diagram", "source-page", "external"]), src: text, alt: text,
   })).optional(),
+  illustrations: z.array(illustrationSchema).optional(),
   quality: z.object({
     coverageScore: z.number().min(0).max(100), groundingScore: z.number().min(0).max(100),
     issues: strings, missingTopics: strings,
@@ -58,7 +60,7 @@ export function validateNestedContent(value: unknown, prefix: string): BundleVal
   }));
   if (!value || typeof value !== "object") return errors;
   const row = value as Record<string, unknown>;
-  const collections = ["vocabulary", "grammar", "listening", "dialogues", "pronunciation", "culture", "extraSections", "media"];
+  const collections = ["vocabulary", "grammar", "listening", "dialogues", "pronunciation", "culture", "extraSections", "media", "illustrations"];
   for (const key of collections) {
     if (!Array.isArray(row[key])) continue;
     const seen = new Set<string>();
@@ -68,6 +70,10 @@ export function validateNestedContent(value: unknown, prefix: string): BundleVal
       if (seen.has(itemId)) errors.push({ path: `${prefix}.${key}[${index}].id`, reason: "duplicate id", expected: "unique item id", actual: itemId });
       seen.add(itemId);
     });
+  }
+  if (result.success) for (const [index, image] of (result.data.illustrations ?? []).entries()) {
+    const collection = image.kind === "vocabulary" ? result.data.vocabulary : image.kind === "grammar" ? result.data.grammar : image.kind === "dialogue" ? result.data.dialogues ?? [] : [];
+    for (const targetId of image.targetIds) if (!collection.some(item => item.id === targetId)) errors.push({ path: `${prefix}.illustrations[${index}].targetIds`, reason: "Illustration target does not exist in this lesson", actual: targetId });
   }
   return errors;
 }

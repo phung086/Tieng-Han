@@ -121,6 +121,8 @@ export type LessonContent = {
   culture?: CultureItem[];
   extraSections?: ExtraSection[];
   media?: LessonMedia[];
+  /** Authored, item-linked crops. Whole source pages belong in the source reader. */
+  illustrations?: LearningIllustration[];
   sourceRef?: string;
   quality?: {
     coverageScore: number;
@@ -128,6 +130,20 @@ export type LessonContent = {
     issues: string[];
     missingTopics: string[];
   };
+};
+
+export type LearningIllustration = {
+  id: string;
+  kind: "vocabulary" | "grammar" | "dialogue" | "context";
+  targetIds: string[];
+  relation: "exact" | "context";
+  fileName: string;
+  pageNumber: number;
+  /** Normalized x, y, width, height in the original page. */
+  region: [number, number, number, number];
+  alt: string;
+  caption: string;
+  sourceRef: string;
 };
 
 export type StudyQuestion = {

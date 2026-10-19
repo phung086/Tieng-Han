@@ -1,6 +1,8 @@
 # Sách điện tử có hình minh họa
 
-Trang bài học của khóa nhập từ tài liệu mở ở tab **Sách có hình**. Người học
+Luồng học chính hiện mở **Bài học có hình**, tích hợp ảnh cắt ngay vào mục
+từ/hoạt động; xem [cách tích hợp vào bài biên soạn](INLINE_LEARNING_ILLUSTRATIONS.md).
+Trình đọc trang nguồn trong tài liệu này nằm ở tab **Sách gốc**. Người học
 đọc ảnh trang gốc, lật trang, phóng to và mở văn bản hỗ trợ khi cần. Các tab
 Tổng quan, Từ vựng, Ngữ pháp, Đọc và Bổ sung vẫn truy cập tự do.
 

@@ -21,7 +21,8 @@ import { useLearning } from "@/lib/learning-state";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { GrammarExplanation } from "./grammar-explanation";
 import { LessonBook } from "./lesson-book";
-import { LessonSourceFigures } from "./lesson-source-figures";
+import { IllustratedLesson } from "./illustrated-lesson";
+import { ItemIllustrations } from "./learning-illustration";
 import { useMessages } from "@/i18n/messages";
 import { auditLessonPracticeCoverage } from "@/lib/practice-coverage";
 import { summarizeLessonPractice } from "@/lib/lesson-practice-bank";
@@ -31,8 +32,8 @@ import {
   getRequiredCoreSkills,
 } from "@/lib/lesson-completion";
 
-type LessonTabKey = "book" | "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
-const tabKeys: LessonTabKey[] = ["book", "overview", "vocabulary", "grammar", "reading", "supplement"];
+type LessonTabKey = "study" | "book" | "overview" | "vocabulary" | "grammar" | "reading" | "supplement";
+const tabKeys: LessonTabKey[] = ["study", "overview", "vocabulary", "grammar", "reading", "supplement", "book"];
 
 
 export function LessonWorkspace({ lessonId, initialPage, initialFile }: { lessonId: number; initialPage?: number; initialFile?: string }) {
@@ -44,7 +45,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
   const { state } = useLearning();
   const messages = useMessages();
   const { getLesson, course, hydrated } = useContent();
-  const [tab, setTab] = useState<LessonTabKey>(course.source?.importJobId || /^course-import-/.test(course.id) ? "book" : "overview");
+  const [tab, setTab] = useState<LessonTabKey>(initialPage ? "book" : "study");
   const lesson = getLesson(lessonId);
 
   if (!hydrated) return <p role="status">Đang mở nội dung bài học…</p>;
@@ -210,7 +211,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
   </>;
 
   return (
-    <div className={"lesson-workspace" + (tab === "book" ? " lesson-book-mode" : "")}>
+    <div className={"lesson-workspace" + (tab === "book" || tab === "study" ? " lesson-book-mode" : "")}>
       <header className="lesson-workspace-header">
         <div>
           <span className="kicker">{course.level} · {messages.common.lesson.toUpperCase()} {lessonId}</span>
@@ -240,7 +241,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
         </div>
       </header>
 
-      {tab !== "book" ? sourceResources : null}
+      {tab !== "book" && tab !== "study" ? sourceResources : null}
 
       {coreComplete && tab !== "book" ? (
         <section className="lesson-complete-banner-v4">
@@ -282,7 +283,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             key={key}
             onClick={() => setTab(key)}
           >
-            {key === "book" ? "Sách có hình" : messages.lesson.tabs[key]}
+            {key === "study" ? "Bài học có hình" : key === "book" ? "Sách gốc" : messages.lesson.tabs[key]}
             {key === "supplement" && supplementalCount ? (
               <span className="tab-count">{supplementalCount}</span>
             ) : null}
@@ -291,6 +292,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
       </nav>
 
       {tab === "book" ? <><LessonBook key={String(initialPage) + initialFile} courseId={course.id} lesson={lesson} initialPage={initialPage} initialFile={initialFile} />{sourceResources}</> : null}
+      {tab === "study" ? <><IllustratedLesson lesson={lesson} speak={speak} />{sourceResources}</> : null}
 
       {tab === "overview" ? (
         <section className="lesson-overview-v3">
@@ -441,7 +443,6 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
 
       {tab === "vocabulary" ? (
         <section className="lesson-content-card">
-          <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={lesson.vocabulary.map(item => item.sourceRef)} title="Hình minh họa và bảng từ trong sách" />
           <div className="content-heading">
             <div><span className="eyebrow">어휘</span><h2>{messages.lesson.vocabTitle}</h2></div>
             <Link className="secondary-button" href={"/vocabulary?lesson=" + lessonId}>{messages.lesson.openFlashcards}</Link>
@@ -450,6 +451,7 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
             <div className="lesson-vocab-grid">
               {lesson.vocabulary.map((word) => (
                 <article key={word.id}>
+                  <ItemIllustrations lesson={lesson} kind="vocabulary" itemId={word.id} exactOnly />
                   <button onClick={() => speak(word.ko)} aria-label={messages.vocabulary.hearPronunciation + " " + word.ko}><Volume2 size={16} /></button>
                   <strong className="korean-text">{word.ko}</strong>
                   <span>{word.vi}</span>
@@ -464,13 +466,13 @@ function LessonWorkspaceContent({ lessonId, initialPage, initialFile }: { lesson
 
       {tab === "grammar" ? (
         <section className="grammar-stack">
-          <LessonSourceFigures key={course.id + lessonId} lessonId={lessonId} references={lesson.grammar.map(item => item.sourceRef)} title="Hình và bảng trong trang ngữ pháp gốc" />
           {lesson.grammar.length ? lesson.grammar.map((grammar, index) => (
             <article className="grammar-card" key={grammar.id}>
               <div className="grammar-number">{String(index + 1).padStart(2, "0")}</div>
               <div>
                 <span className="eyebrow">문법</span>
                 <h2>{grammar.pattern}</h2>
+                <ItemIllustrations lesson={lesson} kind="grammar" itemId={grammar.id} />
                 <GrammarExplanation item={grammar} onSpeak={speak} />
                 {grammar.sourceRef ? <small className="source-ref">{grammar.sourceRef}</small> : null}
               </div>

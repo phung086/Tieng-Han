@@ -54,14 +54,16 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const library = await (await request.get("/api/courses")).json();
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");
-  await expect(page.getByRole("heading", { name: "학생", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sách có hình", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "학생", exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Bài học có hình", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   const book = page.getByRole("region", { name: "Sách điện tử có hình minh họa" });
   await expect(book.getByRole("img", { name: /Trang sách gốc 1/ })).toBeVisible();
   await expect.poll(() => book.getByRole("img", { name: /Trang sách gốc/ }).evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await book.getByRole("button", { name: "Trang sau của bài" }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
   await page.reload();
+  await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
   await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
   await expect(page.locator(".lesson-coach-stats-v3")).toContainText("7 câu luyện");
