@@ -66,13 +66,32 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.validationCoverage.percent).toBe(50);
     expect(report.issues.join(" ")).toContain("scan unreadable");
   });
-  it("does not count dangling, cross-lesson or ambiguous question claims", () => {
+  it("does not count dangling or cross-lesson question links", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [bundle.sourceInventory.items[0]];
     bundle.sourceInventory.items[0].practiceQuestionIds = ["not-a-question"];
-    expect(auditCurriculumCoverage(bundle).practiceCoverage.covered).toBe(1);
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
     bundle.course.questions[0].lessonId = 2;
     bundle.sourceInventory.items[0].practiceQuestionIds = ["q1"];
-    expect(auditCurriculumCoverage(bundle).practiceCoverage.covered).toBe(1);
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+  });
+  it("does not treat vocabulary content as a workbook exercise", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [{
+      ...bundle.sourceInventory.items[0], practiceMethod: "workbook", practiceQuestionIds: [],
+    }];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+    expect(report.issues.join(" ")).toContain("Thiếu phương thức ôn luyện");
+  });
+  it("requires a valid explicit exercise target when workbook questions are not linked", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [{
+      ...bundle.sourceInventory.items[1], practiceQuestionIds: ["not-a-question"],
+    }];
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+    bundle.sourceInventory.items[0].practiceQuestionIds = [];
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
   });
   it("rejects duplicate IDs, unknown sources and unsafe or missing content destinations", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
