@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 2;
+export const CURRICULUM_AUDIT_VERSION = 3;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -116,9 +116,26 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     representedLessons.add(item.lessonId);
     const linked = item.practiceQuestionIds.length > 0 && item.practiceQuestionIds.every(id => questions.some(question =>
       question.id === id && question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef));
-    // The workbook renders these lesson fields as manual learning/response tasks.
-    const workbookContent = /^\/(vocabulary|grammar|listening|speaking|reading|writing|dialogues|pronunciation|culture|extraSections|questions|media)(\/|$)/.test(item.contentPointer);
-    if ((item.practiceMethod === "workbook" && workbookContent) || linked) practiced++;
+    // Workbook coverage requires an explicit exercise target, not merely any lesson content.
+    const sectionMatch = /^\/extraSections\/(\d+)(?:\/content\/\d+)?$/.exec(item.contentPointer);
+    const section = sectionMatch ? lesson?.extraSections?.[Number(sectionMatch[1])] : undefined;
+    const exerciseKind = /(?:exercise|workbook|practice|worksheet|drill|task|problem|question|translation|fill[-_ ]?in|matching|reorder|연습|문제)/i;
+    const targetHasContent = typeof content === "string"
+      ? Boolean(content.trim())
+      : Array.isArray(content)
+        ? content.some(value => typeof value === "string" && Boolean(value.trim()))
+        : Boolean(section?.content?.some(value => typeof value === "string" && Boolean(value.trim())));
+    const explicitExerciseSection = Boolean(
+      section && exerciseKind.test(section.kind) && exerciseKind.test(item.kind) && targetHasContent,
+    );
+    const writing = lesson?.writing;
+    const explicitWritingTask = item.contentPointer === "/writing" &&
+      /(?:writing|exercise|workbook|practice|worksheet|task|translation|연습|작문)/i.test(item.kind) &&
+      Boolean(writing && typeof writing.prompt === "string" && writing.prompt.trim());
+    const manualWorkbookTask = item.practiceMethod === "workbook" &&
+      item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
+    // If IDs are supplied, every one must resolve in this lesson with the exact source ref.
+    if (linked || manualWorkbookTask) practiced++;
     else issues.push("Thiếu phương thức ôn luyện cho item " + key);
     if (item.verified && reviewedPages.has(pageKey)) validated++;
     else issues.push("Item chưa kiểm chứng: " + key);
