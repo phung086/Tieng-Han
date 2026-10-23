@@ -62,8 +62,11 @@ function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, 
   const delimiter = (character: string | undefined) =>
     character === undefined || /[\s·|,;()[\]{}:]/u.test(character);
   if (!delimiter(before) || !delimiter(after)) return false;
-  const markers = [...sourceRef.matchAll(/(?:\bpages?\s*|\bp{1,2}\.?\s*|\btrang\s*|\btr\.\s*)(\d+)/gi)];
-  return markers.length === 1 && Number(markers[0][1]) === pageNumber;
+  const markers = [...sourceRef.matchAll(/(?:\bpages?\s*|\bp\.?\s*|\btrang\s*|\btr\.\s*)(\d+)/gi)];
+  if (markers.length !== 1 || Number(markers[0][1]) !== pageNumber) return false;
+  const marker = markers[0];
+  const suffix = sourceRef.slice((marker.index ?? 0) + marker[0].length);
+  return !/^\s*(?:[-–—]|to\b|đến\b)\s*\d+/i.test(suffix);
 }
 
 function decodedPointerParts(pointer: string): string[] {
