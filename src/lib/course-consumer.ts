@@ -6,13 +6,13 @@ import {
   readdir,
 } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   parseCourseBundle,
   type CompiledCourseBundle,
 } from "@/lib/course-bundle";
 import { defaultLanguageProfile } from "@/lib/language-profile";
-import { auditCurriculumCoverage } from "@/lib/curriculum-coverage";
+import { auditCurriculumCoverage, CURRICULUM_AUDIT_VERSION } from "@/lib/curriculum-coverage";
 import type { RuntimeCourse } from "@/lib/content-store";
 import type { ImportJob } from "@/lib/import-jobs";
 import { linkSourcePageMedia } from "@/lib/lesson-book";
@@ -34,6 +34,43 @@ export const courseLibraryDir = process.env.HANEUL_COURSE_LIBRARY || path.join(
   ".haneul",
   "courses",
 );
+
+type RuntimeEvidenceInput = Pick<RuntimeCourse, "title" | "level" | "source" | "lessons" | "questions">;
+
+function stableSerialize(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "[" + value.map(stableSerialize).join(",") + "]";
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return "{" + Object.keys(record)
+      .filter(key => record[key] !== undefined)
+      .sort()
+      .map(key => JSON.stringify(key) + ":" + stableSerialize(record[key]))
+      .join(",") + "}";
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+/** Content-only digest used to safely backfill metadata without overwriting edited lessons. */
+export function fingerprintRuntimeCourseContent(course: RuntimeEvidenceInput): string {
+  return createHash("sha256").update(stableSerialize({
+    title: course.title,
+    level: course.level,
+    lessons: course.lessons,
+    questions: course.questions,
+  })).digest("hex");
+}
+
+/** Deterministic integrity fingerprint over the current content and its source evidence. */
+export function fingerprintRuntimeCourseEvidence(course: RuntimeEvidenceInput): string {
+  return createHash("sha256").update(stableSerialize({
+    content: fingerprintRuntimeCourseContent(course),
+    edition: course.source?.edition ?? null,
+    sourceFiles: course.source?.fileNames ?? (course.source?.fileName ? [course.source.fileName] : []),
+    sourceManifest: course.source?.sourceManifest ?? null,
+    sourceInventory: course.source?.sourceInventory ?? null,
+  })).digest("hex");
+}
 
 async function writeJsonAtomic(filePath: string, value: unknown) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -92,7 +129,7 @@ export function buildRuntimeCourseFromBundle(
   const sourceFiles = bundle.sourceFiles ?? [];
   const language = bundle.language ?? defaultLanguageProfile;
 
-  return {
+  const runtimeCourse: RuntimeCourse = {
     id: "course-" + jobId,
     title: bundle.course.title.trim() || language.targetName,
     level: bundle.course.level.trim() || "General",
@@ -106,10 +143,16 @@ export function buildRuntimeCourseFromBundle(
       edition: bundle.course.edition,
       coverImageDataUrl,
       curriculumCoverage: auditCurriculumCoverage(bundle),
+      sourceManifest: bundle.sourceManifest,
+      sourceInventory: bundle.sourceInventory,
     },
     lessons: bundle.course.lessons,
     questions: bundle.course.questions,
   };
+  if (runtimeCourse.source) {
+    runtimeCourse.source.evidenceFingerprint = fingerprintRuntimeCourseEvidence(runtimeCourse);
+  }
+  return runtimeCourse;
 }
 
 async function buildRuntimeCourseForJob(job: ImportJob) {
@@ -126,7 +169,14 @@ async function buildRuntimeCourseForJob(job: ImportJob) {
     coverImageDataUrl,
     job.updatedAt || job.createdAt,
   );
-  return { ...course, lessons: course.lessons.map(lesson => linkSourcePageMedia(lesson, course.id, job.documents)) };
+  const linkedCourse: RuntimeCourse = {
+    ...course,
+    lessons: course.lessons.map(lesson => linkSourcePageMedia(lesson, course.id, job.documents)),
+  };
+  if (linkedCourse.source) {
+    linkedCourse.source.evidenceFingerprint = fingerprintRuntimeCourseEvidence(linkedCourse);
+  }
+  return linkedCourse;
 }
 
 async function persistLibraryCourse(course: RuntimeCourse) {
@@ -198,7 +248,43 @@ export async function getCourseLibrary(): Promise<RuntimeCourse[]> {
       if (job.status !== "consumed" || !job.resultBundle) continue;
 
       const courseId = "course-" + job.id;
-      if (byId.has(courseId)) continue;
+      const existing = byId.get(courseId);
+      if (existing) {
+        const needsEvidence = !existing.source?.sourceManifest?.length ||
+          !existing.source.sourceInventory ||
+          !existing.source.evidenceFingerprint ||
+          existing.source.curriculumCoverage?.auditVersion !== CURRICULUM_AUDIT_VERSION;
+        if (!needsEvidence) continue;
+
+        try {
+          const rebuilt = await buildRuntimeCourseForJob(job);
+          // Never replace learner-visible content just to attach metadata.
+          if (fingerprintRuntimeCourseContent(existing) !== fingerprintRuntimeCourseContent(rebuilt)) continue;
+          const enriched: RuntimeCourse = {
+            ...existing,
+            source: {
+              ...existing.source,
+              importJobId: rebuilt.source?.importJobId ?? existing.source?.importJobId,
+              fileName: rebuilt.source?.fileName ?? existing.source?.fileName,
+              fileNames: rebuilt.source?.fileNames ?? existing.source?.fileNames,
+              importedAt: existing.source?.importedAt ?? rebuilt.source?.importedAt,
+              pageCount: rebuilt.source?.pageCount ?? existing.source?.pageCount,
+              edition: rebuilt.source?.edition ?? existing.source?.edition,
+              coverImageDataUrl: existing.source?.coverImageDataUrl ?? rebuilt.source?.coverImageDataUrl,
+              curriculumCoverage: rebuilt.source?.curriculumCoverage,
+              sourceManifest: rebuilt.source?.sourceManifest,
+              sourceInventory: rebuilt.source?.sourceInventory,
+              evidenceFingerprint: "",
+            },
+          };
+          if (enriched.source) enriched.source.evidenceFingerprint = fingerprintRuntimeCourseEvidence(enriched);
+          byId.set(courseId, enriched);
+          await persistLibraryCourse(enriched);
+        } catch {
+          // Retain the existing course; publication remains blocked without current evidence.
+        }
+        continue;
+      }
 
       try {
         const course = await buildRuntimeCourseForJob(job);
