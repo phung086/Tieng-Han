@@ -140,7 +140,7 @@ Policy trong compilation contract yêu cầu:
 
 - giữ thứ tự bài của sách;
 - giữ `sourceRef` và đối chiếu chính xác với tham chiếu của item đích;
-- mỗi ví dụ ngữ pháp, prompt Nói và tiểu mục bài tập phải có item-level ref; không kế thừa ref cấp đoạn để tự nhận coverage;
+- mỗi ví dụ từ vựng/ngữ pháp/phát âm, prompt Nói, từ khóa bài viết và tiểu mục bài tập phải có item-level ref theo đúng chỉ số; không kế thừa ref cấp đoạn để tự nhận coverage;
 - không thêm curriculum ngoài sách;
 - bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa và phần đặc biệt khi nguồn có;
 - tạo bài luyện 6 kỹ năng;
