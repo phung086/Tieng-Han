@@ -796,7 +796,10 @@ describe("parseCourseBundle edge cases", () => {
     expect(errors.some(e => e.path === "question[0].answer" && e.reason.includes("cannot be constructed"))).toBe(true);
   });
 
-  it.each([[], ["저는", "   "]])("rejects empty or unusable reorder tokens: %j", tokens => {
+  it.each([
+    { tokens: [] as string[] },
+    { tokens: ["저는", "   "] },
+  ])("rejects empty or unusable reorder tokens: %j", ({ tokens }) => {
     const errors = getValidationErrors(JSON.stringify({
       format: COURSE_BUNDLE_FORMAT, version: 1, sourceManifest: sampleSourceManifest,
       course: { title: "T", level: "L", lessons: [minimalLesson()], questions: [minimalQuestion({
