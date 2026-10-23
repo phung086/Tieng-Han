@@ -97,6 +97,36 @@ describe("long textbook practice checkpoint", () => {
     ])).toBeNull();
   });
 
+  it("invalidates a checkpoint when reading context, listening audio or review mode changes", () => {
+    const enriched = {
+      ...questions[0],
+      context: "Đoạn đọc nguồn, trang 12.",
+      audioText: "저는 학생입니다.",
+      reviewKind: "speaking" as const,
+    };
+    const bank = [enriched, questions[1]];
+    const saved = serializePracticeCheckpoint(bank, {
+      index: 1,
+      correctCount: 1,
+      mistakeIds: [],
+      skillStats: { vocabulary: { correct: 1, total: 1 } },
+    });
+
+    expect(parsePracticeCheckpoint(saved, bank)).not.toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, context: "Đoạn đọc đã được sửa." },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, audioText: "선생님입니다." },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, reviewKind: "writing" as const },
+      bank[1],
+    ])).toBeNull();
+  });
+
   it("rejects expired checkpoints and impossible accuracy counts", () => {
     vi.useFakeTimers();
     try {
