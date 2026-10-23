@@ -39,6 +39,21 @@ describe("long textbook practice checkpoint", () => {
     expect(parsePracticeCheckpoint(raw, questions)).toEqual(state);
   });
 
+  it("uses a stable 64-bit fingerprint for long source-backed question banks", () => {
+    const first = JSON.parse(serializePracticeCheckpoint(questions, state));
+    const repeated = JSON.parse(serializePracticeCheckpoint(questions, state));
+    const changed = JSON.parse(serializePracticeCheckpoint(
+      questions.map((question, index) => index === 0
+        ? { ...question, sourceRef: "book.pdf · p.24 · revised-item" }
+        : question),
+      state,
+    ));
+
+    expect(first.contentSignature).toMatch(/^fnv1a64:[0-9a-f]{16}$/);
+    expect(repeated.contentSignature).toBe(first.contentSignature);
+    expect(changed.contentSignature).not.toBe(first.contentSignature);
+  });
+
   it("scopes storage by imported course, lesson, mode and skill", () => {
     const a = practiceCheckpointKey("course-a", 3, "guided", "vocabulary");
     expect(a).not.toBe(practiceCheckpointKey("course-b", 3, "guided", "vocabulary"));
@@ -63,6 +78,68 @@ describe("long textbook practice checkpoint", () => {
     raw.index = 77;
     raw.mistakeIds = ["non-existent"];
     expect(parsePracticeCheckpoint(JSON.stringify(raw), questions)).toBeNull();
+  });
+
+  it("invalidates a checkpoint when reorder tokens or source evidence changes", () => {
+    const reorder: StudyQuestion = {
+      ...questions[0],
+      type: "reorder",
+      prompt: "Sắp xếp câu",
+      tokens: ["저는", "학생입니다"],
+      answer: "저는 학생입니다.",
+      sourceRef: "SÁCH SƠ CẤP 1.pdf · p.12 · sentence-1",
+    };
+    const bank = [reorder, questions[1]];
+    const saved = serializePracticeCheckpoint(bank, {
+      index: 1,
+      correctCount: 1,
+      mistakeIds: [],
+      skillStats: { vocabulary: { correct: 1, total: 1 } },
+    });
+
+    expect(parsePracticeCheckpoint(saved, bank)).not.toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...reorder, tokens: ["저는", "선생님입니다"] },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...reorder, sourceRef: "SÁCH SƠ CẤP 1.pdf · p.13 · sentence-1" },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...reorder, skill: "grammar" },
+      bank[1],
+    ])).toBeNull();
+  });
+
+  it("invalidates a checkpoint when reading context, listening audio or review mode changes", () => {
+    const enriched = {
+      ...questions[0],
+      context: "Đoạn đọc nguồn, trang 12.",
+      audioText: "저는 학생입니다.",
+      reviewKind: "speaking" as const,
+    };
+    const bank = [enriched, questions[1]];
+    const saved = serializePracticeCheckpoint(bank, {
+      index: 1,
+      correctCount: 1,
+      mistakeIds: [],
+      skillStats: { vocabulary: { correct: 1, total: 1 } },
+    });
+
+    expect(parsePracticeCheckpoint(saved, bank)).not.toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, context: "Đoạn đọc đã được sửa." },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, audioText: "선생님입니다." },
+      bank[1],
+    ])).toBeNull();
+    expect(parsePracticeCheckpoint(saved, [
+      { ...enriched, reviewKind: "writing" as const },
+      bank[1],
+    ])).toBeNull();
   });
 
   it("rejects expired checkpoints and impossible accuracy counts", () => {
