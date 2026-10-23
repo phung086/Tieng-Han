@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { auditCurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
+import {
+  auditCurriculumCoverage,
+  CURRICULUM_AUDIT_VERSION,
+  isCurrentCompleteCoverage,
+  type CurriculumCoverage,
+  type SourceInventory,
+} from "@/lib/curriculum-coverage";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import { parseCourseBundle } from "@/lib/course-bundle";
 
@@ -83,5 +89,41 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("blocked");
     expect(report.sourceCoverage.covered).toBe(0);
     expect(report.issues.join(" ")).toContain("Trùng source item");
+  });
+});
+
+describe("publication coverage gate", () => {
+  const completeCoverage: CurriculumCoverage = {
+    auditVersion: CURRICULUM_AUDIT_VERSION,
+    status: "complete",
+    basis: "synthetic reviewed inventory",
+    sourceCoverage: { covered: 2, total: 2, percent: 100 },
+    practiceCoverage: { covered: 2, total: 2, percent: 100 },
+    validationCoverage: { covered: 2, total: 2, percent: 100 },
+    derivedContent: 0,
+    issues: [],
+  };
+
+  it("accepts only a current, internally consistent, issue-free complete report", () => {
+    expect(isCurrentCompleteCoverage(completeCoverage)).toBe(true);
+    expect(isCurrentCompleteCoverage(undefined)).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, auditVersion: 1 })).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, issues: ["missing source item"] })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      sourceCoverage: { covered: 1, total: 2, percent: 50 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 0, percent: null },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      validationCoverage: { covered: 2, total: 2, percent: 99 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 3, percent: 66.67 },
+    })).toBe(false);
   });
 });
