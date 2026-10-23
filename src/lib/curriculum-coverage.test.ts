@@ -113,6 +113,25 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("sourceRef item-level bị dùng chung");
   });
 
+  it("treats cosmetic whitespace variants as the same item-level sourceRef", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const sharedRef = bundle.sourceInventory.items[0].sourceRef;
+    bundle.sourceInventory.pages[1] = {
+      fileName: "synthetic.pdf", pageNumber: 2, status: "reviewed",
+      classification: "non-learning", reason: "Reviewed blank reverse cover",
+    };
+    bundle.sourceInventory.items[1].pageNumber = 1;
+    const whitespaceVariant = sharedRef.replace(" · ", "   ·   ");
+    bundle.sourceInventory.items[1].sourceRef = whitespaceVariant;
+    bundle.course.lessons[0].extraSections![0].sourceRef = whitespaceVariant;
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.practiceCoverage.covered).toBe(0);
+    expect(report.status).toBe("blocked");
+    expect(report.issues.join(" ")).toContain("sourceRef item-level bị dùng chung");
+  });
+
   it("rejects an inventory ref that matches the filename but not the referenced item", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].vocabulary[0].sourceRef = "synthetic.pdf · p.1 · different-item";
