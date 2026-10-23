@@ -66,7 +66,7 @@ not changed by this guard.
 
 `contentPointer` is a JSON pointer relative to the lesson. Supported roots are
 the runtime learning sections and the lesson's filtered `questions` array.
-Use a distinct destination for each source unit; `/grammar/0/examples/1` and
+Item-level `sourceRef` uniqueness is checked after trimming and normalizing cosmetic whitespace around separators, so spacing differences cannot make one anchor look like multiple source items. Use a distinct destination for each source unit; `/grammar/0/examples/1` and
 `/extraSections/0/content/2` can identify original examples and exercise subparts.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
