@@ -483,6 +483,12 @@ function validateQuestion(
       reason: "required field missing",
       expected: "string",
     });
+  } else if (!row.prompt.trim()) {
+    errors.push({
+      path: `${prefix}.prompt`,
+      reason: "must not be empty",
+      expected: "nonempty string",
+    });
   }
 
   if (typeof row.answer !== "string") {
@@ -490,6 +496,12 @@ function validateQuestion(
       path: `${prefix}.answer`,
       reason: "required field missing",
       expected: "string",
+    });
+  } else if (row.type === "input" && !row.answer.trim()) {
+    errors.push({
+      path: `${prefix}.answer`,
+      reason: "input question needs a nonempty answer for grading",
+      expected: "nonempty string",
     });
   }
 
