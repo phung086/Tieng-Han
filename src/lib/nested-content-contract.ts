@@ -24,7 +24,7 @@ const nestedLessonSchema = z.object({
   speaking: strings,
   speakingSourceRefs: strings.optional(),
   reading: z.object({ title: text, text, translation: text, questions: z.array(readingQuestion), sourceRef }).nullish(),
-  writing: z.object({ prompt: text, hint: text, targetWords: strings, sourceRef }).nullish(),
+  writing: z.object({ prompt: text, hint: text, targetWords: strings, targetWordSourceRefs: strings.optional(), sourceRef }).nullish(),
   dialogues: z.array(z.object({ ...withId, origin: z.enum(["source", "derived"]).optional(), translationOrigin: z.enum(["source", "derived"]).optional(), lines: z.array(dialogueLine) })).optional(),
   pronunciation: z.array(z.object({ ...withId, title: text, explanation: text, examples: strings, exampleSourceRefs: strings.optional() })).optional(),
   culture: z.array(z.object({ ...withId, title: text, text })).optional(),
