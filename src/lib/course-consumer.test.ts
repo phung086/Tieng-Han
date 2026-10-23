@@ -12,6 +12,8 @@ const {
   activeCourseFilePath,
   courseLibraryDir,
   buildRuntimeCourseFromBundle,
+  fingerprintRuntimeCourseContent,
+  fingerprintRuntimeCourseEvidence,
   consumeReadyImportJob,
   getActiveCourse,
   getCourseLibrary,
@@ -123,6 +125,55 @@ function sampleBundle() {
   );
 }
 
+function sourceCompleteBundle() {
+  const bundle = sampleBundle();
+  const sourceRef = "book.pdf · p.10 · v-1";
+  const lesson = bundle.course.lessons[0];
+  lesson.vocabulary = [{ ...lesson.vocabulary[0], sourceRef }];
+  lesson.grammar = [];
+  lesson.listening = [];
+  lesson.speaking = [];
+  lesson.reading = null;
+  lesson.writing = null;
+  lesson.dialogues = [];
+  lesson.pronunciation = [];
+  lesson.culture = [];
+  lesson.extraSections = [];
+  lesson.media = [];
+  bundle.course.questions = [{
+    ...bundle.course.questions[0],
+    type: "input",
+    title: "Từ vựng",
+    prompt: "học sinh",
+    choices: undefined,
+    answer: "학생",
+    sourceRef,
+  }];
+  bundle.sourceInventory = {
+    version: 1,
+    pages: Array.from({ length: 10 }, (_, index) => ({
+      fileName: "book.pdf",
+      pageNumber: index + 1,
+      status: "reviewed" as const,
+      classification: (index === 9 ? "learning-content" : "non-learning") as "learning-content" | "non-learning",
+      ...(index === 9 ? {} : { reason: "Synthetic page independently reviewed as non-learning" }),
+    })),
+    items: [{
+      id: "v-1",
+      lessonId: 1,
+      kind: "vocabulary",
+      fileName: "book.pdf",
+      pageNumber: 10,
+      sourceRef,
+      contentPointer: "/vocabulary/0",
+      practiceMethod: "questions",
+      practiceQuestionIds: ["q-1"],
+      verified: true,
+    }],
+  };
+  return parseCourseBundle(JSON.stringify(bundle));
+}
+
 function readyJob(bundle: ReturnType<typeof sampleBundle>): ImportJob {
   return {
     format: "haneul-import-job",
@@ -179,6 +230,70 @@ describe("course-consumer", () => {
     expect(result.course.lessons).toHaveLength(1);
     expect(result.course.questions).toHaveLength(1);
     expect(consumeImportJob).toHaveBeenCalledWith(job.id);
+  });
+
+  it("persists the manifest, reviewed inventory and a reproducible evidence fingerprint", () => {
+    const bundle = sourceCompleteBundle();
+    const course = buildRuntimeCourseFromBundle("source-evidence-job", bundle);
+
+    expect(course.source?.sourceManifest).toEqual(bundle.sourceManifest);
+    expect(course.source?.sourceInventory).toEqual(bundle.sourceInventory);
+    expect(course.source?.curriculumCoverage?.status).toBe("complete");
+    expect(course.source?.evidenceFingerprint).toBe(fingerprintRuntimeCourseEvidence(course));
+    expect(course.source?.evidenceFingerprint).toMatch(/^[a-f0-9]{64}$/);
+
+    const changed = {
+      ...course,
+      questions: course.questions.map(question => ({ ...question, prompt: question.prompt + " changed" })),
+    };
+    expect(fingerprintRuntimeCourseContent(changed)).not.toBe(fingerprintRuntimeCourseContent(course));
+    expect(fingerprintRuntimeCourseEvidence(changed)).not.toBe(course.source?.evidenceFingerprint);
+  });
+
+  it("backfills source evidence only when a legacy persisted course still matches its retained import", async () => {
+    const bundle = sourceCompleteBundle();
+    const job = { ...readyJob(bundle), status: "consumed", resultBundle: bundle } as ImportJob;
+    vi.mocked(requireImportJob).mockResolvedValue(job);
+    vi.mocked(readImportPages).mockResolvedValue([]);
+    vi.mocked(listImportJobs).mockResolvedValue([job]);
+
+    const imported = await consumeReadyImportJob(job.id);
+    const filePath = path.join(courseLibraryDir, imported.course.id + ".json");
+    const persisted = JSON.parse(await (await import("node:fs/promises")).readFile(filePath, "utf8"));
+    delete persisted.source.sourceManifest;
+    delete persisted.source.sourceInventory;
+    delete persisted.source.evidenceFingerprint;
+    await writeFile(filePath, JSON.stringify(persisted), "utf8");
+
+    const library = await getCourseLibrary();
+    expect(library).toHaveLength(1);
+    expect(library[0].source?.sourceManifest).toEqual(bundle.sourceManifest);
+    expect(library[0].source?.sourceInventory).toEqual(bundle.sourceInventory);
+    expect(library[0].source?.evidenceFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(library[0].source?.curriculumCoverage?.status).toBe("complete");
+  });
+
+  it("does not attach reviewed inventory to a legacy course whose content diverged from the retained import", async () => {
+    const bundle = sourceCompleteBundle();
+    const job = { ...readyJob(bundle), status: "consumed", resultBundle: bundle } as ImportJob;
+    vi.mocked(requireImportJob).mockResolvedValue(job);
+    vi.mocked(readImportPages).mockResolvedValue([]);
+    vi.mocked(listImportJobs).mockResolvedValue([job]);
+
+    const imported = await consumeReadyImportJob(job.id);
+    const filePath = path.join(courseLibraryDir, imported.course.id + ".json");
+    const persisted = JSON.parse(await (await import("node:fs/promises")).readFile(filePath, "utf8"));
+    delete persisted.source.sourceManifest;
+    delete persisted.source.sourceInventory;
+    delete persisted.source.evidenceFingerprint;
+    persisted.questions[0].prompt = "edited without source review";
+    await writeFile(filePath, JSON.stringify(persisted), "utf8");
+
+    const library = await getCourseLibrary();
+    expect(library).toHaveLength(1);
+    expect(library[0].questions[0].prompt).toBe("edited without source review");
+    expect(library[0].source?.sourceInventory).toBeUndefined();
+    expect(library[0].source?.evidenceFingerprint).toBeUndefined();
   });
 
   it("returns the persisted active course after consume", async () => {
