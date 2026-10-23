@@ -195,6 +195,53 @@ const VALID_SKILLS = new Set([
 
 const VALID_QUESTION_TYPES = new Set(["choice", "input", "reorder"]);
 
+// Keep this normalization aligned with StudySession's reorder grader.
+function normalizeReorderText(value: string) {
+  return value.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
+}
+
+/**
+ * A reorder bank may contain distractors, so the answer need not use every
+ * token. It must, however, be constructible from available token chunks,
+ * respecting duplicate counts and the exact chunk boundaries shown by the UI.
+ */
+function canBuildReorderAnswer(answer: string, tokens: string[]) {
+  const target = normalizeReorderText(answer);
+  if (!target) return false;
+
+  const counts = new Map<string, number>();
+  for (const raw of tokens) {
+    const token = normalizeReorderText(raw);
+    if (!token) return false;
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  const candidates = [...counts.keys()];
+  const memo = new Set<string>();
+
+  function visit(position: number): boolean {
+    if (position === target.length) return true;
+    const state = String(position) + "|" + candidates.map(token => counts.get(token) ?? 0).join(",");
+    if (memo.has(state)) return false;
+
+    for (const token of candidates) {
+      const count = counts.get(token) ?? 0;
+      if (!count || !target.startsWith(token, position)) continue;
+      const end = position + token.length;
+      if (end < target.length && target[end] !== " ") continue;
+      if (end === target.length) return true;
+
+      counts.set(token, count - 1);
+      if (visit(end + 1)) return true;
+      counts.set(token, count);
+    }
+
+    memo.add(state);
+    return false;
+  }
+
+  return visit(0);
+}
+
 function validateLesson(
   value: unknown,
   index: number,
@@ -484,6 +531,28 @@ function validateQuestion(
     const entries = row[field];
     if (Array.isArray(entries) && entries.some(item => typeof item !== "string")) {
       errors.push({ path: `${prefix}.${field}`, reason: "every entry must be a string", expected: "string[]" });
+    }
+  }
+  if (row.type === "reorder" && Array.isArray(row.tokens)) {
+    const tokens = row.tokens;
+    const usableTokens = tokens.every(
+      item => typeof item === "string" && normalizeReorderText(item).length > 0,
+    );
+    if (tokens.length === 0 || !usableTokens) {
+      errors.push({
+        path: `${prefix}.tokens`,
+        reason: "reorder question needs nonempty, usable tokens",
+        expected: "nonempty string[]",
+      });
+    } else if (
+      typeof row.answer === "string" &&
+      !canBuildReorderAnswer(row.answer, tokens as string[])
+    ) {
+      errors.push({
+        path: `${prefix}.answer`,
+        reason: "answer cannot be constructed from the reorder tokens",
+        expected: "a valid ordering of available token chunks",
+      });
     }
   }
   if (row.type === "choice" && Array.isArray(row.choices) && row.choices.length === 0) {
