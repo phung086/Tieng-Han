@@ -70,6 +70,10 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   const index = indexedPart(parts[1]);
   const child = parts[2];
   const childIndex = indexedPart(parts[3]);
+  if (root === "writing" && parts[1] === "targetWords" && parts.length === 3) {
+    const targetIndex = indexedPart(parts[2]);
+    return targetIndex >= 0 ? lesson.writing?.targetWordSourceRefs?.[targetIndex]?.trim() || undefined : undefined;
+  }
   if (index < 0) return undefined;
   if (root === "speaking" && parts.length === 2) return lesson.speakingSourceRefs?.[index]?.trim() || undefined;
   if (root === "vocabulary" && child === "example" && parts.length === 3) return lesson.vocabulary[index]?.exampleSourceRef?.trim() || undefined;
@@ -127,6 +131,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     lesson.grammar.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".grammar[" + index + "].examples"));
     lesson.pronunciation?.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".pronunciation[" + index + "].examples"));
     lesson.extraSections?.forEach((item, index) => aligned(item.contentSourceRefs, item.content.length, "lesson " + lesson.id + ".extraSections[" + index + "].content"));
+    if (lesson.writing) aligned(lesson.writing.targetWordSourceRefs, lesson.writing.targetWords.length, "lesson " + lesson.id + ".writing.targetWords");
   }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
