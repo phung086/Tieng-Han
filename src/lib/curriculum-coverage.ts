@@ -49,6 +49,16 @@ function resolvePointer(root: unknown, pointer: string): unknown {
 }
 const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([fileName, pageNumber]);
 
+/** Require an explicit, single-page anchor that agrees with inventory metadata.
+ * A matching filename alone cannot prove that an item came from pageNumber.
+ * Page ranges are deliberately rejected for item-level coverage.
+ */
+function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, pageNumber: number): boolean {
+  if (!sourceRef.includes(fileName)) return false;
+  const markers = [...sourceRef.matchAll(/(?:\\bpages?\\s*|\\bp{1,2}\\.?\\s*|\\btrang\\s*|\\btr\\.\\s*)(\\d+)/gi)];
+  return markers.length === 1 && Number(markers[0][1]) === pageNumber;
+}
+
 function decodedPointerParts(pointer: string): string[] {
   if (!pointer.startsWith("/")) return [];
   return pointer.slice(1).split("/").map(part => part.replace(/~1/g, "/").replace(/~0/g, "~"));
@@ -158,8 +168,12 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
       (typeof content !== "string" || Boolean(content.trim())) &&
       (!Array.isArray(content) || content.length > 0);
-    if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
+    if (!hasContent || !expectedPages.has(pageKey)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
+      continue;
+    }
+    if (!sourceRefMatchesInventoryLocation(item.sourceRef, item.fileName, item.pageNumber)) {
+      issues.push("sourceRef không khớp tệp/trang kiểm kê cho item " + key + " → " + item.fileName + " p." + item.pageNumber);
       continue;
     }
     const targetSourceRef = lesson ? sourceRefAtPointer(lesson, item.contentPointer, content) : undefined;
