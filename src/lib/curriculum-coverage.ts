@@ -167,9 +167,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     // Preserve the exact filename (paths may legitimately contain repeated spaces),
     // but normalize cosmetic spacing in the page/anchor portion of the reference.
     if (trimmed.startsWith(fileName)) {
-      return fileName + trimmed.slice(fileName.length).replace(/\\s*·\\s*/g, " · ").replace(/\\s+/g, " ");
+      return fileName + trimmed.slice(fileName.length).replace(/\s*·\s*/g, " · ").replace(/\s+/g, " ");
     }
-    return trimmed.replace(/\\s*·\\s*/g, " · ").replace(/\\s+/g, " ");
+    return trimmed.replace(/\s*·\s*/g, " · ").replace(/\s+/g, " ");
   };
   const sourceRefOwners = new Map<string, string[]>();
   for (const item of inventory.items) {
