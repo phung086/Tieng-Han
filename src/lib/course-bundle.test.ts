@@ -857,6 +857,30 @@ describe("parseCourseBundle edge cases", () => {
     expect(errors.some((e) => e.path === "question[0].choices" && e.reason.includes("choice"))).toBe(true);
   });
 
+  it.each([
+    { choices: ["xin chào"], answer: "xin chào" },
+    { choices: ["xin chào", "xin chào"], answer: "xin chào" },
+    { choices: ["xin chào", "   "], answer: "xin chào" },
+    { choices: ["xin chào", " xin chào ", "tạm biệt"], answer: "xin chào" },
+  ])("rejects choice questions without two distinct nonempty options: %j", ({ choices, answer }) => {
+    const errors = getValidationErrors(JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT,
+      version: 1,
+      sourceManifest: sampleSourceManifest,
+      course: {
+        title: "T",
+        level: "L",
+        lessons: [minimalLesson()],
+        questions: [minimalQuestion({ choices, answer })],
+      },
+    }));
+
+    expect(errors.some((e) =>
+      e.path === "question[0].choices" &&
+      e.reason.includes("at least two distinct nonempty choices")
+    )).toBe(true);
+  });
+
   it("collects multiple errors across lessons and questions in one throw", () => {
     const broken1 = { id: "bad" }; // not a number, missing everything
     const broken2 = minimalLesson({ id: 2, vocabulary: "not_an_array" }); // wrong type
