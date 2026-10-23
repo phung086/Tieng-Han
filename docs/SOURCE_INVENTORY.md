@@ -39,6 +39,7 @@ items, destinations, or question mappings produce diagnostics.
       "sourceRef": "synthetic.pdf · p.1 · word-1",
       "contentPointer": "/vocabulary/0",
       "practiceMethod": "questions",
+      "motif": "input",
       "practiceQuestionIds": ["q-word-1"],
       "verified": true
     }
@@ -66,8 +67,12 @@ Use a distinct destination for each source unit; `/grammar/0/examples/1` and
 `/extraSections/0/content/2` can identify original examples and exercise subparts.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
-same lesson with the matching source reference. Added questions can carry
-`origin: "derived"`; legacy origin remains unknown.
+same lesson with the matching source reference. For machine-graded practice,
+optional `motif` records the canonical supported question form (`choice`,
+`input`, or `reorder`). When supplied, at least one mapped question must use
+that form; otherwise practice coverage remains incomplete. Omit it when the
+source activity is intentionally retained as a manually reviewed workbook task.
+Added questions can carry `origin: "derived"`; legacy origin remains unknown.
 
 The three coverage ratios measure representation, practice availability, and
 reviewed items independently. A complete report means structural reconciliation
