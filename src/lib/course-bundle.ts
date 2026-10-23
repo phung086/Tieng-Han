@@ -818,6 +818,7 @@ export function getCompilationContract(language: LanguageProfile) {
           hint: "string",
           targetWords: "string[]",
           sourceRef: "string optional",
+          targetWordSourceRefs: "string[] optional; one exact source ref per target word",
         },
         dialogues:
           "{id:string,title?:string,origin?:source|derived,translationOrigin?:source|derived,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string,sourceRef?:string}[],sourceRef?:string}[] optional",
