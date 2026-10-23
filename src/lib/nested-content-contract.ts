@@ -7,7 +7,47 @@ const id = text.trim().min(1);
 const strings = z.array(text);
 const sourceRef = text.optional();
 const withId = { id, sourceRef };
-const readingQuestion = z.object({ ...withId, q: text, choices: strings, answer: text });
+
+function addChoiceAnswerIssues(
+  choices: string[],
+  answer: string,
+  addIssue: (path: (string | number)[], message: string) => void,
+) {
+  const normalizedChoices = choices.map((choice) => choice.trim());
+  if (choices.length < 2) {
+    addIssue(["choices"], "multiple-choice content needs at least two choices");
+  }
+  if (normalizedChoices.some((choice) => !choice)) {
+    addIssue(["choices"], "multiple-choice choices cannot be blank");
+  }
+  const nonblankChoices = normalizedChoices.filter(Boolean);
+  if (new Set(nonblankChoices).size !== nonblankChoices.length) {
+    addIssue(["choices"], "multiple-choice choices must be distinct after trimming");
+  }
+  const normalizedAnswer = answer.trim();
+  if (!normalizedAnswer) {
+    addIssue(["answer"], "multiple-choice answer cannot be blank");
+  } else if (!nonblankChoices.includes(normalizedAnswer)) {
+    addIssue(["answer"], "multiple-choice answer must match one of its choices");
+  }
+}
+
+const readingQuestion = z
+  .object({ ...withId, q: text, choices: strings, answer: text })
+  .superRefine((item, ctx) => {
+    addChoiceAnswerIssues(item.choices, item.answer, (path, message) => {
+      ctx.addIssue({ code: "custom", path, message });
+    });
+  });
+
+const listeningItem = z
+  .object({ ...withId, choices: strings, answer: text })
+  .superRefine((item, ctx) => {
+    addChoiceAnswerIssues(item.choices, item.answer, (path, message) => {
+      ctx.addIssue({ code: "custom", path, message });
+    });
+  });
+
 const dialogueLine = z.object({
   speaker: text.optional(), targetText: text.optional(), ko: text.optional(),
   learnerMeaning: text.optional(), vi: text.optional(), sourceRef,
@@ -20,7 +60,7 @@ const dialogueLine = z.object({
 const nestedLessonSchema = z.object({
   vocabulary: z.array(z.object({ ...withId, example: text.optional() })),
   grammar: z.array(z.object({ ...withId, examples: strings })),
-  listening: z.array(z.object({ ...withId, choices: strings, answer: text })),
+  listening: z.array(listeningItem),
   speaking: strings,
   reading: z.object({ title: text, text, translation: text, questions: z.array(readingQuestion), sourceRef }).nullish(),
   writing: z.object({ prompt: text, hint: text, targetWords: strings, sourceRef }).nullish(),
