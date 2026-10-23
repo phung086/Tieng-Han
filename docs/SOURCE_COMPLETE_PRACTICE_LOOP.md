@@ -5,7 +5,7 @@ Mỗi nguồn nhập phải có **manifest kiểm kê từ PDF/giáo trình gố
 
 ## Phân biệt 3 cổng nghiệm thu
 1. **Source inventory**: đếm từng item *trong tài liệu gốc*, lưu ID ổn định, trang và anchor cụ thể; OCR không rõ phải gắn cờ cần kiểm chứng, không được đoán.
-2. **Compiled coverage**: kiểm tra từng source item đã được import đầy đủ với sourceRef duy nhất. Không lấy số mục từ compiled bundle làm mẫu số của PDF nếu không có manifest.
+2. **Compiled coverage**: kiểm tra từng source item đã được import đầy đủ với sourceRef duy nhất. sourceRef trong inventory phải khớp chính xác với tham chiếu của item tại contentPointer; cùng tên tệp hoặc ref cấp đoạn không đủ. Với chuỗi con trong mảng (ví dụ ngữ pháp, Nói, nội dung bài tập), dùng ref cấp item theo đúng chỉ số; thiếu hoặc lệch ref thì giữ unverified. Không lấy số mục từ compiled bundle làm mẫu số của PDF nếu không có manifest.
 3. **Practice coverage**: mỗi mục cần được ôn có hình thức bài phù hợp, có liên kết source item cụ thể, đáp án/đánh giá và số lần ôn; bài tập gốc giữ nguyên motif, thứ tự, ý nghĩa, vai hội thoại. Chỉ đánh dấu 100% khi đủ cả 3 cổng và đối chiếu tay những trang không thể parse chắc chắn.
 
 `auditLessonPracticeCoverage` là **cổng phụ mức bundle**, chưa phải chứng chỉ 100% so với PDF. Trường `sourceRef` ở cấp đoạn dùng chung cho nhiều câu không chứng minh được coverage; worker phải tạo reference tới từng item riêng biệt hoặc báo "ambiguous". `speaking` dạng chuỗi hiện chưa có item-level reference nên phải được báo thiếu xác minh, không được tự nhận đạt.
