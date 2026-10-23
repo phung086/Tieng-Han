@@ -195,6 +195,53 @@ const VALID_SKILLS = new Set([
 
 const VALID_QUESTION_TYPES = new Set(["choice", "input", "reorder"]);
 
+// Keep this normalization aligned with StudySession's reorder grader.
+function normalizeReorderText(value: string) {
+  return value.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
+}
+
+/**
+ * A reorder bank may contain distractors, so the answer need not use every
+ * token. It must, however, be constructible from available token chunks,
+ * respecting duplicate counts and the exact chunk boundaries shown by the UI.
+ */
+function canBuildReorderAnswer(answer: string, tokens: string[]) {
+  const target = normalizeReorderText(answer);
+  if (!target) return false;
+
+  const counts = new Map<string, number>();
+  for (const raw of tokens) {
+    const token = normalizeReorderText(raw);
+    if (!token) return false;
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  const candidates = [...counts.keys()];
+  const memo = new Set<string>();
+
+  function visit(position: number): boolean {
+    if (position === target.length) return true;
+    const state = String(position) + "|" + candidates.map(token => counts.get(token) ?? 0).join(",");
+    if (memo.has(state)) return false;
+
+    for (const token of candidates) {
+      const count = counts.get(token) ?? 0;
+      if (!count || !target.startsWith(token, position)) continue;
+      const end = position + token.length;
+      if (end < target.length && target[end] !== " ") continue;
+      if (end === target.length) return true;
+
+      counts.set(token, count - 1);
+      if (visit(end + 1)) return true;
+      counts.set(token, count);
+    }
+
+    memo.add(state);
+    return false;
+  }
+
+  return visit(0);
+}
+
 function validateLesson(
   value: unknown,
   index: number,
@@ -436,6 +483,12 @@ function validateQuestion(
       reason: "required field missing",
       expected: "string",
     });
+  } else if (!row.prompt.trim()) {
+    errors.push({
+      path: `${prefix}.prompt`,
+      reason: "must not be empty",
+      expected: "nonempty string",
+    });
   }
 
   if (typeof row.answer !== "string") {
@@ -443,6 +496,12 @@ function validateQuestion(
       path: `${prefix}.answer`,
       reason: "required field missing",
       expected: "string",
+    });
+  } else if (row.type === "input" && !row.answer.trim()) {
+    errors.push({
+      path: `${prefix}.answer`,
+      reason: "input question needs a nonempty answer for grading",
+      expected: "nonempty string",
     });
   }
 
@@ -486,8 +545,45 @@ function validateQuestion(
       errors.push({ path: `${prefix}.${field}`, reason: "every entry must be a string", expected: "string[]" });
     }
   }
-  if (row.type === "choice" && Array.isArray(row.choices) && row.choices.length === 0) {
-    errors.push({ path: `${prefix}.choices`, reason: "choice question needs nonempty choices", expected: "nonempty string[]" });
+  if (row.type === "reorder" && Array.isArray(row.tokens)) {
+    const tokens = row.tokens;
+    const usableTokens = tokens.every(
+      item => typeof item === "string" && normalizeReorderText(item).length > 0,
+    );
+    if (tokens.length === 0 || !usableTokens) {
+      errors.push({
+        path: `${prefix}.tokens`,
+        reason: "reorder question needs nonempty, usable tokens",
+        expected: "nonempty string[]",
+      });
+    } else if (
+      typeof row.answer === "string" &&
+      !canBuildReorderAnswer(row.answer, tokens as string[])
+    ) {
+      errors.push({
+        path: `${prefix}.answer`,
+        reason: "answer cannot be constructed from the reorder tokens",
+        expected: "a valid ordering of available token chunks",
+      });
+    }
+  }
+  if (row.type === "choice" && Array.isArray(row.choices)) {
+    const choiceTexts = (row.choices as unknown[])
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim());
+    const hasBlankChoice = choiceTexts.some((item) => !item);
+    const distinctChoices = new Set(choiceTexts);
+    if (
+      hasBlankChoice ||
+      distinctChoices.size < 2 ||
+      distinctChoices.size !== choiceTexts.length
+    ) {
+      errors.push({
+        path: `${prefix}.choices`,
+        reason: "choice question needs at least two distinct nonempty choices",
+        expected: "string[] with at least two unique nonempty options",
+      });
+    }
   }
   for (const field of ["title", "explanation"]) {
     if (typeof row[field] !== "string") errors.push({ path: `${prefix}.${field}`, reason: "required field missing", expected: "string" });
