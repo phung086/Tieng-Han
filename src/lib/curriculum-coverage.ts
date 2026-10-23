@@ -55,7 +55,7 @@ const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([file
  */
 function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, pageNumber: number): boolean {
   if (!sourceRef.includes(fileName)) return false;
-  const markers = [...sourceRef.matchAll(/(?:\\bpages?\\s*|\\bp{1,2}\\.?\\s*|\\btrang\\s*|\\btr\\.\\s*)(\\d+)/gi)];
+  const markers = [...sourceRef.matchAll(/(?:\bpages?\s*|\bp{1,2}\.?\s*|\btrang\s*|\btr\.\s*)(\d+)/gi)];
   return markers.length === 1 && Number(markers[0][1]) === pageNumber;
 }
 
