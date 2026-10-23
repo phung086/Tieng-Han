@@ -54,7 +54,14 @@ const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([file
  * Page ranges are deliberately rejected for item-level coverage.
  */
 function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, pageNumber: number): boolean {
-  if (!sourceRef.includes(fileName)) return false;
+  const fileIndex = sourceRef.indexOf(fileName);
+  if (fileIndex < 0 || sourceRef.indexOf(fileName, fileIndex + fileName.length) >= 0) return false;
+  const before = fileIndex > 0 ? sourceRef[fileIndex - 1] : undefined;
+  const afterIndex = fileIndex + fileName.length;
+  const after = afterIndex < sourceRef.length ? sourceRef[afterIndex] : undefined;
+  const delimiter = (character: string | undefined) =>
+    character === undefined || /[\s·|,;()[\]{}:]/u.test(character);
+  if (!delimiter(before) || !delimiter(after)) return false;
   const markers = [...sourceRef.matchAll(/(?:\bpages?\s*|\bp{1,2}\.?\s*|\btrang\s*|\btr\.\s*)(\d+)/gi)];
   return markers.length === 1 && Number(markers[0][1]) === pageNumber;
 }
