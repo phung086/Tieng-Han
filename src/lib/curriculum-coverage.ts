@@ -162,9 +162,18 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const destinations = new Set<string>();
   // Item-level evidence must be one-to-one: a page/section reference reused by
   // multiple inventory rows cannot prove that each source item was represented.
+  const normalizeSourceRefForUniqueness = (sourceRef: string, fileName: string) => {
+    const trimmed = sourceRef.trim();
+    // Preserve the exact filename (paths may legitimately contain repeated spaces),
+    // but normalize cosmetic spacing in the page/anchor portion of the reference.
+    if (trimmed.startsWith(fileName)) {
+      return fileName + trimmed.slice(fileName.length).replace(/\\s*·\\s*/g, " · ").replace(/\\s+/g, " ");
+    }
+    return trimmed.replace(/\\s*·\\s*/g, " · ").replace(/\\s+/g, " ");
+  };
   const sourceRefOwners = new Map<string, string[]>();
   for (const item of inventory.items) {
-    const ref = item.sourceRef.trim();
+    const ref = normalizeSourceRefForUniqueness(item.sourceRef, item.fileName);
     const key = item.lessonId + ":" + item.id;
     sourceRefOwners.set(ref, [...(sourceRefOwners.get(ref) ?? []), key]);
   }
@@ -179,7 +188,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const key = item.lessonId + ":" + item.id;
     if (seenItems.has(key)) { issues.push("Trùng source item: " + key); continue; }
     seenItems.add(key);
-    if (duplicateSourceRefs.has(item.sourceRef.trim())) continue;
+    if (duplicateSourceRefs.has(normalizeSourceRefForUniqueness(item.sourceRef, item.fileName))) continue;
     const pageKey = sourceKey(item.fileName, item.pageNumber);
     const lesson = bundle.course.lessons.find(lesson => lesson.id === item.lessonId);
     const questions = bundle.course.questions.filter(question => question.lessonId === item.lessonId);
