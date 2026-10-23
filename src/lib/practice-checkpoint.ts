@@ -11,6 +11,13 @@ export type PracticeCheckpoint = {
   tokens?: string[];
 };
 
+/** Runtime-only fields that change how a review item is presented or graded. */
+export type PracticeCheckpointQuestion = StudyQuestion & {
+  reviewKind?: "recall" | "speaking" | "writing";
+  context?: string;
+  audioText?: string;
+};
+
 type PersistedPracticeCheckpoint = PracticeCheckpoint & {
   version: 1;
   questionIds: string[];
@@ -31,7 +38,7 @@ export function practiceCheckpointKey(
   return ["haneul-practice-checkpoint-v1", encodeURIComponent(courseId), lessonId, mode, skill ?? "all"].join(":");
 }
 
-function questionContentSignature(questions: StudyQuestion[]): string {
+function questionContentSignature(questions: PracticeCheckpointQuestion[]): string {
   const content = JSON.stringify(
     questions.map(question => [
       question.id,
@@ -41,6 +48,9 @@ function questionContentSignature(questions: StudyQuestion[]): string {
       question.title,
       question.prompt,
       question.translation ?? null,
+      question.context ?? null,
+      question.audioText ?? null,
+      question.reviewKind ?? null,
       question.choices ?? null,
       question.tokens ?? null,
       question.answer,
@@ -57,7 +67,7 @@ function questionContentSignature(questions: StudyQuestion[]): string {
 }
 
 export function serializePracticeCheckpoint(
-  questions: StudyQuestion[],
+  questions: PracticeCheckpointQuestion[],
   data: PracticeCheckpoint,
 ): string {
   const saved: PersistedPracticeCheckpoint = {
@@ -77,7 +87,7 @@ export function serializePracticeCheckpoint(
 /** Returns null for corrupt, outdated or recompiled lesson banks. */
 export function parsePracticeCheckpoint(
   input: string | null,
-  questions: StudyQuestion[],
+  questions: PracticeCheckpointQuestion[],
 ): PracticeCheckpoint | null {
   if (!input || !questions.length) return null;
   let row: unknown;
@@ -89,7 +99,7 @@ export function parsePracticeCheckpoint(
   if (data.questionIds.length !== questions.length) return null;
   if (data.contentSignature !== questionContentSignature(questions)) return null;
   if (!questions.every((question, index) => question.id === data.questionIds?.[index])) return null;
-  if (data.checked!==undefined && (typeof data.checked!=="boolean" || typeof data.answer!=="string" || !Array.isArray(data.tokens) || data.tokens.some(token=>typeof token!=="string"))) return null;
+  if (data.checked!==undefined && (typeof data.checked!== "boolean" || typeof data.answer!== "string" || !Array.isArray(data.tokens) || data.tokens.some(token=>typeof token!== "string"))) return null;
   if (!Number.isSafeInteger(data.index) || (data.index ?? -1) < (data.checked?0:1) || (data.index ?? Infinity) >= questions.length) return null;
   if (!Number.isSafeInteger(data.correctCount) || (data.correctCount ?? -1) < 0 || (data.correctCount ?? Infinity) > (data.index ?? 0)+(data.checked?1:0)) return null;
   if (!Number.isFinite(data.savedAt) || (data.savedAt ?? 0) > Date.now() + 3600000) return null;
