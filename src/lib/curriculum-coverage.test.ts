@@ -104,6 +104,7 @@ describe("source, practice and validation coverage are independent release evide
   it.each([
     { label: "wrong page", ref: "synthetic.pdf · p.1 · exercise" },
     { label: "missing page anchor", ref: "synthetic.pdf · exercise" },
+    { label: "filename suffix collision", ref: "other-synthetic.pdf · p.2 · exercise" },
   ])("rejects an inventory and target ref with $label", ({ ref }) => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[1].sourceRef = ref;
