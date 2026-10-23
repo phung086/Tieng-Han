@@ -102,13 +102,13 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("sourceRef inventory không khớp");
   });
   it.each([
-    { label: "wrong page", ref: "synthetic.pdf · p.1 · exercise" },
-    { label: "missing page anchor", ref: "synthetic.pdf · exercise" },
-    { label: "filename suffix collision", ref: "other-synthetic.pdf · p.2 · exercise" },
+    { label: "wrong page", ref: "synthetic.pdf · p.1 · exercise", pageNumber: 2 },
+    { label: "missing page anchor", ref: "synthetic.pdf · exercise", pageNumber: 2 },
+    { label: "filename suffix collision", ref: "other-synthetic.pdf · p.2 · exercise", pageNumber: 2 },
     { label: "page range", ref: "synthetic.pdf · p.1-2 · exercise", pageNumber: 1 },
   ])("rejects an inventory and target ref with $label", ({ ref, pageNumber }) => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
-    if (pageNumber) bundle.sourceInventory.items[1].pageNumber = pageNumber;
+    bundle.sourceInventory.items[1].pageNumber = pageNumber;
     bundle.sourceInventory.items[1].sourceRef = ref;
     bundle.course.lessons[0].extraSections![0].sourceRef = ref;
     const report = auditCurriculumCoverage(bundle);
