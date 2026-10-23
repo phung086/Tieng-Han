@@ -146,4 +146,18 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.sourceCoverage.covered).toBe(0);
     expect(report.issues.join(" ")).toContain("Trùng source item");
   });
+  it("requires a declared practice motif to match a linked question", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[0].motif = "reorder";
+    const mismatched = auditCurriculumCoverage(bundle);
+    expect(mismatched.status).toBe("partial");
+    expect(mismatched.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(mismatched.issues.join(" ")).toContain("Sai motif luyện tập");
+
+    bundle.course.questions[0].type = "reorder";
+    const matched = auditCurriculumCoverage(bundle);
+    expect(matched.status).toBe("complete");
+    expect(matched.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
 });
