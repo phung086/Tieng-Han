@@ -160,4 +160,12 @@ describe("source, practice and validation coverage are independent release evide
     expect(matched.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
+  it("normalizes the documented Derived from prefix before matching practice refs", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions[0].sourceRef = "Derived from synthetic.pdf · p.1 · v1";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(report.status).toBe("complete");
+  });
+
 });
