@@ -93,6 +93,26 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory.items[0].practiceQuestionIds = [];
     expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
   });
+  it("does not let one item-level sourceRef represent multiple source items", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const sharedRef = bundle.sourceInventory.items[0].sourceRef;
+    // Keep the second physical page explicitly reviewed as non-learning so the
+    // only failure under test is reuse of a single item reference.
+    bundle.sourceInventory.pages[1] = {
+      fileName: "synthetic.pdf", pageNumber: 2, status: "reviewed",
+      classification: "non-learning", reason: "Reviewed blank reverse cover",
+    };
+    bundle.sourceInventory.items[1].pageNumber = 1;
+    bundle.sourceInventory.items[1].sourceRef = sharedRef;
+    bundle.course.lessons[0].extraSections![0].sourceRef = sharedRef;
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.practiceCoverage.covered).toBe(0);
+    expect(report.status).toBe("blocked");
+    expect(report.issues.join(" ")).toContain("sourceRef item-level bị dùng chung");
+  });
+
   it("rejects an inventory ref that matches the filename but not the referenced item", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].vocabulary[0].sourceRef = "synthetic.pdf · p.1 · different-item";
