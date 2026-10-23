@@ -33,7 +33,21 @@ export function practiceCheckpointKey(
 
 function questionContentSignature(questions: StudyQuestion[]): string {
   const content = JSON.stringify(
-    questions.map(question => [question.id, question.prompt, question.answer, question.type, question.choices]),
+    questions.map(question => [
+      question.id,
+      question.lessonId,
+      question.skill,
+      question.type,
+      question.title,
+      question.prompt,
+      question.translation ?? null,
+      question.choices ?? null,
+      question.tokens ?? null,
+      question.answer,
+      question.explanation,
+      question.sourceRef ?? null,
+      question.origin ?? null,
+    ]),
   );
   let hash = 2166136261;
   for (let i = 0; i < content.length; i++) {
