@@ -18,16 +18,17 @@ const dialogueLine = z.object({
 // This validates fields consumed by the UI before alias normalization can hide
 // malformed input. Unknown extension fields remain on the original bundle.
 const nestedLessonSchema = z.object({
-  vocabulary: z.array(z.object({ ...withId, example: text.optional() })),
-  grammar: z.array(z.object({ ...withId, examples: strings })),
+  vocabulary: z.array(z.object({ ...withId, example: text.optional(), exampleSourceRef: sourceRef })),
+  grammar: z.array(z.object({ ...withId, examples: strings, exampleSourceRefs: strings.optional() })),
   listening: z.array(z.object({ ...withId, choices: strings, answer: text })),
   speaking: strings,
+  speakingSourceRefs: strings.optional(),
   reading: z.object({ title: text, text, translation: text, questions: z.array(readingQuestion), sourceRef }).nullish(),
   writing: z.object({ prompt: text, hint: text, targetWords: strings, sourceRef }).nullish(),
   dialogues: z.array(z.object({ ...withId, origin: z.enum(["source", "derived"]).optional(), translationOrigin: z.enum(["source", "derived"]).optional(), lines: z.array(dialogueLine) })).optional(),
-  pronunciation: z.array(z.object({ ...withId, title: text, explanation: text, examples: strings })).optional(),
+  pronunciation: z.array(z.object({ ...withId, title: text, explanation: text, examples: strings, exampleSourceRefs: strings.optional() })).optional(),
   culture: z.array(z.object({ ...withId, title: text, text })).optional(),
-  extraSections: z.array(z.object({ ...withId, kind: text, title: text, content: strings })).optional(),
+  extraSections: z.array(z.object({ ...withId, kind: text, title: text, content: strings, contentSourceRefs: strings.optional() })).optional(),
   media: z.array(z.object({
     ...withId, type: z.enum(["image", "video", "audio", "document"]),
     role: z.enum(["illustration", "diagram", "source-page", "external"]), src: text, alt: text,
