@@ -172,7 +172,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     represented++;
     representedLessons.add(item.lessonId);
     const linkedQuestions = item.practiceQuestionIds.map(id => questions.find(question =>
-      question.id === id && question.sourceRef?.replace(/^Derived from\\s+/i, "").trim() === item.sourceRef));
+      question.id === id && question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef));
     const linked = linkedQuestions.length > 0 && linkedQuestions.every(question => question !== undefined);
     const motifMatches = !item.motif || linkedQuestions.some(question => question?.type === item.motif);
     // Workbook coverage requires an explicit exercise target, not merely any lesson content.
