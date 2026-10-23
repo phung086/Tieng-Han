@@ -36,6 +36,7 @@ export function isCurrentCompleteCoverage(coverage: CurriculumCoverage | undefin
   if (!Array.isArray(coverage.issues) || coverage.issues.length !== 0) return false;
 
   const ratios = [coverage.sourceCoverage, coverage.practiceCoverage, coverage.validationCoverage];
+  if (!ratios.every((item) => item && typeof item === "object")) return false;
   const total = ratios[0]?.total;
   if (!Number.isSafeInteger(total) || (total ?? 0) <= 0) return false;
 
