@@ -13,8 +13,9 @@ is required: the report uses the existing JSON metadata column.
 ## Create evidence
 
 Review the original textbook page by page. Include appendices, source exercises,
-all subparts and non-quiz content. Use stable item IDs and the most specific
-available `sourceRef`; do not derive source counts from the existing course.
+all subparts and non-quiz content. Use stable item IDs and a distinct, item-level
+`sourceRef` for every source item; never reuse one page/section reference to claim
+multiple items. Do not derive source counts from the existing course.
 Mark `verified: true` only after actual review. The structural validator cannot
 perform semantic comparison with the PDF or independently certify a review flag.
 
