@@ -59,11 +59,17 @@ function questionContentSignature(questions: PracticeCheckpointQuestion[]): stri
       question.origin ?? null,
     ]),
   );
-  let hash = 2166136261;
+  // A 32-bit fingerprint becomes collision-prone as many long lesson banks
+  // are recompiled. Use a deterministic 64-bit FNV-1a fingerprint instead.
+  // This is an integrity fingerprint, not a cryptographic authenticity check.
+  let hash = 14695981039346656037n;
+  const prime = 1099511628211n;
+  const mask = 0xffffffffffffffffn;
   for (let i = 0; i < content.length; i++) {
-    hash = Math.imul(hash ^ content.charCodeAt(i), 16777619);
+    hash ^= BigInt(content.charCodeAt(i));
+    hash = (hash * prime) & mask;
   }
-  return String(hash >>> 0);
+  return "fnv1a64:" + hash.toString(16).padStart(16, "0");
 }
 
 export function serializePracticeCheckpoint(
