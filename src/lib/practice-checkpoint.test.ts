@@ -39,6 +39,21 @@ describe("long textbook practice checkpoint", () => {
     expect(parsePracticeCheckpoint(raw, questions)).toEqual(state);
   });
 
+  it("uses a stable 64-bit fingerprint for long source-backed question banks", () => {
+    const first = JSON.parse(serializePracticeCheckpoint(questions, state));
+    const repeated = JSON.parse(serializePracticeCheckpoint(questions, state));
+    const changed = JSON.parse(serializePracticeCheckpoint(
+      questions.map((question, index) => index === 0
+        ? { ...question, sourceRef: "book.pdf · p.24 · revised-item" }
+        : question),
+      state,
+    ));
+
+    expect(first.contentSignature).toMatch(/^fnv1a64:[0-9a-f]{16}$/);
+    expect(repeated.contentSignature).toBe(first.contentSignature);
+    expect(changed.contentSignature).not.toBe(first.contentSignature);
+  });
+
   it("scopes storage by imported course, lesson, mode and skill", () => {
     const a = practiceCheckpointKey("course-a", 3, "guided", "vocabulary");
     expect(a).not.toBe(practiceCheckpointKey("course-b", 3, "guided", "vocabulary"));
