@@ -101,6 +101,19 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("partial");
     expect(report.issues.join(" ")).toContain("sourceRef inventory không khớp");
   });
+  it.each([
+    { label: "wrong page", ref: "synthetic.pdf · p.1 · exercise" },
+    { label: "missing page anchor", ref: "synthetic.pdf · exercise" },
+  ])("rejects an inventory and target ref with $label", ({ ref }) => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[1].sourceRef = ref;
+    bundle.course.lessons[0].extraSections![0].sourceRef = ref;
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("sourceRef không khớp tệp/trang kiểm kê");
+  });
+
   it("requires an item-level reference for nested grammar examples", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].grammar = [{
