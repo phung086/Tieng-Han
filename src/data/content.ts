@@ -49,6 +49,8 @@ export type WritingContent = {
   hint: string;
   targetWords: string[];
   sourceRef?: string;
+  /** One source ref per target word, aligned by index. */
+  targetWordSourceRefs?: string[];
 };
 
 export type LessonMedia = {
