@@ -17,11 +17,10 @@ describe("admin publication release gate", () => {
     expect(response.status).toBe(409);
     expect(setCourseStatus).not.toHaveBeenCalled();
   });
-  it("allows a fully reconciled inventory to reach the database publication guard", async () => {
+  it("does not trust a complete summary without retained source evidence", async () => {
     vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: { auditVersion: CURRICULUM_AUDIT_VERSION, status: "complete" } } }] as never);
-    vi.mocked(setCourseStatus).mockResolvedValue({ course_id: "test", status: "published" } as never);
-    expect((await update("published")).status).toBe(200);
-    expect(setCourseStatus).toHaveBeenCalledWith("test", "published");
+    expect((await update("published")).status).toBe(409);
+    expect(setCourseStatus).not.toHaveBeenCalled();
   });
   it("permits saving a draft without asserting coverage", async () => {
     vi.mocked(setCourseStatus).mockResolvedValue({ course_id: "test", status: "draft" } as never);
