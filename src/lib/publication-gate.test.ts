@@ -7,20 +7,37 @@ vi.mock("@/lib/auth/server", () => ({ isSameOrigin: () => true, requireAdmin: as
 vi.mock("@/lib/course-consumer", () => ({ getCourseLibrary: vi.fn() }));
 vi.mock("@/lib/db/course-catalog", () => ({ setCourseStatus: vi.fn() }));
 beforeEach(() => { vi.clearAllMocks(); });
+
+const completeCoverage = {
+  auditVersion: 2,
+  status: "complete",
+  sourceCoverage: { covered: 2, total: 2, percent: 100 },
+  practiceCoverage: { covered: 2, total: 2, percent: 100 },
+  validationCoverage: { covered: 2, total: 2, percent: 100 },
+  issues: [],
+};
 const update = (status: string) => PATCH(new Request("http://localhost/api/admin/courses/test/status", { method: "PATCH", body: JSON.stringify({ status }) }), { params: Promise.resolve({ courseId: "test" }) });
 
 describe("admin publication release gate", () => {
   it.each([undefined, "unverified", "partial", "blocked", "complete"])("refuses publication with legacy %s source evidence without changing catalog state", async status => {
-    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: status ? { curriculumCoverage: { status } } : {} }] as never);
+    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: status ? { ...completeCoverage, status, auditVersion: status === "complete" ? 1 : 2 } : undefined } }] as never);
     const response = await update("published");
     expect(response.status).toBe(409);
     expect(setCourseStatus).not.toHaveBeenCalled();
   });
   it("allows a fully reconciled inventory to reach the database publication guard", async () => {
-    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: { auditVersion: 2, status: "complete" } } }] as never);
+    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: completeCoverage } }] as never);
     vi.mocked(setCourseStatus).mockResolvedValue({ course_id: "test", status: "published" } as never);
     expect((await update("published")).status).toBe(200);
     expect(setCourseStatus).toHaveBeenCalledWith("test", "published");
+  });
+  it("refuses a complete label when the evidence ratios are inconsistent", async () => {
+    vi.mocked(getCourseLibrary).mockResolvedValue([{
+      id: "test",
+      source: { curriculumCoverage: { ...completeCoverage, practiceCoverage: { covered: 1, total: 2, percent: 50 } } },
+    }] as never);
+    expect((await update("published")).status).toBe(409);
+    expect(setCourseStatus).not.toHaveBeenCalled();
   });
   it("permits saving a draft without asserting coverage", async () => {
     vi.mocked(setCourseStatus).mockResolvedValue({ course_id: "test", status: "draft" } as never);
