@@ -809,6 +809,36 @@ describe("parseCourseBundle edge cases", () => {
     expect(errors.some(e => e.path === "question[0].tokens" && e.reason.includes("nonempty"))).toBe(true);
   });
 
+  it("rejects whitespace-only question prompts", () => {
+    const errors = getValidationErrors(
+      validBundleJson({
+        course: {
+          title: "T",
+          level: "L",
+          lessons: [minimalLesson()],
+          questions: [minimalQuestion({ prompt: "   " })],
+        },
+      }),
+    );
+
+    expect(errors.some((e) => e.path === "question[0].prompt" && e.reason.includes("empty"))).toBe(true);
+  });
+
+  it("rejects whitespace-only answers for input questions", () => {
+    const errors = getValidationErrors(
+      validBundleJson({
+        course: {
+          title: "T",
+          level: "L",
+          lessons: [minimalLesson()],
+          questions: [minimalQuestion({ type: "input", prompt: "Translate this", answer: "   ", choices: undefined })],
+        },
+      }),
+    );
+
+    expect(errors.some((e) => e.path === "question[0].answer" && e.reason.includes("nonempty answer"))).toBe(true);
+  });
+
   it("requires choices for choice questions", () => {
     const errors = getValidationErrors(
       JSON.stringify({
