@@ -46,8 +46,11 @@ items, destinations, or question mappings produce diagnostics.
 }
 ```
 
-This is a synthetic shape example, not a textbook fixture. Every source page
-must appear exactly once. An unavailable page uses `status: "unavailable"`
+This is a synthetic shape example, not a textbook fixture. Each item-level
+`sourceRef` must include the exact `fileName` and one explicit physical-page
+anchor (for example `p.21`, `page 21`, or `trang 21`) matching `pageNumber`.
+A filename-only reference, missing page anchor, conflicting page number, or
+multi-page range is not sufficient for item coverage. Every source page must appear exactly once. An unavailable page uses `status: "unavailable"`
 and a reason; it keeps the report incomplete instead of being dropped.
 Every reviewed learning page must use `classification: "learning-content"` and
 have its individual source units inventoried. A page genuinely containing no
