@@ -567,8 +567,23 @@ function validateQuestion(
       });
     }
   }
-  if (row.type === "choice" && Array.isArray(row.choices) && row.choices.length === 0) {
-    errors.push({ path: `${prefix}.choices`, reason: "choice question needs nonempty choices", expected: "nonempty string[]" });
+  if (row.type === "choice" && Array.isArray(row.choices)) {
+    const choiceTexts = (row.choices as unknown[])
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim());
+    const hasBlankChoice = choiceTexts.some((item) => !item);
+    const distinctChoices = new Set(choiceTexts);
+    if (
+      hasBlankChoice ||
+      distinctChoices.size < 2 ||
+      distinctChoices.size !== choiceTexts.length
+    ) {
+      errors.push({
+        path: `${prefix}.choices`,
+        reason: "choice question needs at least two distinct nonempty choices",
+        expected: "string[] with at least two unique nonempty options",
+      });
+    }
   }
   for (const field of ["title", "explanation"]) {
     if (typeof row[field] !== "string") errors.push({ path: `${prefix}.${field}`, reason: "required field missing", expected: "string" });
