@@ -744,6 +744,68 @@ describe("parseCourseBundle edge cases", () => {
     expect(errors.some((e) => e.path === "question[0].tokens" && e.reason.includes("reorder"))).toBe(true);
   });
 
+  it("accepts a reorder answer constructible from token chunks while allowing distractors", () => {
+    const errors = getValidationErrors(
+      JSON.stringify({
+        format: COURSE_BUNDLE_FORMAT,
+        version: 1,
+        sourceManifest: sampleSourceManifest,
+        course: {
+          title: "T",
+          level: "L",
+          lessons: [minimalLesson()],
+          questions: [minimalQuestion({
+            type: "reorder",
+            tokens: ["저는", "학생입니다.", "회사원"],
+            answer: "저는 학생입니다.",
+            choices: undefined,
+          })],
+        },
+      }),
+    );
+    expect(errors.some(e => e.path === "question[0].answer" && e.reason.includes("cannot be constructed"))).toBe(false);
+  });
+
+  it("respects multiword token chunk boundaries for reorder answers", () => {
+    const valid = getValidationErrors(JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT, version: 1, sourceManifest: sampleSourceManifest,
+      course: { title: "T", level: "L", lessons: [minimalLesson()], questions: [minimalQuestion({
+        type: "reorder", tokens: ["저는", "학생 입니다", "회사원"], answer: "저는 학생 입니다", choices: undefined,
+      })] },
+    }));
+    const invalid = getValidationErrors(JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT, version: 1, sourceManifest: sampleSourceManifest,
+      course: { title: "T", level: "L", lessons: [minimalLesson()], questions: [minimalQuestion({
+        type: "reorder", tokens: ["저는 학생", "입니다"], answer: "저는 학생입니다", choices: undefined,
+      })] },
+    }));
+    expect(valid.some(e => e.path === "question[0].answer" && e.reason.includes("cannot be constructed"))).toBe(false);
+    expect(invalid.some(e => e.path === "question[0].answer" && e.reason.includes("cannot be constructed"))).toBe(true);
+  });
+
+  it.each([
+    { tokens: ["저는", "학생", "입니다"], answer: "저는 선생님 입니다" },
+    { tokens: ["저는", "학생", "입니다"], answer: "저는 학생 학생 입니다" },
+  ])("rejects reorder answers that cannot be built from available tokens: %j", ({ tokens, answer }) => {
+    const errors = getValidationErrors(JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT, version: 1, sourceManifest: sampleSourceManifest,
+      course: { title: "T", level: "L", lessons: [minimalLesson()], questions: [minimalQuestion({
+        type: "reorder", tokens, answer, choices: undefined,
+      })] },
+    }));
+    expect(errors.some(e => e.path === "question[0].answer" && e.reason.includes("cannot be constructed"))).toBe(true);
+  });
+
+  it.each([[], ["저는", "   "]])("rejects empty or unusable reorder tokens: %j", tokens => {
+    const errors = getValidationErrors(JSON.stringify({
+      format: COURSE_BUNDLE_FORMAT, version: 1, sourceManifest: sampleSourceManifest,
+      course: { title: "T", level: "L", lessons: [minimalLesson()], questions: [minimalQuestion({
+        type: "reorder", tokens, answer: "저는 학생입니다", choices: undefined,
+      })] },
+    }));
+    expect(errors.some(e => e.path === "question[0].tokens" && e.reason.includes("nonempty"))).toBe(true);
+  });
+
   it("requires choices for choice questions", () => {
     const errors = getValidationErrors(
       JSON.stringify({
