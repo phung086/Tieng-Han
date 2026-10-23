@@ -48,7 +48,7 @@ export function buildLessonPracticeBank(
     const target = nonEmpty(word.targetText || word.ko);
     const meaning = nonEmpty(word.learnerMeaning || word.vi);
     if (!target || !meaning) return;
-    const sourceRef = word.sourceRef ?? lesson.sourceRef;
+    const sourceRef = word.sourceRef;
     const meaningOptions = optionsFor(meaning, words.map((w) => w.learnerMeaning || w.vi), 4, index);
     add({
       id: stableId(lesson.id, "vocab-meaning", index),
@@ -85,7 +85,7 @@ export function buildLessonPracticeBank(
       prompt: "Đọc câu nguồn rồi gõ lại: " + example,
       answer: example,
       explanation: "Câu ví dụ trong giáo trình: " + example,
-      sourceRef,
+      sourceRef: word.exampleSourceRef,
     });
   });
 
@@ -101,7 +101,7 @@ export function buildLessonPracticeBank(
       prompt: "Viết mẫu ngữ pháp có nghĩa: " + item.meaning,
       answer: pattern,
       explanation: item.explanation || pattern,
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.sourceRef,
     });
     (item.examples ?? []).forEach((example, exampleIndex) => {
       const sentence = nonEmpty(example);
@@ -115,7 +115,7 @@ export function buildLessonPracticeBank(
         prompt: "Đọc câu mẫu và viết lại chính xác: " + sentence,
         answer: sentence,
         explanation: "Ví dụ nguồn cho " + pattern + ": " + sentence,
-        sourceRef: item.sourceRef ?? lesson.sourceRef,
+        sourceRef: item.exampleSourceRefs?.[exampleIndex],
       });
     });
   });
@@ -135,7 +135,7 @@ export function buildLessonPracticeBank(
       choices: usableChoice ? choices : undefined,
       answer,
       explanation: nonEmpty(item.meaning) || answer,
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.sourceRef,
     });
   });
 
@@ -154,7 +154,7 @@ export function buildLessonPracticeBank(
       choices: usableChoice ? choices : undefined,
       answer,
       explanation: "Đáp án trong bài đọc: " + answer,
-      sourceRef: item.sourceRef ?? lesson.reading?.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.sourceRef,
     });
   });
 
@@ -172,7 +172,7 @@ export function buildLessonPracticeBank(
         prompt: (line.speaker ? line.speaker + ": " : "") + meaning + " — Hãy viết câu tiếng Hàn tương ứng.",
         answer: target,
         explanation: target + " — " + meaning,
-        sourceRef: line.sourceRef ?? dialogue.sourceRef ?? lesson.sourceRef,
+        sourceRef: line.sourceRef,
       });
     });
   });
@@ -189,7 +189,7 @@ export function buildLessonPracticeBank(
       prompt: "Đọc thành tiếng rồi gõ lại: " + sentence,
       answer: sentence,
       explanation: "Câu gốc: " + sentence,
-      sourceRef: lesson.sourceRef,
+      sourceRef: lesson.speakingSourceRefs?.[index],
     });
   });
 
@@ -206,7 +206,7 @@ export function buildLessonPracticeBank(
         prompt: "Đọc to, chú ý phát âm, rồi gõ lại: " + sentence,
         answer: sentence,
         explanation: item.explanation || sentence,
-        sourceRef: item.sourceRef ?? lesson.sourceRef,
+        sourceRef: item.exampleSourceRefs?.[exampleIndex],
       });
     });
   });
@@ -223,7 +223,7 @@ export function buildLessonPracticeBank(
       prompt: "Viết lại từ khóa sau, sau đó tự đặt câu: " + target,
       answer: target,
       explanation: "Từ khóa từ nhiệm vụ viết: " + target,
-      sourceRef: lesson.writing?.sourceRef ?? lesson.sourceRef,
+      sourceRef: lesson.writing?.targetWordSourceRefs?.[index],
     });
   });
 
