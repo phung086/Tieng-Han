@@ -9,7 +9,7 @@ function fixture(): CompiledCourseBundle {
     course: { title: "Test", level: "L1", lessons: [{ id: 1, title: "학생", vi: "Học sinh", objective: "Fixture",
       vocabulary: [{ id: "v1", ko: "학생", vi: "học sinh", example: "", sourceRef: "synthetic.pdf · p.1 · v1" }],
       grammar: [], listening: [], speaking: [], reading: null, writing: null,
-      extraSections: [{ id: "exercise", kind: "exercise", title: "Viết tự do", content: ["Viết một câu tự giới thiệu."], sourceRef: "synthetic.pdf · p.2 · exercise" }],
+      extraSections: [{ id: "exercise", kind: "exercise", title: "Viết tự do", content: ["Viết một câu tự giới thiệu."], contentSourceRefs: ["synthetic.pdf · p.2 · exercise"] }],
     }], questions: [{ id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Fixture", prompt: "học sinh", answer: "학생", explanation: "Fixture", sourceRef: "synthetic.pdf · p.1 · v1", origin: "derived" }] } }));
 }
 function inventory(): SourceInventory {
@@ -17,7 +17,7 @@ function inventory(): SourceInventory {
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", practiceQuestionIds: ["q1"], verified: true },
     { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
-      sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
+      sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0/content/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
   ] };
 }
 describe("source, practice and validation coverage are independent release evidence", () => {
@@ -104,7 +104,7 @@ describe("source, practice and validation coverage are independent release evide
     };
     bundle.sourceInventory.items[1].pageNumber = 1;
     bundle.sourceInventory.items[1].sourceRef = sharedRef;
-    bundle.course.lessons[0].extraSections![0].sourceRef = sharedRef;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [sharedRef];
 
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(0);
@@ -123,7 +123,7 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory.items[1].pageNumber = 1;
     const whitespaceVariant = sharedRef.replace(" · ", "   ·   ");
     bundle.sourceInventory.items[1].sourceRef = whitespaceVariant;
-    bundle.course.lessons[0].extraSections![0].sourceRef = whitespaceVariant;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [whitespaceVariant];
 
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(0);
@@ -149,11 +149,36 @@ describe("source, practice and validation coverage are independent release evide
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[1].pageNumber = pageNumber;
     bundle.sourceInventory.items[1].sourceRef = ref;
-    bundle.course.lessons[0].extraSections![0].sourceRef = ref;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [ref];
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(1);
     expect(report.status).toBe("partial");
     expect(report.issues.join(" ")).toContain("sourceRef không khớp tệp/trang kiểm kê");
+  });
+
+  it("fails closed when nested source examples and prompts omit their item-level reference arrays", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary[0].example = "저는 학생입니다.";
+    lesson.vocabulary[0].exampleSourceRef = undefined;
+    lesson.grammar = [{
+      id: "g-missing-ref", pattern: "N입니다", meaning: "là N", explanation: "Fixture",
+      examples: ["저는 학생입니다."],
+    }];
+    lesson.speaking = ["자기소개를 하세요."];
+    lesson.pronunciation = [{
+      id: "p-missing-ref", title: "받침", explanation: "Fixture", examples: ["학생"],
+    }];
+    lesson.extraSections![0].contentSourceRefs = undefined;
+    lesson.writing = { prompt: "자기소개를 쓰세요.", hint: "학생", targetWords: ["학생"] };
+
+    const issues = auditCurriculumCoverage(bundle).issues.join("\n");
+    expect(issues).toContain("Thiếu tham chiếu item-level cho ví dụ từ vựng");
+    expect(issues).toContain("lesson 1.grammar[0].examples");
+    expect(issues).toContain("lesson 1.speaking");
+    expect(issues).toContain("lesson 1.pronunciation[0].examples");
+    expect(issues).toContain("lesson 1.extraSections[0].content");
+    expect(issues).toContain("lesson 1.writing.targetWords");
   });
 
   it("requires an item-level reference for nested grammar examples", () => {
