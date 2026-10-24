@@ -92,12 +92,44 @@ for (const file of files) {
           n + (object(dialogue) ? array(dialogue.lines).length : 0), 0);
         const readingQuestions = array(lesson.reading?.questions).length;
         const lessonQuestions = existingQuestions.filter(q => String(q.lessonId) === String(lesson.id));
+        const reading = object(lesson.reading) ? lesson.reading : null;
+        const writing = object(lesson.writing) ? lesson.writing : null;
+        const countNested = (entries, field) => entries.reduce((count, entry) =>
+          count + (object(entry) ? array(entry[field]).length : 0), 0);
+        const countNonemptyField = (entries, field) => entries.filter(entry =>
+          object(entry) && typeof entry[field] === "string" && entry[field].trim().length > 0).length;
+        const speakingPrompts = Array.isArray(lesson.speaking)
+          ? lesson.speaking.length
+          : typeof lesson.speaking === "string" && lesson.speaking.trim() ? 1 : 0;
         const counts = {
           vocabulary: vocab.length,
+          vocabularyExamples: countNonemptyField(vocab, "example"),
           grammar: grammar.length,
+          grammarExamples: countNested(grammar, "examples"),
           dialogueLines,
+          listeningItems: array(lesson.listening).length,
+          listeningChoices: countNested(array(lesson.listening), "choices"),
+          readingTitles: reading && typeof reading.title === "string" && reading.title.trim() ? 1 : 0,
+          readingPassages: reading && typeof reading.text === "string" && reading.text.trim() ? 1 : 0,
           readingQuestions,
+          readingQuestionChoices: countNested(array(reading?.questions), "choices"),
+          speakingPrompts,
+          writingPrompts: writing && typeof writing.prompt === "string" && writing.prompt.trim() ? 1 : 0,
+          writingTargetWords: array(writing?.targetWords).length,
+          pronunciationItems: array(lesson.pronunciation).length,
+          pronunciationTitles: countNonemptyField(array(lesson.pronunciation), "title"),
+          pronunciationExamples: countNested(array(lesson.pronunciation), "examples"),
+          cultureItems: array(lesson.culture).length,
+          cultureTitles: countNonemptyField(array(lesson.culture), "title"),
+          cultureTexts: countNonemptyField(array(lesson.culture), "text"),
+          extraSections: array(lesson.extraSections).length,
+          extraSectionItems: countNested(array(lesson.extraSections), "content"),
+          mediaItems: array(lesson.media).length,
+          illustrations: array(lesson.illustrations).length,
           reviewQuestions: lessonQuestions.length,
+          reviewQuestionChoices: countNested(lessonQuestions, "choices"),
+          reviewQuestionAnswers: lessonQuestions.filter(question =>
+            typeof question.answer === "string" && question.answer.trim().length > 0).length,
         };
         if (!lessonQuestions.length && (vocab.length || grammar.length || readingQuestions)) {
           record("NO_PRACTICE", label, "source content has no review questions", "issue",
@@ -122,7 +154,11 @@ for (const file of files) {
         } else {
           lessonsCompared++;
           for (const [key, expectedCount] of Object.entries(expected)) {
-            if (!(key in counts)) continue;
+            if (!(key in counts)) {
+              record("UNSUPPORTED_SOURCE_COUNT", label, key + " has no implemented count in this audit", "issue",
+                "Add an explicit count for this source dimension before using it to certify coverage.");
+              continue;
+            }
             if (!Number.isSafeInteger(expectedCount) || expectedCount < 0) {
               record("INVALID_SOURCE_COUNT", label, key + " is not a nonnegative integer", "issue",
                 "Correct the independently validated count in source inventory.");
