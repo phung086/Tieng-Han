@@ -146,4 +146,30 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.sourceCoverage.covered).toBe(0);
     expect(report.issues.join(" ")).toContain("Trùng source item");
   });
+
+  it("does not allow an unowned question to coexist with complete item coverage", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions.push({
+      ...bundle.course.questions[0],
+      id: "orphan",
+      sourceRef: "synthetic.pdf · p.1 · orphan",
+    });
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Câu hỏi không được gắn với đúng một source item");
+  });
+  it("requires each question to have exactly one matching source-item owner", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[1].practiceQuestionIds = ["q1"];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Câu hỏi không được gắn với đúng một source item");
+  });
+  it("rejects a practice question with no source reference even when its ID is linked", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions[0].sourceRef = undefined;
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("sourceRef câu hỏi không khớp source item");
+  });
 });
