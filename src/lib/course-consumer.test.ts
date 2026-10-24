@@ -273,6 +273,26 @@ describe("course-consumer", () => {
     expect(library[0].source?.curriculumCoverage?.status).toBe("complete");
   });
 
+  it("repairs a stale evidence fingerprint from the retained import when course content is unchanged", async () => {
+    const bundle = sourceCompleteBundle();
+    const job = { ...readyJob(bundle), status: "consumed", resultBundle: bundle } as ImportJob;
+    vi.mocked(requireImportJob).mockResolvedValue(job);
+    vi.mocked(readImportPages).mockResolvedValue([]);
+    vi.mocked(listImportJobs).mockResolvedValue([job]);
+
+    const imported = await consumeReadyImportJob(job.id);
+    const filePath = path.join(courseLibraryDir, imported.course.id + ".json");
+    const persisted = JSON.parse(await (await import("node:fs/promises")).readFile(filePath, "utf8"));
+    persisted.source.evidenceFingerprint = "stale-fingerprint";
+    await writeFile(filePath, JSON.stringify(persisted), "utf8");
+
+    const library = await getCourseLibrary();
+    expect(library).toHaveLength(1);
+    expect(library[0].source?.evidenceFingerprint).toBe(fingerprintRuntimeCourseEvidence(library[0]));
+    expect(library[0].source?.evidenceFingerprint).not.toBe("stale-fingerprint");
+    expect(library[0].source?.curriculumCoverage?.status).toBe("complete");
+  });
+
   it("does not attach reviewed inventory to a legacy course whose content diverged from the retained import", async () => {
     const bundle = sourceCompleteBundle();
     const job = { ...readyJob(bundle), status: "consumed", resultBundle: bundle } as ImportJob;
