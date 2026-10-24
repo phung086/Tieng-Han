@@ -34,20 +34,78 @@ def cited_pages(reference, file_name, page_count):
     return list(dict.fromkeys(result))
 
 
-def units(lesson):
-    for item in lesson['vocabulary']:
-        yield 'vocabulary', item['id'], item.get('targetText') or item['ko'], item.get('sourceRef'), None
-    for item in lesson['grammar']:
-        for index, example in enumerate(item['examples']):
-            yield 'grammar-example', item['id'] + ':' + str(index), example, item.get('sourceRef'), None
+def _aligned_ref(refs, index):
+    return refs[index] if isinstance(refs, list) and index < len(refs) else None
+
+
+def units(lesson, questions=()):
+    """Yield authored source-bearing items, keeping nested refs item-level.
+
+    Parent section refs are deliberately not inherited by examples, dialogue
+    turns, speaking prompts, reading questions, target words or exercise parts.
+    """
+    for item in lesson.get('vocabulary', []):
+        item_id = str(item.get('id', ''))
+        yield 'vocabulary', item_id, item.get('targetText') or item.get('ko'), item.get('sourceRef'), None
+        example = item.get('example')
+        if isinstance(example, str) and example.strip():
+            yield 'vocabulary-example', item_id + ':example', example, item.get('exampleSourceRef'), None
+
+    for item in lesson.get('grammar', []):
+        item_id = str(item.get('id', ''))
+        pattern = item.get('pattern')
+        if isinstance(pattern, str) and pattern.strip():
+            yield 'grammar-pattern', item_id, pattern, item.get('sourceRef'), None
+        for index, example in enumerate(item.get('examples', [])):
+            yield 'grammar-example', item_id + ':' + str(index), example, _aligned_ref(item.get('exampleSourceRefs'), index), None
+
     for item in lesson.get('dialogues', []):
-        for index, line in enumerate(item['lines']):
-            yield 'dialogue-turn', item['id'] + ':' + str(index), line.get('targetText') or line['ko'], line.get('sourceRef') or item.get('sourceRef'), item.get('origin')
-    for item in lesson['listening']:
-        yield 'listening', item['id'], item['text'], item.get('sourceRef'), None
-    if lesson.get('reading'):
-        item = lesson['reading']
-        yield 'reading', 'reading', item['text'], item.get('sourceRef'), None
+        for index, line in enumerate(item.get('lines', [])):
+            yield 'dialogue-turn', str(item.get('id', '')) + ':' + str(index), line.get('targetText') or line.get('ko'), line.get('sourceRef'), line.get('origin') or item.get('origin')
+
+    for item in lesson.get('listening', []):
+        yield 'listening', str(item.get('id', '')), item.get('text'), item.get('sourceRef'), None
+
+    reading = lesson.get('reading')
+    if reading:
+        if reading.get('title'):
+            yield 'reading-title', 'reading:title', reading.get('title'), reading.get('sourceRef'), None
+        yield 'reading', 'reading', reading.get('text'), reading.get('sourceRef'), None
+        for index, question in enumerate(reading.get('questions', [])):
+            yield 'reading-question', str(question.get('id', index)), question.get('q'), question.get('sourceRef'), None
+
+    for index, prompt in enumerate(lesson.get('speaking', [])):
+        yield 'speaking-prompt', str(index), prompt, _aligned_ref(lesson.get('speakingSourceRefs'), index), None
+
+    writing = lesson.get('writing')
+    if writing:
+        if writing.get('prompt'):
+            yield 'writing-prompt', 'writing:prompt', writing.get('prompt'), writing.get('sourceRef'), None
+        for index, word in enumerate(writing.get('targetWords', [])):
+            yield 'writing-target-word', 'writing:target:' + str(index), word, _aligned_ref(writing.get('targetWordSourceRefs'), index), None
+
+    for item in lesson.get('pronunciation', []):
+        item_id = str(item.get('id', ''))
+        if item.get('title'):
+            yield 'pronunciation-title', item_id + ':title', item.get('title'), item.get('sourceRef'), None
+        for index, example in enumerate(item.get('examples', [])):
+            yield 'pronunciation-example', item_id + ':' + str(index), example, _aligned_ref(item.get('exampleSourceRefs'), index), None
+
+    for item in lesson.get('culture', []):
+        item_id = str(item.get('id', ''))
+        if item.get('title'):
+            yield 'culture-title', item_id + ':title', item.get('title'), item.get('sourceRef'), None
+        if item.get('text'):
+            yield 'culture-text', item_id + ':text', item.get('text'), item.get('sourceRef'), None
+
+    for item in lesson.get('extraSections', []):
+        for index, content in enumerate(item.get('content', [])):
+            yield 'exercise-part', str(item.get('id', '')) + ':' + str(index), content, _aligned_ref(item.get('contentSourceRefs'), index), None
+
+    for question in questions or []:
+        if question.get('lessonId') != lesson.get('id'):
+            continue
+        yield 'question-prompt', str(question.get('id', '')) + ':prompt', question.get('prompt'), question.get('sourceRef'), question.get('origin')
 
 
 def audit(root):
@@ -76,7 +134,7 @@ def audit(root):
         rows = []
         for lesson in course['lessons']:
             counts, issues = Counter(), []
-            for kind, item_id, text, reference, origin in units(lesson):
+            lesson_questions = [question for question in course.get('questions', []) if question.get('lessonId') == lesson.get('id')]\n            for kind, item_id, text, reference, origin in units(lesson, lesson_questions):
                 counts['checkedUnits'] += 1
                 if origin == 'derived':
                     counts['explicitlyDerived'] += 1
@@ -98,7 +156,7 @@ def audit(root):
                 issues.append({'kind': kind, 'id': item_id, 'pages': pages, 'status': status})
             rows.append({'lessonId': lesson['id'], 'counts': dict(counts), 'issues': issues})
         courses.append({'courseId': course['id'], 'sourceSha256': sha, 'lessons': rows})
-    return {'version': 1, 'method': 'Authored target text -> cited original-page transcript; exact NFKC letter/number sequence, whitespace and punctuation ignored.', 'limits': ['Does not inventory missing source units or certify full curriculum coverage.', 'Does not verify Vietnamese meanings, grammar semantics, picture associations or answer keys.', 'Unmatched text may reflect OCR/layout errors, citation mistakes, paraphrases or unsupported content. Human PDF review required.'], 'courses': courses}
+    return {'version': 1, 'method': 'Authored target text -> cited original-page transcript; exact NFKC letter/number sequence, whitespace and punctuation ignored.', 'limits': ['Does not inventory missing source units or certify full curriculum coverage; this audit only checks authored items that already exist.', 'Does not verify Vietnamese meanings, grammar semantics, picture associations or answer keys. Translated/rewritten source items require human review.', 'Unmatched text may reflect OCR/layout errors, citation mistakes, paraphrases or unsupported content. Human PDF review required.'], 'courses': courses}
 
 
 if __name__ == '__main__':
