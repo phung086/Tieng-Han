@@ -69,7 +69,7 @@ test("guided practice keeps all source-derived questions above 20 and resumes ac
  const counter=page.locator(".session-hud-v3 strong");
  await expect(counter).toHaveText("1/75");
  await page.getByRole("button",{name:/nghĩa 0/}).click();
- await expect(page.getByRole("status")).toContainText("Chính xác!");
+ await expect(page.getByRole("status").filter({hasText:"Chính xác!"})).toContainText("Chính xác!");
  await page.reload();
  await expect(counter).toHaveText("1/75");
  await expect(page.getByText("Đã khôi phục bài luyện đang dở: tiếp tục từ câu 1/75.")).toBeVisible();
