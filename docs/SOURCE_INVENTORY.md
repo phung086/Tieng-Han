@@ -70,6 +70,9 @@ When a reading title or passage text is inventoried separately as
 `/reading/title` or `/reading/text`, store its exact evidence in
 `reading.titleSourceRef` or `reading.textSourceRef`. The section-level
 `reading.sourceRef` is not inherited as proof for either child item.
+Likewise, an independently inventoried `/writing/prompt` needs
+`writing.promptSourceRef`; the task-level `writing.sourceRef` is not proof
+for the prompt string.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
 same lesson with the matching source reference. For `practiceMethod: "questions"`,
