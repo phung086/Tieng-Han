@@ -330,4 +330,36 @@ describe("source, practice and validation coverage are independent release evide
     expect(reconciled.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
   });
 
+
+  it("requires an exact ref for an inventoried writing prompt instead of inheriting the task ref", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const promptRef = "synthetic.pdf · p.1 · writing-prompt";
+    bundle.course.lessons[0].writing = {
+      prompt: "Write a short self-introduction.", hint: "Use the lesson grammar.",
+      targetWords: [], sourceRef: "synthetic.pdf · p.1 · writing-task",
+    };
+    bundle.course.questions.push({
+      id: "q-writing-prompt", lessonId: 1, skill: "writing", type: "input",
+      title: "Writing prompt", prompt: "Write a short self-introduction.",
+      answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source",
+    });
+    bundle.sourceInventory.items.push({
+      id: "writing-prompt", lessonId: 1, kind: "writingtask", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef: promptRef, contentPointer: "/writing/prompt",
+      practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-writing-prompt"], verified: true,
+    });
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.status).toBe("partial");
+    expect(missing.sourceCoverage.covered).toBe(2);
+    expect(missing.sourceCoverage.total).toBe(3);
+    expect(missing.sourceCoverage.percent).toBeCloseTo(200 / 3);
+
+    bundle.course.lessons[0].writing!.promptSourceRef = promptRef;
+    const reconciled = auditCurriculumCoverage(bundle);
+    expect(reconciled.status).toBe("complete");
+    expect(reconciled.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
 });
