@@ -172,4 +172,12 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("partial");
     expect(report.issues.join(" ")).toContain("sourceRef câu hỏi không khớp source item");
   });
+
+  it("accepts a derived question when its source item ownership is explicit", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions[0].sourceRef = "Derived from synthetic.pdf · p.1 · v1";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("complete");
+    expect(report.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
 });
