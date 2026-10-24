@@ -97,9 +97,9 @@ test("extended source dimensions are compared against the inventory", async (t) 
       illustrations: [{ id: "i1" }],
     }],
     questions: [
-      { id: "qv", lessonId: 1, skill: "vocabulary", type: "choice", prompt: "단어", choices: ["A", "B"], answer: "A", sourceRef: "p1" },
-      { id: "qg", lessonId: 1, skill: "grammar", type: "choice", prompt: "문법", choices: ["A", "B"], answer: "B", sourceRef: "p1" },
-      { id: "ql", lessonId: 1, skill: "listening", type: "choice", prompt: "듣기", choices: ["A", "B"], answer: "A", sourceRef: "p1" },
+      { id: "qv", lessonId: 1, skill: "vocabulary", type: "choice", origin: "source", prompt: "단어", choices: ["A", "B"], answer: "A", sourceRef: "p1" },
+      { id: "qg", lessonId: 1, skill: "grammar", type: "choice", origin: "derived", prompt: "문법", choices: ["A", "B"], answer: "B", sourceRef: "p1" },
+      { id: "ql", lessonId: 1, skill: "listening", type: "choice", origin: "source", prompt: "듣기", choices: ["A", "B"], answer: "A", sourceRef: "p1" },
     ],
   }));
   const inventory = path.join(context.root, "inventory.json");
@@ -112,7 +112,7 @@ test("extended source dimensions are compared against the inventory", async (t) 
       pronunciationItems: 1, pronunciationTitles: 1, pronunciationExamples: 2,
       cultureItems: 1, cultureTitles: 1, cultureTexts: 1,
       extraSections: 1, extraSectionItems: 2, mediaItems: 1, illustrations: 1,
-      reviewQuestions: 3, reviewQuestionChoices: 6, reviewQuestionAnswers: 3,
+      reviewQuestions: 2, reviewQuestionChoices: 4, reviewQuestionAnswers: 2,
     } } },
   } }));
   const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
