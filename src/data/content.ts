@@ -63,6 +63,8 @@ export type WritingContent = {
   prompt: string;
   hint: string;
   targetWords: string[];
+  /** Exact source evidence for the prompt when inventoried separately. */
+  promptSourceRef?: string;
   sourceRef?: string;
   /** One source ref per target word, aligned by index. */
   targetWordSourceRefs?: string[];
