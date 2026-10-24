@@ -85,14 +85,14 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       return false;
     case "reading":
       if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
-      if (parts.length === 2 && child === "title") return at("readingtitle", "tieudedoc");
-      if (parts.length === 2 && child === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
-      if (parts.length === 3 && child === "questions" && indexed(childIndex)) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc");
-      if (parts.length === 5 && child === "questions" && indexed(childIndex) && leaf === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc");
+      if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc");
+      if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
+      if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc");
+      if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc");
       return false;
     case "writing":
       if (parts.length === 1 || (parts.length === 2 && child === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet");
-      if (parts.length === 3 && child === "targetWords" && indexed(childIndex)) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet");
+      if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet");
       return false;
     case "pronunciation":
       if (parts.length === 2 && indexed(index)) return at("pronunciation", "pronunciationitem", "pronunciationrule", "phatam", "quytacphatam");
