@@ -48,7 +48,10 @@ Example independently validated inventory:
 }
 ```
 
-Numbers above are **illustrative**, not extracted counts for any real textbook. Count parity is necessary but insufficient; item-level traceability and exercise pattern fidelity require separate source-aligned fixtures.
+Numbers above are **illustrative**, not extracted counts for any real textbook.
+
+The count audit implements these per-lesson dimensions: `vocabulary`, `vocabularyExamples`, `grammar`, `grammarExamples`, `dialogueLines`, `listeningItems`, `listeningChoices`, `readingTitles`, `readingPassages`, `readingQuestions`, `readingQuestionChoices`, `speakingPrompts`, `writingPrompts`, `writingTargetWords`, `pronunciationItems`, `pronunciationTitles`, `pronunciationExamples`, `cultureItems`, `cultureTitles`, `cultureTexts`, `extraSections`, `extraSectionItems`, `mediaItems`, `illustrations`, `reviewQuestions`, `reviewQuestionChoices`, and `reviewQuestionAnswers`. A count key outside this set is an **audit issue**, not silently ignored; extend the implementation and tests before relying on a new inventory dimension.
+ Count parity is necessary but insufficient; item-level traceability and exercise pattern fidelity require separate source-aligned fixtures.
 
 ## Agent iteration (external runner required)
 
