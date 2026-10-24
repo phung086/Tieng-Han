@@ -75,6 +75,29 @@ test("one malformed course cannot prevent checking a separate valid course", asy
   assert.ok(result.issues.some(issue => issue.includes("COURSE_AUDIT_ERROR") && issue.includes("a-broken")));
   assert.ok(result.issues.some(issue => issue.includes("COUNT_MISMATCH") && issue.includes("reviewQuestions")));
   assert.ok(result.backlog.some(item => item.code === "COUNT_MISMATCH"));
+  assert.ok(result.issues.some(issue => issue.includes("MISSING_SOURCE_COUNT") && issue.includes("vocabularyExamples")));
+});
+
+test("omitted supported dimensions fail even when declared counts match", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-partial-inventory",
+    lessons: [{ id: 1, vocabulary: [], grammar: [], dialogues: [], reading: null }],
+    questions: [],
+  }));
+  const inventory = path.join(context.root, "inventory.json");
+  // A partial inventory can match its one declared count while omitting every
+  // other dimension. Those omissions must block certification, not imply zero.
+  await writeFile(inventory, JSON.stringify({ courses: {
+    "course-partial-inventory": { lessons: { "1": { vocabulary: 0 } } },
+  } }));
+  const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.lessonsCompared, 1);
+  assert.equal(result.status, "fail");
+  assert.ok(result.issues.some(issue => issue.includes("MISSING_SOURCE_COUNT") && issue.includes("grammar")));
+  assert.ok(result.issues.some(issue => issue.includes("MISSING_SOURCE_COUNT") && issue.includes("reviewQuestions")));
 });
 
 test("extended source dimensions are compared against the inventory", async (t) => {
