@@ -33,7 +33,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const source = await tool(request, "get_compilation_contract", { jobId: job.id });
   expect(source.runtimeSchema.LessonContent).toBeTruthy();
   const lesson = { id: 1, title: "학생", vi: "Học sinh", objective: "Synthetic fixture only",
-    vocabulary: [1, 2].map(number => ({ id: "v" + number, ko: "학생", vi: "học sinh", example: "학생", sourceRef: "synthetic-source.pdf · p." + number + " · v" + number })),
+    vocabulary: [1, 2].map(number => ({ id: "v" + number, ko: "학생", vi: "học sinh", example: "", sourceRef: "synthetic-source.pdf · p." + number + " · v" + number })),
     grammar: [], listening: [], speaking: [], reading: null, writing: null, sourceRef: "synthetic-source.pdf · pp.1-2" };
   const questions = [
     { id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Từ nguồn 1", prompt: "học sinh", answer: "학생", explanation: "Synthetic source fixture", sourceRef: "synthetic-source.pdf · p.1 · v1" },
