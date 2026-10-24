@@ -134,7 +134,8 @@ def audit(root):
         rows = []
         for lesson in course['lessons']:
             counts, issues = Counter(), []
-            lesson_questions = [question for question in course.get('questions', []) if question.get('lessonId') == lesson.get('id')]\n            for kind, item_id, text, reference, origin in units(lesson, lesson_questions):
+            lesson_questions = [question for question in course.get('questions', []) if question.get('lessonId') == lesson.get('id')]
+            for kind, item_id, text, reference, origin in units(lesson, lesson_questions):
                 counts['checkedUnits'] += 1
                 if origin == 'derived':
                     counts['explicitlyDerived'] += 1
