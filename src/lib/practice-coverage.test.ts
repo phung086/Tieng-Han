@@ -41,6 +41,44 @@ describe("source-grounded practice coverage", () => {
     expect(report.complete).toBe(true);
     expect(report.verifiedItems).toBe(2);
   });
+  it("uses exact item-level refs for speaking prompts", () => {
+    const speakingLesson: LessonContent = {
+      ...lesson,
+      vocabulary: [],
+      grammar: [],
+      speaking: ["안녕하세요.", "감사합니다."],
+      speakingSourceRefs: ["book:p3:speaking-0", "book:p3:speaking-1"],
+      sourceRef: "book:p3:speaking-section",
+    };
+    const report = auditLessonPracticeCoverage(speakingLesson, [
+      question("qs1", "book:p3:speaking-0"),
+      question("qs2", "book:p3:speaking-1"),
+    ]);
+    expect(report.sourceItems).toBe(2);
+    expect(report.verifiedItems).toBe(2);
+    expect(report.items.map(item => item.sourceRef)).toEqual([
+      "book:p3:speaking-0",
+      "book:p3:speaking-1",
+    ]);
+    expect(report.complete).toBe(true);
+  });
+
+  it("does not inherit a section-level ref for unreferenced speaking prompts", () => {
+    const speakingLesson: LessonContent = {
+      ...lesson,
+      vocabulary: [],
+      grammar: [],
+      speaking: ["안녕하세요."],
+      sourceRef: "book:p3:speaking-section",
+    };
+    const report = auditLessonPracticeCoverage(speakingLesson, [
+      question("qs-section", "book:p3:speaking-section"),
+    ]);
+    expect(report.items[0].sourceRef).toBeUndefined();
+    expect(report.verifiedItems).toBe(0);
+    expect(report.complete).toBe(false);
+  });
+
   it("rejects another lesson's questions and absent evidence", () => {
     const report = auditLessonPracticeCoverage({ ...lesson, grammar: [] }, [
       { ...question("q", "book:p1:v1"), lessonId: 2 },
