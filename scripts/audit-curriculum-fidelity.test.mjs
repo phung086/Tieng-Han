@@ -219,6 +219,40 @@ test("missing or duplicate compiled lesson IDs fail closed", async (t) => {
   assert.ok(result.issues.some((issue) => issue.includes("LESSON_ID_MISSING")));
 });
 
+test("unknown question origin blocks source-count certification", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-unknown-origin",
+    lessons: [{ id: 1, vocabulary: [], grammar: [], dialogues: [], reading: null }],
+    questions: [{
+      id: "q-unknown-origin", lessonId: 1, skill: "vocabulary", type: "choice",
+      prompt: "안녕", choices: ["xin chào", "tạm biệt"], answer: "xin chào",
+      sourceRef: "SÁCH SƠ CẤP 1.pdf p.1",
+    }],
+  }));
+  const dimensions = [
+    "vocabulary", "vocabularyExamples", "grammar", "grammarExamples", "dialogueLines",
+    "listeningItems", "listeningChoices", "readingTitles", "readingPassages",
+    "readingQuestions", "readingQuestionChoices", "speakingPrompts", "writingPrompts",
+    "writingTargetWords", "pronunciationItems", "pronunciationTitles",
+    "pronunciationExamples", "cultureItems", "cultureTitles", "cultureTexts",
+    "extraSections", "extraSectionItems", "mediaItems", "illustrations",
+    "reviewQuestions", "reviewQuestionChoices", "reviewQuestionAnswers",
+  ];
+  const inventory = path.join(context.root, "inventory.json");
+  await writeFile(inventory, JSON.stringify({ courses: {
+    "course-unknown-origin": {
+      lessons: { "1": Object.fromEntries(dimensions.map((key) => [key, 0])) },
+    },
+  } }));
+  const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.status, "fail");
+  assert.ok(result.issues.some((issue) =>
+    issue.includes("QUESTION_ORIGIN_UNVERIFIED") && issue.includes("q-unknown-origin")));
+});
+
 test("strict release gate fails on source gaps but still persists its report", async (t) => {
   const context = await fixture(t);
   const run = audit(context, {
