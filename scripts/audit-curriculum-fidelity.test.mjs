@@ -77,6 +77,70 @@ test("one malformed course cannot prevent checking a separate valid course", asy
   assert.ok(result.backlog.some(item => item.code === "COUNT_MISMATCH"));
 });
 
+test("extended source dimensions are compared against the inventory", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-rich",
+    lessons: [{
+      id: 1,
+      vocabulary: [{ id: "v1", ko: "학교", example: "학교에 가요", sourceRef: "p1" }],
+      grammar: [{ id: "g1", pattern: "-에", examples: ["학교에", "집에"], sourceRef: "p1" }],
+      dialogues: [{ id: "d1", lines: [{ ko: "안녕하세요" }] }],
+      listening: [{ id: "l1", text: "듣기", choices: ["A", "B"] }],
+      reading: { title: "읽기", text: "본문", questions: [{ id: "r1", q: "?", choices: ["A", "B", "C"] }] },
+      speaking: ["말하기"],
+      writing: { prompt: "쓰기", targetWords: ["학교", "집"] },
+      pronunciation: [{ id: "p1", title: "발음", examples: ["학교", "집"] }],
+      culture: [{ id: "c1", title: "문화", text: "한국" }],
+      extraSections: [{ id: "e1", title: "연습", content: ["하나", "둘"] }],
+      media: [{ id: "m1" }],
+      illustrations: [{ id: "i1" }],
+    }],
+    questions: [{
+      id: "q1", lessonId: 1, skill: "listening", type: "choice",
+      prompt: "듣기", choices: ["A", "B"], answer: "A", sourceRef: "p1",
+    }],
+  }));
+  const inventory = path.join(context.root, "inventory.json");
+  await writeFile(inventory, JSON.stringify({ courses: {
+    "course-rich": { lessons: { "1": {
+      vocabulary: 1, vocabularyExamples: 1, grammar: 1, grammarExamples: 2,
+      dialogueLines: 1, listeningItems: 1, listeningChoices: 2,
+      readingTitles: 1, readingPassages: 1, readingQuestions: 1, readingQuestionChoices: 3,
+      speakingPrompts: 1, writingPrompts: 1, writingTargetWords: 2,
+      pronunciationItems: 1, pronunciationTitles: 1, pronunciationExamples: 2,
+      cultureItems: 1, cultureTitles: 1, cultureTexts: 1,
+      extraSections: 1, extraSectionItems: 2, mediaItems: 1, illustrations: 1,
+      reviewQuestions: 1, reviewQuestionChoices: 2, reviewQuestionAnswers: 1,
+    } } },
+  } }));
+  const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.lessonsCompared, 1);
+  assert.ok(!result.issues.some(issue => issue.includes("COUNT_MISMATCH")));
+  assert.ok(!result.issues.some(issue => issue.includes("UNSUPPORTED_SOURCE_COUNT")));
+});
+
+test("unknown inventory dimensions fail closed instead of being silently skipped", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-unknown",
+    lessons: [{ id: 1, vocabulary: [], grammar: [], dialogues: [], reading: null }],
+    questions: [],
+  }));
+  const inventory = path.join(context.root, "inventory.json");
+  await writeFile(inventory, JSON.stringify({ courses: {
+    "course-unknown": { lessons: { "1": { workbookSubparts: 3 } } },
+  } }));
+  const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.status, "fail");
+  assert.ok(result.issues.some(issue => issue.includes("UNSUPPORTED_SOURCE_COUNT") && issue.includes("workbookSubparts")));
+  assert.ok(result.backlog.some(item => item.code === "UNSUPPORTED_SOURCE_COUNT"));
+});
+
 test("strict release gate fails on source gaps but still persists its report", async (t) => {
   const context = await fixture(t);
   const run = audit(context, {
