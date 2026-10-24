@@ -17,7 +17,7 @@ export const sourceInventorySchema = z.object({
     // JSON pointer relative to the lesson, e.g. /vocabulary/0 or /grammar/0/examples/1.
     contentPointer: nonempty,
     practiceMethod: z.enum(["questions", "workbook"]),
-    // Canonical supported quiz motif required for at least one linked question when specified.
+    // Canonical quiz form; required for question-based practice and matched by a linked question.
     motif: z.enum(["choice", "input", "reorder"]).optional(),
     practiceQuestionIds: z.array(nonempty).default([]), verified: z.boolean(),
   })),
