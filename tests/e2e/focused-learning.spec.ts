@@ -38,3 +38,44 @@ test("keeps every grammar caveat and example accessible through understand, exam
  await expect(page.getByRole("button",{name:"Nghe ví dụ 선생님입니다.",exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
+
+test("guided practice keeps all source-derived questions above 20 and resumes across reloads", async ({page}) => {
+ await page.addInitScript(() => window.localStorage.setItem("haneul:auto-advance", "off"));
+ const longLesson = {
+  ...lesson,
+  vocabulary: Array.from({length:25}, (_,i)=>({
+   id:"long-v"+i,
+   ko:"단어"+i,
+   vi:"nghĩa "+i,
+   example:"예문 "+i,
+   sourceRef:"synthetic-book.pdf · p.1 · word-"+i
+  })),
+  grammar:[],
+  dialogues:[],
+  listening:[],
+  speaking:[],
+  reading:null,
+  writing:null,
+  pronunciation:[],
+  culture:[],
+  extraSections:[]
+ };
+ await page.unroute("**/api/courses");
+ await page.route("**/api/courses",r=>r.fulfill({json:{
+  activeCourseId:"long-guided-fixture",
+  courses:[{id:"long-guided-fixture",title:"Long synthetic course",level:"test",lessons:[longLesson],questions:[]}]
+ }}));
+ await page.goto("/practice/quiz?lesson=1&mode=guided");
+ const counter=page.locator(".session-hud-v3 strong");
+ await expect(counter).toHaveText("1/75");
+ await page.getByRole("button",{name:/nghĩa 0/}).click();
+ await expect(page.getByRole("status")).toContainText("Chính xác!");
+ await page.reload();
+ await expect(counter).toHaveText("1/75");
+ await expect(page.getByText("Đã khôi phục bài luyện đang dở: tiếp tục từ câu 1/75.")).toBeVisible();
+ await page.locator(".session-footer-v3 .primary-button").click();
+ await expect(counter).toHaveText("2/75");
+ await page.reload();
+ await expect(counter).toHaveText("2/75");
+ await expect(page.getByText("Đã khôi phục bài luyện đang dở: tiếp tục từ câu 2/75.")).toBeVisible();
+});
