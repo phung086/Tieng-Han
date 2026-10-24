@@ -37,12 +37,12 @@ export function buildSourceWorkbook(
       id: id("vocabulary", index), category: "Từ vựng", title: "Từ " + (index + 1),
       prompt: term, hint: "Đọc, phát âm và nhớ nghĩa trước khi mở đáp án.",
       answer: meaning || undefined,
-      sourceRef: word.sourceRef ?? lesson.sourceRef,
+      sourceRef: word.sourceRef,
     });
     if (value(word.example)) add({
       id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
       prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
-      sourceRef: word.sourceRef ?? lesson.sourceRef,
+      sourceRef: word.exampleSourceRef,
     });
   });
 
@@ -50,13 +50,13 @@ export function buildSourceWorkbook(
     add({
       id: id("grammar", index), category: "Ngữ pháp", title: "Mẫu ngữ pháp " + (index + 1),
       prompt: item.pattern, hint: item.explanation, answer: item.meaning,
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.sourceRef,
     });
     item.examples.forEach((example, sub) => add({
       id: id("grammar-example-" + index, sub), category: "Ngữ pháp",
       title: "Câu mẫu " + (index + 1) + "." + (sub + 1),
       prompt: example, hint: "Đọc mẫu, ghi lại cấu trúc và tạo câu khác theo mẫu.",
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.exampleSourceRefs?.[sub],
     }));
   });
 
@@ -64,13 +64,13 @@ export function buildSourceWorkbook(
     id: id("listening", index), category: "Nghe", title: "Bài nghe " + (index + 1),
     prompt: item.text, hint: item.meaning,
     choices: item.choices, answer: item.answer,
-    sourceRef: item.sourceRef ?? lesson.sourceRef,
+    sourceRef: item.sourceRef,
   }));
 
   lesson.speaking.forEach((text, index) => add({
     id: id("speaking", index), category: "Nói", title: "Lượt nói " + (index + 1),
     prompt: text, hint: "Đọc to, thu âm hoặc shadowing theo câu nguồn.",
-    sourceRef: lesson.sourceRef,
+    sourceRef: lesson.speakingSourceRefs?.[index],
   }));
 
   if (lesson.reading) {
@@ -79,23 +79,32 @@ export function buildSourceWorkbook(
       title: lesson.reading.title || "Bài đọc",
       prompt: lesson.reading.text, answer: lesson.reading.translation,
       hint: "Đọc hiểu toàn văn trước khi mở bản dịch.",
-      sourceRef: lesson.reading.sourceRef ?? lesson.sourceRef,
+      sourceRef: lesson.reading.sourceRef,
     });
     lesson.reading.questions.forEach((question, index) => add({
       id: id("reading-question", index), category: "Đọc",
       title: "Đọc hiểu " + (index + 1), prompt: question.q,
       choices: question.choices, answer: question.answer,
-      sourceRef: question.sourceRef ?? lesson.reading?.sourceRef ?? lesson.sourceRef,
+      sourceRef: question.sourceRef,
     }));
   }
 
-  if (lesson.writing) add({
-    id: id("writing", 0), category: "Viết",
-    title: "Nhiệm vụ viết",
-    prompt: lesson.writing.prompt,
-    hint: [lesson.writing.hint, ...lesson.writing.targetWords].filter(Boolean).join(" · "),
-    sourceRef: lesson.writing.sourceRef ?? lesson.sourceRef,
-  });
+  if (lesson.writing) {
+    add({
+      id: id("writing", 0), category: "Viết",
+      title: "Nhiệm vụ viết",
+      prompt: lesson.writing.prompt,
+      hint: [lesson.writing.hint, ...lesson.writing.targetWords].filter(Boolean).join(" · "),
+      sourceRef: lesson.writing.sourceRef,
+    });
+    lesson.writing.targetWords.forEach((word, index) => add({
+      id: id("writing-target-word", index), category: "Viết",
+      title: "Từ mục tiêu viết " + (index + 1),
+      prompt: word,
+      hint: "Từ mục tiêu của nhiệm vụ viết; sử dụng trong bài viết.",
+      sourceRef: lesson.writing?.targetWordSourceRefs?.[index],
+    }));
+  }
 
   (lesson.dialogues ?? []).forEach((dialogue, index) => {
     dialogue.lines.forEach((line, sub) => add({
@@ -104,7 +113,7 @@ export function buildSourceWorkbook(
       prompt: value(line.targetText || line.ko),
       answer: value(line.learnerMeaning || line.vi) || undefined,
       hint: "Đọc theo vai rồi tự viết lại câu không nhìn sách.",
-      sourceRef: line.sourceRef ?? dialogue.sourceRef ?? lesson.sourceRef,
+      sourceRef: line.sourceRef,
     }));
   });
 
@@ -113,14 +122,14 @@ export function buildSourceWorkbook(
       id: id("pronunciation", index), category: "Phát âm",
       title: item.title, prompt: item.explanation,
       hint: "Quan sát quy tắc phát âm trước khi luyện ví dụ.",
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.sourceRef,
     });
     item.examples.forEach((example, sub) => add({
       id: id("pronunciation-example-" + index, sub), category: "Phát âm",
       title: item.title + " · Ví dụ " + (sub + 1),
       prompt: example,
       hint: "Luyện đọc chuẩn phát âm.",
-      sourceRef: item.sourceRef ?? lesson.sourceRef,
+      sourceRef: item.exampleSourceRefs?.[sub],
     }));
   });
 
@@ -128,7 +137,7 @@ export function buildSourceWorkbook(
     id: id("culture", index), category: "Văn hóa",
     title: item.title, prompt: item.text,
     hint: "Đọc và ghi lại thông tin văn hóa đáng nhớ.",
-    sourceRef: item.sourceRef ?? lesson.sourceRef,
+    sourceRef: item.sourceRef,
   }));
 
   (lesson.extraSections ?? []).forEach((section, index) => {
@@ -149,7 +158,7 @@ export function buildSourceWorkbook(
       title: section.title + " · " + (sub + 1),
       prompt: text,
       hint: section.kind + " · Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách.",
-      sourceRef: section.sourceRef ?? lesson.sourceRef,
+      sourceRef: section.contentSourceRefs?.[sub],
     }));
   });
 
@@ -159,7 +168,7 @@ export function buildSourceWorkbook(
     hint: question.translation,
     choices: question.choices ?? question.tokens,
     answer: question.answer,
-    sourceRef: question.sourceRef ?? lesson.sourceRef,
+    sourceRef: question.sourceRef,
   }));
 
   return items;

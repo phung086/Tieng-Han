@@ -155,14 +155,45 @@ describe("full-fidelity source workbook", () => {
     expect(count("Nghe")).toBe(1);
     expect(count("Nói")).toBe(2);
     expect(count("Đọc")).toBe(2);
-    expect(count("Viết")).toBe(1);
+    expect(count("Viết")).toBe(3);
+    expect(items.find(q => q.title === "Từ mục tiêu viết 1")?.sourceRef).toBe("Sách p.26 · target-0");
+    expect(items.find(q => q.title === "Từ mục tiêu viết 2")?.sourceRef).toBe("Sách p.26 · target-1");
     expect(count("Hội thoại")).toBe(2);
     expect(count("Phát âm")).toBe(3);
     expect(count("Văn hóa")).toBe(1);
     expect(count("Bài tập bổ sung")).toBe(2);
     expect(count("Câu hỏi đã nhập")).toBe(1);
     expect(new Set(items.map(q => q.id)).size).toBe(items.length);
-    expect(items.find(q => q.prompt === "2. Tôi là học sinh")?.sourceRef).toBe("Sách p.30");
+    expect(items.find(q => q.prompt === "2. Tôi là học sinh")?.sourceRef).toBe("Sách p.30 · exercise-1");
+    expect(items.find(q => q.title === "Câu ví dụ 1")?.sourceRef).toBe("Sách p.22 · v0 · example");
+    expect(items.find(q => q.title === "Câu mẫu 1.1")?.sourceRef).toBe("Sách p.23 · g1 · example-0");
+    expect(items.find(q => q.title === "Lượt nói 1")?.sourceRef).toBe("Sách p.24 · speaking-0");
+  });
+
+
+  it("never inherits a parent or section reference for an unreferenced source item", () => {
+    const input = lesson(1);
+    delete input.vocabulary[0].exampleSourceRef;
+    delete input.grammar[0].exampleSourceRefs;
+    delete input.speakingSourceRefs;
+    delete input.reading!.questions[0].sourceRef;
+    delete input.dialogues![0].lines[0].sourceRef;
+    delete input.pronunciation![0].exampleSourceRefs;
+    delete input.writing!.targetWordSourceRefs;
+    delete input.extraSections![0].contentSourceRefs;
+
+    const items = buildSourceWorkbook(input, []);
+    const byPrompt = (prompt: string) => items.find(item => item.prompt === prompt);
+    expect(byPrompt("단어0")?.sourceRef).toBe("Sách p.22 · v0");
+    expect(byPrompt("예문 0")?.sourceRef).toBeUndefined();
+    expect(byPrompt("-입니다")?.sourceRef).toBe("Sách p.23 · g1");
+    expect(byPrompt("저는 학생입니다.")?.sourceRef).toBeUndefined();
+    expect(items.find(item => item.title === "Lượt nói 1")?.sourceRef).toBeUndefined();
+    expect(items.find(item => item.title === "Đọc hiểu 1")?.sourceRef).toBeUndefined();
+    expect(items.find(item => item.title === "대화 · A")?.sourceRef).toBeUndefined();
+    expect(items.find(item => item.title === "받침 · Ví dụ 1")?.sourceRef).toBeUndefined();
+    expect(items.find(item => item.title === "Từ mục tiêu viết 1")?.sourceRef).toBeUndefined();
+    expect(byPrompt("1. Xin chào")?.sourceRef).toBeUndefined();
   });
 
   it("preserves ungraded original exercises even where answers are not available", () => {
