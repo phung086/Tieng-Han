@@ -49,6 +49,24 @@ function resolvePointer(root: unknown, pointer: string): unknown {
 }
 const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([fileName, pageNumber]);
 
+/** Require an explicit single-page anchor agreeing with inventory metadata.
+ * Filename-only references and page ranges cannot establish item-level location. */
+function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, pageNumber: number): boolean {
+  const fileIndex = sourceRef.indexOf(fileName);
+  if (fileIndex < 0 || sourceRef.indexOf(fileName, fileIndex + fileName.length) >= 0) return false;
+  const before = fileIndex > 0 ? sourceRef[fileIndex - 1] : undefined;
+  const afterIndex = fileIndex + fileName.length;
+  const after = afterIndex < sourceRef.length ? sourceRef[afterIndex] : undefined;
+  const delimiter = (character: string | undefined) =>
+    character === undefined || /[\\s·|,;()[\\]{}:]/u.test(character);
+  if (!delimiter(before) || !delimiter(after)) return false;
+  const markers = [...sourceRef.matchAll(/(?:\\bpages?\\s*|\\bp\\.?\\s*|\\btrang\\s*|\\btr\\.\\s*)(\\d+)/gi)];
+  if (markers.length !== 1 || Number(markers[0][1]) !== pageNumber) return false;
+  const marker = markers[0];
+  const suffix = sourceRef.slice((marker.index ?? 0) + marker[0].length);
+  return !/^\\s*(?:[-–—]|to\\b|đến\\b)\\s*\\d+/i.test(suffix);
+}
+
 function decodedPointerParts(pointer: string): string[] {
   if (!pointer.startsWith("/")) return [];
   return pointer.slice(1).split("/").map(part => part.replace(/~1/g, "/").replace(/~0/g, "~"));
@@ -158,8 +176,12 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
       (typeof content !== "string" || Boolean(content.trim())) &&
       (!Array.isArray(content) || content.length > 0);
-    if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
+    if (!hasContent || !expectedPages.has(pageKey)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
+      continue;
+    }
+    if (!sourceRefMatchesInventoryLocation(item.sourceRef, item.fileName, item.pageNumber)) {
+      issues.push("sourceRef không khớp tệp/trang kiểm kê cho item " + key + " → " + item.fileName + " p." + item.pageNumber);
       continue;
     }
     const targetSourceRef = lesson ? sourceRefAtPointer(lesson, item.contentPointer, content) : undefined;
