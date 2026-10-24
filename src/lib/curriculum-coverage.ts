@@ -56,6 +56,65 @@ function decodedPointerParts(pointer: string): string[] {
   return pointer.slice(1).split("/").map(part => part.replace(/~1/g, "/").replace(/~0/g, "~"));
 }
 
+function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
+  const normalized = kind.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9가-힣]+/g, "");
+  const parts = decodedPointerParts(pointer);
+  const at = (...aliases: string[]) => aliases.includes(normalized);
+  const indexed = (value: string | undefined) => value !== undefined && /^\d+$/.test(value);
+  if (!parts.length) return false;
+  const [root, index, child, childIndex, leaf] = parts;
+  switch (root) {
+    case "vocabulary":
+      if (parts.length === 2 && indexed(index)) return at("vocabulary", "vocab", "word", "vocabularyitem", "worditem", "tuvung", "tumo");
+      if (parts.length === 3 && indexed(index) && child === "example") return at("vocabularyexample", "vocabexample", "wordexample", "examplevocabulary", "tuvungexample", "cauvidutuvung");
+      return false;
+    case "grammar":
+      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap");
+      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap");
+      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau");
+      return false;
+    case "listening":
+      if (parts.length === 2 && indexed(index)) return at("listening", "listeningitem", "listeningquestion", "audio", "nghe", "bainghe");
+      if (parts.length === 4 && indexed(index) && child === "choices" && indexed(childIndex)) return at("listeningchoice", "audiochoice", "ngheluachon", "luachonnghe");
+      return false;
+    case "speaking":
+      return parts.length === 2 && indexed(index) && at("speaking", "speakingprompt", "noi", "promptnoi");
+    case "dialogues":
+      if (parts.length === 2 && indexed(index)) return at("dialogue", "dialogueitem", "conversation", "hoithoai", "doanthoai");
+      if (parts.length === 4 && indexed(index) && child === "lines" && indexed(childIndex)) return at("dialogueline", "dialogueturn", "conversationline", "hoithoailine", "luotthoai");
+      return false;
+    case "reading":
+      if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
+      if (parts.length === 2 && child === "title") return at("readingtitle", "tieudedoc");
+      if (parts.length === 2 && child === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
+      if (parts.length === 3 && child === "questions" && indexed(childIndex)) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc");
+      if (parts.length === 5 && child === "questions" && indexed(childIndex) && leaf === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc");
+      return false;
+    case "writing":
+      if (parts.length === 1 || (parts.length === 2 && child === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet");
+      if (parts.length === 3 && child === "targetWords" && indexed(childIndex)) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet");
+      return false;
+    case "pronunciation":
+      if (parts.length === 2 && indexed(index)) return at("pronunciation", "pronunciationitem", "pronunciationrule", "phatam", "quytacphatam");
+      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("pronunciationexample", "phatamexample", "viduph atam".replace(/\s/g, ""));
+      return false;
+    case "culture":
+      return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa");
+    case "extraSections":
+      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung");
+      if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung");
+      return false;
+    case "media":
+      return parts.length === 2 && indexed(index) && at("media", "illustration", "image", "diagram", "audio", "video", "document", "sourcepage", "minhhoa", "anhminhhoa");
+    case "illustrations":
+      return parts.length === 2 && indexed(index) && at("illustration", "image", "diagram", "contextillustration", "vocabularyillustration", "grammarillustration", "dialogueillustration", "minhhoa", "anhminhhoa");
+    case "questions":
+      return parts.length === 2 && indexed(index) && at("question", "sourcequestion", "quizquestion", "reviewquestion", "cauhoi", "cauhoigoc");
+    default:
+      return false;
+  }
+}
+
 function indexedPart(value: string | undefined): number {
   return value !== undefined && /^\d+$/.test(value) ? Number(value) : -1;
 }
@@ -150,7 +209,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const lesson = bundle.course.lessons.find(lesson => lesson.id === item.lessonId);
     const questions = bundle.course.questions.filter(question => question.lessonId === item.lessonId);
     const content = lesson ? resolvePointer({ ...lesson, questions }, item.contentPointer) : undefined;
-    const isContentPath = /^\/(vocabulary|grammar|listening|speaking|dialogues|pronunciation|culture|extraSections|questions|media)\/\d+(\/|$)|^\/(reading|writing)(\/|$)/.test(item.contentPointer);
+    const isContentPath = /^\/(vocabulary|grammar|listening|speaking|dialogues|pronunciation|culture|extraSections|questions|media|illustrations)\/\d+(\/|$)|^\/(reading|writing)(\/|$)/.test(item.contentPointer);
     const destination = JSON.stringify([item.lessonId, item.contentPointer]);
     const repeatedDestination = destinations.has(destination);
     destinations.add(destination);
@@ -162,6 +221,10 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       (!Array.isArray(content) || content.length > 0);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
+      continue;
+    }
+    if (!sourceKindMatchesPointer(item.kind, item.contentPointer)) {
+      issues.push("SOURCE_KIND_POINTER_MISMATCH: loại " + item.kind + " không khớp contentPointer " + item.contentPointer + " cho item " + key);
       continue;
     }
     const targetSourceRef = lesson ? sourceRefAtPointer(lesson, item.contentPointer, content) : undefined;
