@@ -69,7 +69,8 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
   await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
-  await expect(page.locator(".lesson-coach-stats-v3")).toContainText("8 câu luyện");
+  // Two vocabulary items generate four recall drills; with the two authored questions the full bank has six questions.
+  await expect(page.locator(".lesson-coach-stats-v3")).toContainText("6 câu luyện");
   await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await page.getByRole("link", { name: "Luyện toàn bộ nội dung bài", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Luyện đủ từng mục trong bài", exact: true })).toBeVisible();
