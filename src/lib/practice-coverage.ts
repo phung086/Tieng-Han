@@ -51,7 +51,7 @@ export function auditLessonPracticeCoverage(
     add(`reading:${q.id || i}`, "reading-question", q.sourceRef),
   );
   lesson.listening.forEach((q, i) => add(`listening:${q.id || i}`, "listening", q.sourceRef));
-  lesson.speaking.forEach((_, i) => add(`speaking:${i}`, "speaking"));
+  lesson.speaking.forEach((_, i) => add(`speaking:${i}`, "speaking", lesson.speakingSourceRefs?.[i]));
   if (lesson.writing?.prompt.trim()) add("writing:prompt", "writing", lesson.writing.sourceRef);
 
   // One ref must identify exactly one item to be used as coverage evidence.
