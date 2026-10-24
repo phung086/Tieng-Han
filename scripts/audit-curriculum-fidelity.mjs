@@ -78,7 +78,21 @@ for (const file of files) {
       for (const lesson of existingLessons) knownLessons.add(String(lesson.id));
       compiledLessonIdsByCourse.set(courseKey, knownLessons);
     }
-    const lessonIds = new Set(existingLessons.map(lesson => String(lesson.id)));
+    const lessonIds = new Set();
+    for (const lesson of existingLessons) {
+      const rawLessonId = lesson.id;
+      if (rawLessonId === undefined || rawLessonId === null || String(rawLessonId).trim() === "") {
+        record("LESSON_ID_MISSING", file, "compiled lesson has no stable id", "issue",
+          "Restore the original stable lesson ID before comparing source inventory parity.");
+        continue;
+      }
+      const lessonId = String(rawLessonId);
+      if (lessonIds.has(lessonId)) {
+        record("DUPLICATE_LESSON_ID", file, "duplicate lesson id " + lessonId, "issue",
+          "Keep one canonical destination per source lesson; do not collapse or overwrite separate lessons.");
+      }
+      lessonIds.add(lessonId);
+    }
     const questionIds = new Set();
 
     for (const question of existingQuestions) {
