@@ -238,4 +238,65 @@ describe("source, practice and validation coverage are independent release evide
   });
 
 
+  it("requires item-level refs for listening choices instead of inheriting the parent ref", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const refA = "synthetic.pdf · p.1 · listening-choice-a";
+    const refB = "synthetic.pdf · p.1 · listening-choice-b";
+    bundle.course.lessons[0].listening = [{
+      id: "listen-1", text: "Listen", meaning: "Nghe", choices: ["A", "B"], answer: "B",
+      sourceRef: "synthetic.pdf · p.1 · listening-parent",
+    }];
+    bundle.course.questions.push(
+      { id: "q-listen-a", lessonId: 1, skill: "listening", type: "input", title: "A", prompt: "A", answer: "A", explanation: "Fixture", sourceRef: refA, origin: "source" },
+      { id: "q-listen-b", lessonId: 1, skill: "listening", type: "input", title: "B", prompt: "B", answer: "B", explanation: "Fixture", sourceRef: refB, origin: "source" },
+    );
+    bundle.sourceInventory.items.push(
+      { id: "listen-choice-a", lessonId: 1, kind: "listening-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refA, contentPointer: "/listening/0/choices/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-listen-a"], verified: true },
+      { id: "listen-choice-b", lessonId: 1, kind: "listening-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refB, contentPointer: "/listening/0/choices/1", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-listen-b"], verified: true },
+    );
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.sourceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
+    expect(missing.status).toBe("partial");
+
+    bundle.course.lessons[0].listening[0].choiceSourceRefs = [refA, refB];
+    const reconciled = auditCurriculumCoverage(bundle);
+    expect(reconciled.status).toBe("complete");
+    expect(reconciled.sourceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+  });
+
+  it("requires item-level refs for reading choices instead of inheriting the passage or question ref", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const refA = "synthetic.pdf · p.1 · reading-choice-a";
+    const refB = "synthetic.pdf · p.1 · reading-choice-b";
+    bundle.course.lessons[0].reading = {
+      title: "Reading", text: "Fixture passage", translation: "Đoạn đọc mẫu",
+      sourceRef: "synthetic.pdf · p.1 · reading-passage",
+      questions: [{
+        id: "read-1", q: "Question", choices: ["A", "B"], answer: "A",
+        sourceRef: "synthetic.pdf · p.1 · reading-question",
+      }],
+    };
+    bundle.course.questions.push(
+      { id: "q-reading-a", lessonId: 1, skill: "reading", type: "input", title: "A", prompt: "A", answer: "A", explanation: "Fixture", sourceRef: refA, origin: "source" },
+      { id: "q-reading-b", lessonId: 1, skill: "reading", type: "input", title: "B", prompt: "B", answer: "B", explanation: "Fixture", sourceRef: refB, origin: "source" },
+    );
+    bundle.sourceInventory.items.push(
+      { id: "reading-choice-a", lessonId: 1, kind: "reading-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refA, contentPointer: "/reading/questions/0/choices/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-a"], verified: true },
+      { id: "reading-choice-b", lessonId: 1, kind: "reading-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refB, contentPointer: "/reading/questions/0/choices/1", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-b"], verified: true },
+    );
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.sourceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
+    expect(missing.status).toBe("partial");
+
+    bundle.course.lessons[0].reading!.questions[0].choiceSourceRefs = [refA, refB];
+    const reconciled = auditCurriculumCoverage(bundle);
+    expect(reconciled.status).toBe("complete");
+    expect(reconciled.sourceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+  });
+
+
 });
