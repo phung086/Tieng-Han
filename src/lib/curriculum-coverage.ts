@@ -33,7 +33,21 @@ export type CurriculumCoverage = {
   issues: string[];
 };
 export function isCurrentCompleteCoverage(coverage: CurriculumCoverage | undefined) {
-  return coverage?.auditVersion === CURRICULUM_AUDIT_VERSION && coverage.status === "complete";
+  if (coverage?.auditVersion !== CURRICULUM_AUDIT_VERSION || coverage.status !== "complete") return false;
+  if (!Array.isArray(coverage.issues) || coverage.issues.length !== 0) return false;
+
+  const ratios = [coverage.sourceCoverage, coverage.practiceCoverage, coverage.validationCoverage];
+  if (!ratios.every(item => item && typeof item === "object")) return false;
+  const total = ratios[0]?.total;
+  if (!Number.isSafeInteger(total) || (total ?? 0) <= 0) return false;
+
+  return ratios.every(item =>
+    Number.isSafeInteger(item.covered) &&
+    Number.isSafeInteger(item.total) &&
+    item.total === total &&
+    item.covered === item.total &&
+    item.percent === 100
+  );
 }
 const ratio = (covered: number, total: number): CoverageRatio => ({ covered, total, percent: total ? covered / total * 100 : null });
 
@@ -49,10 +63,8 @@ function resolvePointer(root: unknown, pointer: string): unknown {
 }
 const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([fileName, pageNumber]);
 
-/** Require an explicit, single-page anchor that agrees with inventory metadata.
- * A matching filename alone cannot prove that an item came from pageNumber.
- * Page ranges are deliberately rejected for item-level coverage.
- */
+/** Require an explicit single-page anchor agreeing with inventory metadata.
+ * Filename-only references and page ranges cannot establish item-level location. */
 function sourceRefMatchesInventoryLocation(sourceRef: string, fileName: string, pageNumber: number): boolean {
   const fileIndex = sourceRef.indexOf(fileName);
   if (fileIndex < 0 || sourceRef.indexOf(fileName, fileIndex + fileName.length) >= 0) return false;
@@ -138,22 +150,34 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("Trang chưa có kiểm kê đơn vị nội dung (không được chỉ đánh dấu đã đọc): " + key);
     }
   }
+  // Keep page-inventory completeness separate from later item, practice and
+  // validation issues so the three coverage gates remain independently useful.
+  const pageInventoryComplete = expectedPages.size > 0 && issues.length === 0;
   for (const lesson of bundle.course.lessons) {
     const aligned = (refs: string[] | undefined, count: number, path: string) => {
-      if (refs && (refs.length !== count || refs.some(ref => !ref.trim()))) {
+      // Missing refs are a coverage gap too: checking only an existing array's
+      // length lets an omitted array silently pass whenever the inventory omits
+      // that nested source item.
+      if (
+        (refs === undefined && count > 0) ||
+        (refs !== undefined && (refs.length !== count || refs.some(ref => !ref.trim())))
+      ) {
         issues.push("Mảng tham chiếu item không khớp nội dung tại " + path);
       }
     };
     aligned(lesson.speakingSourceRefs, lesson.speaking.length, "lesson " + lesson.id + ".speaking");
     lesson.vocabulary.forEach((item, index) => {
-      if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      if (item.example.trim() && !item.exampleSourceRef?.trim()) {
+        issues.push("Thiếu tham chiếu item-level cho ví dụ từ vựng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      } else if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) {
+        issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      }
     });
     lesson.grammar.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".grammar[" + index + "].examples"));
     lesson.pronunciation?.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".pronunciation[" + index + "].examples"));
     lesson.extraSections?.forEach((item, index) => aligned(item.contentSourceRefs, item.content.length, "lesson " + lesson.id + ".extraSections[" + index + "].content"));
     if (lesson.writing) aligned(lesson.writing.targetWordSourceRefs, lesson.writing.targetWords.length, "lesson " + lesson.id + ".writing.targetWords");
   }
-  const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
   let validated = 0;
@@ -244,6 +268,27 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (item.verified && reviewedPages.has(pageKey)) validated++;
     else issues.push("Item chưa kiểm chứng: " + key);
   }
+  // Reverse ownership check: inventory -> question links are not enough if the
+  // bundle also contains orphan questions that no source item accounts for.
+  const questionOwners = new Map<string, SourceInventory["items"]>();
+  for (const item of inventory.items) {
+    for (const questionId of new Set(item.practiceQuestionIds)) {
+      const questionKey = item.lessonId + ":" + questionId;
+      questionOwners.set(questionKey, [...(questionOwners.get(questionKey) ?? []), item]);
+    }
+  }
+  for (const question of bundle.course.questions) {
+    const questionKey = question.lessonId + ":" + question.id;
+    const owners = questionOwners.get(questionKey) ?? [];
+    if (owners.length !== 1) {
+      issues.push("Câu hỏi không được gắn với đúng một source item: " + questionKey + " (số liên kết: " + owners.length + ")");
+      continue;
+    }
+    const questionSourceRef = question.sourceRef?.replace(/^Derived from\s+/i, "").trim();
+    if (!questionSourceRef || questionSourceRef !== owners[0].sourceRef.trim()) {
+      issues.push("sourceRef câu hỏi không khớp source item: " + questionKey);
+    }
+  }
   for (const lesson of bundle.course.lessons) {
     if (!representedLessons.has(lesson.id)) issues.push("Lesson chưa có item kiểm kê: " + lesson.id);
   }
@@ -253,7 +298,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     auditVersion: CURRICULUM_AUDIT_VERSION,
     status: !issues.length ? "complete" : represented ? "partial" : "blocked",
     basis: "Reconciled against submitted reviewed inventory; not automatic PDF semantic verification",
-    sourceCoverage: { ...ratio(represented, total), percent: allPagesReviewed ? ratio(represented, total).percent : null },
+    sourceCoverage: { ...ratio(represented, total), percent: pageInventoryComplete ? ratio(represented, total).percent : null },
     practiceCoverage: ratio(practiced, total),
     validationCoverage: ratio(validated, total), derivedContent, issues,
   };

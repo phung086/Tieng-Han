@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditCurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
+import { auditCurriculumCoverage, CURRICULUM_AUDIT_VERSION, isCurrentCompleteCoverage, type CurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import { parseCourseBundle } from "@/lib/course-bundle";
 
@@ -9,7 +9,7 @@ function fixture(): CompiledCourseBundle {
     course: { title: "Test", level: "L1", lessons: [{ id: 1, title: "학생", vi: "Học sinh", objective: "Fixture",
       vocabulary: [{ id: "v1", ko: "학생", vi: "học sinh", example: "", sourceRef: "synthetic.pdf · p.1 · v1" }],
       grammar: [], listening: [], speaking: [], reading: null, writing: null,
-      extraSections: [{ id: "exercise", kind: "exercise", title: "Viết tự do", content: ["Viết một câu tự giới thiệu."], sourceRef: "synthetic.pdf · p.2 · exercise" }],
+      extraSections: [{ id: "exercise", kind: "exercise", title: "Viết tự do", content: ["Viết một câu tự giới thiệu."], contentSourceRefs: ["synthetic.pdf · p.2 · exercise"] }],
     }], questions: [{ id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Fixture", prompt: "học sinh", answer: "학생", explanation: "Fixture", sourceRef: "synthetic.pdf · p.1 · v1", origin: "derived" }] } }));
 }
 function inventory(): SourceInventory {
@@ -17,7 +17,7 @@ function inventory(): SourceInventory {
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", practiceQuestionIds: ["q1"], verified: true },
     { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
-      sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
+      sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0/content/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
   ] };
 }
 describe("source, practice and validation coverage are independent release evidence", () => {
@@ -41,6 +41,17 @@ describe("source, practice and validation coverage are independent release evide
     expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
     expect(auditCurriculumCoverage(bundle).status).toBe("partial");
   });
+  it("keeps source coverage measurable when practice evidence is missing", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[0].practiceQuestionIds = [];
+    const report = auditCurriculumCoverage(bundle);
+
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.validationCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
   it("never substitutes quiz quantity or self-reported quality for missing inventory", () => {
     const bundle = fixture();
     const report = auditCurriculumCoverage(bundle);
@@ -104,7 +115,7 @@ describe("source, practice and validation coverage are independent release evide
     };
     bundle.sourceInventory.items[1].pageNumber = 1;
     bundle.sourceInventory.items[1].sourceRef = sharedRef;
-    bundle.course.lessons[0].extraSections![0].sourceRef = sharedRef;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [sharedRef];
 
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(0);
@@ -123,7 +134,7 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory.items[1].pageNumber = 1;
     const whitespaceVariant = sharedRef.replace(" · ", "   ·   ");
     bundle.sourceInventory.items[1].sourceRef = whitespaceVariant;
-    bundle.course.lessons[0].extraSections![0].sourceRef = whitespaceVariant;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [whitespaceVariant];
 
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(0);
@@ -149,11 +160,36 @@ describe("source, practice and validation coverage are independent release evide
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[1].pageNumber = pageNumber;
     bundle.sourceInventory.items[1].sourceRef = ref;
-    bundle.course.lessons[0].extraSections![0].sourceRef = ref;
+    bundle.course.lessons[0].extraSections![0].contentSourceRefs = [ref];
     const report = auditCurriculumCoverage(bundle);
     expect(report.sourceCoverage.covered).toBe(1);
     expect(report.status).toBe("partial");
     expect(report.issues.join(" ")).toContain("sourceRef không khớp tệp/trang kiểm kê");
+  });
+
+  it("fails closed when nested source examples and prompts omit their item-level reference arrays", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary[0].example = "저는 학생입니다.";
+    lesson.vocabulary[0].exampleSourceRef = undefined;
+    lesson.grammar = [{
+      id: "g-missing-ref", pattern: "N입니다", meaning: "là N", explanation: "Fixture",
+      examples: ["저는 학생입니다."],
+    }];
+    lesson.speaking = ["자기소개를 하세요."];
+    lesson.pronunciation = [{
+      id: "p-missing-ref", title: "받침", explanation: "Fixture", examples: ["학생"],
+    }];
+    lesson.extraSections![0].contentSourceRefs = undefined;
+    lesson.writing = { prompt: "자기소개를 쓰세요.", hint: "학생", targetWords: ["학생"] };
+
+    const issues = auditCurriculumCoverage(bundle).issues.join("\n");
+    expect(issues).toContain("Thiếu tham chiếu item-level cho ví dụ từ vựng");
+    expect(issues).toContain("lesson 1.grammar[0].examples");
+    expect(issues).toContain("lesson 1.speaking");
+    expect(issues).toContain("lesson 1.pronunciation[0].examples");
+    expect(issues).toContain("lesson 1.extraSections[0].content");
+    expect(issues).toContain("lesson 1.writing.targetWords");
   });
 
   it("requires an item-level reference for nested grammar examples", () => {
@@ -200,5 +236,81 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("blocked");
     expect(report.sourceCoverage.covered).toBe(0);
     expect(report.issues.join(" ")).toContain("Trùng source item");
+  });
+
+  it("does not allow an unowned question to coexist with complete item coverage", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions.push({
+      ...bundle.course.questions[0],
+      id: "orphan",
+      sourceRef: "synthetic.pdf · p.1 · orphan",
+    });
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Câu hỏi không được gắn với đúng một source item");
+  });
+  it("requires each question to have exactly one matching source-item owner", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[1].practiceQuestionIds = ["q1"];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Câu hỏi không được gắn với đúng một source item");
+  });
+  it("rejects a practice question with no source reference even when its ID is linked", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions[0].sourceRef = undefined;
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("sourceRef câu hỏi không khớp source item");
+  });
+
+  it("accepts a derived question when its source item ownership is explicit", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.questions[0].sourceRef = "Derived from synthetic.pdf · p.1 · v1";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("complete");
+    expect(report.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+});
+
+
+describe("publication coverage gate rejects inconsistent complete reports", () => {
+  const completeCoverage: CurriculumCoverage = {
+    auditVersion: CURRICULUM_AUDIT_VERSION,
+    status: "complete",
+    basis: "synthetic reviewed inventory",
+    sourceCoverage: { covered: 2, total: 2, percent: 100 },
+    practiceCoverage: { covered: 2, total: 2, percent: 100 },
+    validationCoverage: { covered: 2, total: 2, percent: 100 },
+    derivedContent: 0,
+    issues: [],
+  };
+
+  it("accepts only current, issue-free, internally consistent 100% ratios", () => {
+    expect(isCurrentCompleteCoverage(completeCoverage)).toBe(true);
+    expect(isCurrentCompleteCoverage(undefined)).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, auditVersion: CURRICULUM_AUDIT_VERSION - 1 })).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, issues: ["missing item"] })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      sourceCoverage: { covered: 1, total: 2, percent: 50 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 0, percent: null },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      validationCoverage: { covered: 2, total: 2, percent: 99 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 3, percent: 66.67 },
+    })).toBe(false);
+  });
+
+  it("fails closed when required report fields are missing at runtime", () => {
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, issues: undefined } as unknown as CurriculumCoverage)).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, sourceCoverage: undefined } as unknown as CurriculumCoverage)).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import {
   type StudyQuestion,
 } from "@/data/content";
 import type { LanguageProfile } from "@/lib/language-profile";
-import type { CurriculumCoverage } from "@/lib/curriculum-coverage";
+import type { CurriculumCoverage, SourceInventory } from "@/lib/curriculum-coverage";
 import { useAuth } from "@/lib/auth-client";
 import {
   clearStoredCourse,
@@ -29,6 +29,15 @@ export type RuntimeCourse = {
     edition?: string;
     coverImageDataUrl?: string;
     curriculumCoverage?: CurriculumCoverage;
+    sourceManifest?: Array<{
+      name: string;
+      size: number;
+      lastModified: number;
+      pageCount: number;
+      sha256: string;
+    }>;
+    sourceInventory?: SourceInventory;
+    evidenceFingerprint?: string;
   };
   lessons: LessonContent[];
   questions: StudyQuestion[];
