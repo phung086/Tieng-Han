@@ -139,6 +139,9 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   if (root === "reading" && parts.length === 2 && parts[1] === "text") {
     return lesson.reading?.textSourceRef?.trim() || undefined;
   }
+  if (root === "writing" && parts.length === 2 && parts[1] === "prompt") {
+    return lesson.writing?.promptSourceRef?.trim() || undefined;
+  }
   if (root === "writing" && parts[1] === "targetWords" && parts.length === 3) {
     const targetIndex = indexedPart(parts[2]);
     return targetIndex >= 0 ? lesson.writing?.targetWordSourceRefs?.[targetIndex]?.trim() || undefined : undefined;
@@ -220,6 +223,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     }
     if (lesson.reading?.textSourceRef !== undefined && !lesson.reading.textSourceRef.trim()) {
       issues.push("Tham chiếu nội dung bài đọc rỗng tại lesson " + lesson.id + ".reading.text");
+    }
+    if (lesson.writing?.promptSourceRef !== undefined && !lesson.writing.promptSourceRef.trim()) {
+      issues.push("Tham chiếu prompt bài viết rỗng tại lesson " + lesson.id + ".writing.prompt");
     }
   }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
