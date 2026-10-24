@@ -138,13 +138,23 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   }
   for (const lesson of bundle.course.lessons) {
     const aligned = (refs: string[] | undefined, count: number, path: string) => {
-      if (refs && (refs.length !== count || refs.some(ref => !ref.trim()))) {
+      // Missing refs are a coverage gap too: checking only an existing array's
+      // length lets an omitted array silently pass whenever the inventory omits
+      // that nested source item.
+      if (
+        (refs === undefined && count > 0) ||
+        (refs !== undefined && (refs.length !== count || refs.some(ref => !ref.trim())))
+      ) {
         issues.push("Mảng tham chiếu item không khớp nội dung tại " + path);
       }
     };
     aligned(lesson.speakingSourceRefs, lesson.speaking.length, "lesson " + lesson.id + ".speaking");
     lesson.vocabulary.forEach((item, index) => {
-      if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      if (item.example.trim() && !item.exampleSourceRef?.trim()) {
+        issues.push("Thiếu tham chiếu item-level cho ví dụ từ vựng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      } else if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) {
+        issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
+      }
     });
     lesson.grammar.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".grammar[" + index + "].examples"));
     lesson.pronunciation?.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".pronunciation[" + index + "].examples"));
