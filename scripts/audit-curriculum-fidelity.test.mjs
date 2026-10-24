@@ -200,6 +200,25 @@ test("inventory lessons and courses without compiled destinations fail closed", 
     issue.includes("INVALID_SOURCE_INVENTORY_COURSE") && issue.includes("malformed-course")));
 });
 
+test("missing or duplicate compiled lesson IDs fail closed", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-duplicate-lessons",
+    lessons: [
+      { id: 1, vocabulary: [], grammar: [], dialogues: [], reading: null },
+      { id: "1", vocabulary: [], grammar: [], dialogues: [], reading: null },
+      { vocabulary: [], grammar: [], dialogues: [], reading: null },
+    ],
+    questions: [],
+  }));
+  const run = audit(context);
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.status, "fail");
+  assert.ok(result.issues.some((issue) => issue.includes("DUPLICATE_LESSON_ID") && issue.includes("1")));
+  assert.ok(result.issues.some((issue) => issue.includes("LESSON_ID_MISSING")));
+});
+
 test("strict release gate fails on source gaps but still persists its report", async (t) => {
   const context = await fixture(t);
   const run = audit(context, {
