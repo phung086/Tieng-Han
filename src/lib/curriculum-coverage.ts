@@ -72,7 +72,7 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       return false;
     case "grammar":
       if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
-      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap");
+      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
       if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau", "문법예문", "예문");
       return false;
     case "listening":
@@ -88,12 +88,12 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
     case "reading":
       if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
       if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc", "읽기제목");
-      if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
+      if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
       if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc", "읽기문항", "독해문항");
       if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc", "읽기선택지");
       return false;
     case "writing":
-      if (parts.length === 1 || (parts.length === 2 && child === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 1 || (parts.length === 2 && parts[1] === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
       if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet", "쓰기목표단어", "목표단어");
       return false;
     case "pronunciation":
@@ -104,7 +104,7 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa", "문화", "문화노트");
     case "extraSections":
       if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
-      if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung");
+      if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
       return false;
     case "media":
       return parts.length === 2 && indexed(index) && at("media", "illustration", "image", "diagram", "audio", "video", "document", "sourcepage", "minhhoa", "anhminhhoa", "삽화", "그림", "도표", "미디어");
