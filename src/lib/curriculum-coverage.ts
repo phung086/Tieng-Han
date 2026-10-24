@@ -211,7 +211,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("Câu hỏi không được gắn với đúng một source item: " + questionKey + " (số liên kết: " + owners.length + ")");
       continue;
     }
-    const questionSourceRef = question.sourceRef?.replace(/^Derived from\\s+/i, "").trim();
+    const questionSourceRef = question.sourceRef?.replace(/^Derived from\s+/i, "").trim();
     if (!questionSourceRef || questionSourceRef !== owners[0].sourceRef.trim()) {
       issues.push("sourceRef câu hỏi không khớp source item: " + questionKey);
     }
