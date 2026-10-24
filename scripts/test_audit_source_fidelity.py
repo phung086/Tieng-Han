@@ -111,5 +111,23 @@ class CitationAuditTests(unittest.TestCase):
         self.assertEqual(len(audit.compact(answer[2])), 1)
 
 
+    def test_supported_page_anchor_aliases_match_coverage_gate(self):
+        cases = [
+            ('book.pdf p.1', [1]),
+            ('book.pdf pp. 2-3, 5', [2, 3, 5]),
+            ('book.pdf page 4', [4]),
+            ('book.pdf pages 5-6', [5, 6]),
+            ('book.pdf trang 7', [7]),
+            ('book.pdf tr. 8', [8]),
+            ('book.pdf p 9', [9]),
+            ('book.pdf trang 10', [10]),
+        ]
+        for reference, expected in cases:
+            with self.subTest(reference=reference):
+                self.assertEqual(audit.cited_pages(reference, 'book.pdf', 10), expected)
+        self.assertEqual(audit.cited_pages('book.pdf p.11', 'book.pdf', 10), [])
+        self.assertEqual(audit.cited_pages('book.pdf pageno 1', 'book.pdf', 10), [])
+
+
 if __name__ == '__main__':
     unittest.main()
