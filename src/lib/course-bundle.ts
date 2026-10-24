@@ -731,7 +731,7 @@ export function getCompilationContract(language: LanguageProfile) {
         "Keep explanations concise enough for self-study and preserve textbook terminology.",
       ],
       practiceVolume:
-        "NO FIXED QUIZ CAP. Do not use a fixed count, maximum, or sampling ratio. Inventory every source item: cover every sourced vocabulary entry and every textbook exercise/subpart, plus every available grammar pattern/example, dialogue sentence, reading/listening prompt, speaking and writing activity. A lesson with 80 words must not be reduced to 10 or 20 questions. Keep open-ended or ungradable source activities in extraSections instead of inventing answer keys. Never pad with unsupported content.",
+        "NO FIXED QUIZ CAP. Do not use a fixed count, maximum, or sampling ratio. Inventory every source item: cover every sourced vocabulary entry and every textbook exercise/subpart, plus every available grammar pattern/example, dialogue sentence, reading/listening prompt, speaking and writing activity. A lesson with 80 words must not be reduced to 10 or 20 questions. Keep open-ended or ungradable source activities in extraSections instead of inventing answer keys. Never pad with unsupported content. For every sourceInventory item, contentPointer must resolve to the exact target and its item-level sourceRef must exactly match inventory.sourceRef. Never inherit a section-level ref for a nested example, speaking prompt, or exercise subpart; use exampleSourceRef, exampleSourceRefs, speakingSourceRefs, or contentSourceRefs aligned by index, or leave that item unverified.",
       practiceBalance: [
         "Vocabulary: cover ALL source words and their available examples; never sample only a few.",
         "Grammar: cover ALL source grammar patterns and each available example or original textbook exercise.",
@@ -779,6 +779,7 @@ export function getCompilationContract(language: LanguageProfile) {
             vi: "string legacy alias accepted",
             example: "string",
             sourceRef: "string optional",
+            exampleSourceRef: "string optional; exact source for example",
           },
         ],
         grammar: [
@@ -789,6 +790,7 @@ export function getCompilationContract(language: LanguageProfile) {
             explanation: "string",
             examples: "string[]",
             sourceRef: "string optional",
+            exampleSourceRefs: "string[] optional; one exact source ref per example",
           },
         ],
         listening: [
@@ -802,6 +804,7 @@ export function getCompilationContract(language: LanguageProfile) {
           },
         ],
         speaking: "string[]",
+        speakingSourceRefs: "string[] optional; one exact source ref per prompt",
         reading: {
           title: "string",
           text: "string",
@@ -815,15 +818,16 @@ export function getCompilationContract(language: LanguageProfile) {
           hint: "string",
           targetWords: "string[]",
           sourceRef: "string optional",
+          targetWordSourceRefs: "string[] optional; one exact source ref per target word",
         },
         dialogues:
           "{id:string,title?:string,origin?:source|derived,translationOrigin?:source|derived,lines:{speaker?:string,targetText?:string,learnerMeaning?:string,ko?:string,vi?:string,sourceRef?:string}[],sourceRef?:string}[] optional",
         pronunciation:
-          "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string}[] optional",
+          "{id:string,title:string,explanation:string,examples:string[],sourceRef?:string,exampleSourceRefs?:string[]}[] optional",
         culture:
           "{id:string,title:string,text:string,sourceRef?:string}[] optional",
         extraSections:
-          "{id:string,kind:string,title:string,content:string[],sourceRef?:string}[] optional",
+          "{id:string,kind:string,title:string,content:string[],sourceRef?:string,contentSourceRefs?:string[]}[] optional",
         media: "LessonMedia[] optional",
         illustrations: "LearningIllustration[] optional: {id unique across course,kind:vocabulary|grammar|dialogue|context,targetIds:string[],relation:exact|context,fileName,pageNumber,region:[normalized x,y,width,height],alt,caption,sourceRef}. Crop must stay inside the source page and cover less than 80% of it. Exact cues require one existing vocabulary target; context has no invented exact association.",
         sourceRef: "string optional",

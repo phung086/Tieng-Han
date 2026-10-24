@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PATCH } from "@/app/api/admin/courses/[courseId]/status/route";
 import { getCourseLibrary } from "@/lib/course-consumer";
 import { setCourseStatus } from "@/lib/db/course-catalog";
+import { CURRICULUM_AUDIT_VERSION } from "@/lib/curriculum-coverage";
 
 vi.mock("@/lib/auth/server", () => ({ isSameOrigin: () => true, requireAdmin: async () => ({ id: "test-admin" }), recordAuditEvent: vi.fn() }));
 vi.mock("@/lib/course-consumer", () => ({ getCourseLibrary: vi.fn() }));
@@ -17,7 +18,7 @@ describe("admin publication release gate", () => {
     expect(setCourseStatus).not.toHaveBeenCalled();
   });
   it("allows a fully reconciled inventory to reach the database publication guard", async () => {
-    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: { auditVersion: 2, status: "complete" } } }] as never);
+    vi.mocked(getCourseLibrary).mockResolvedValue([{ id: "test", source: { curriculumCoverage: { auditVersion: CURRICULUM_AUDIT_VERSION, status: "complete" } } }] as never);
     vi.mocked(setCourseStatus).mockResolvedValue({ course_id: "test", status: "published" } as never);
     expect((await update("published")).status).toBe(200);
     expect(setCourseStatus).toHaveBeenCalledWith("test", "published");

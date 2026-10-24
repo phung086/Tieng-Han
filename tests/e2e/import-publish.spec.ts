@@ -35,7 +35,10 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const lesson = { id: 1, title: "학생", vi: "Học sinh", objective: "Synthetic fixture only",
     vocabulary: [1, 2].map(number => ({ id: "v" + number, ko: "학생", vi: "học sinh", example: "학생", sourceRef: "synthetic-source.pdf · p." + number + " · v" + number })),
     grammar: [], listening: [], speaking: [], reading: null, writing: null, sourceRef: "synthetic-source.pdf · pp.1-2" };
-  const questions = [{ id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Từ nguồn", prompt: "học sinh", answer: "학생", explanation: "Synthetic source fixture", sourceRef: "synthetic-source.pdf · p.1 · v1" }];
+  const questions = [
+    { id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Từ nguồn 1", prompt: "học sinh", answer: "학생", explanation: "Synthetic source fixture", sourceRef: "synthetic-source.pdf · p.1 · v1" },
+    { id: "q2", lessonId: 1, skill: "vocabulary", type: "input", title: "Từ nguồn 2", prompt: "học sinh", answer: "학생", explanation: "Synthetic source fixture", sourceRef: "synthetic-source.pdf · p.2 · v2" },
+  ];
   await tool(request, "save_lesson_draft", { jobId: job.id, lesson, questions });
   const progress = await tool(request, "get_compilation_progress", { jobId: job.id });
   expect(progress.completedLessonIds).toEqual([1]);
@@ -43,14 +46,14 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await tool(request, "finalize_course_bundle", { jobId: job.id, sourceInventory: {
     version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic-source.pdf", pageNumber, status: "reviewed", classification: "learning-content" })),
     items: [1, 2].map(pageNumber => ({ id: "v" + pageNumber, lessonId: 1, kind: "vocabulary", fileName: "synthetic-source.pdf", pageNumber,
-      sourceRef: "synthetic-source.pdf · p." + pageNumber + " · v" + pageNumber, contentPointer: "/vocabulary/" + (pageNumber - 1), practiceMethod: "workbook", practiceQuestionIds: [], verified: true })),
+      sourceRef: "synthetic-source.pdf · p." + pageNumber + " · v" + pageNumber, contentPointer: "/vocabulary/" + (pageNumber - 1), practiceMethod: "questions", practiceQuestionIds: ["q" + pageNumber], verified: true })),
   } });
   const consume = await request.patch(`/api/import-jobs/${job.id}`, { data: { action: "consume" } });
   expect(consume.ok()).toBe(true);
   const consumed = await consume.json();
   expect(consumed.job.status).toBe("consumed");
   expect(consumed.course.source.curriculumCoverage.status).toBe("complete");
-  expect(consumed.course.source.curriculumCoverage.auditVersion).toBe(2);
+  expect(consumed.course.source.curriculumCoverage.auditVersion).toBe(4);
   const library = await (await request.get("/api/courses")).json();
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");
@@ -66,7 +69,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await expect(book.getByRole("img", { name: /Trang sách gốc 2/ })).toBeVisible();
   await page.getByRole("button", { name: "Tổng quan", exact: true }).click();
-  await expect(page.locator(".lesson-coach-stats-v3")).toContainText("7 câu luyện");
+  await expect(page.locator(".lesson-coach-stats-v3")).toContainText("8 câu luyện");
   await page.getByRole("button", { name: "Sách gốc", exact: true }).click();
   await page.getByRole("link", { name: "Luyện toàn bộ nội dung bài", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Luyện đủ từng mục trong bài", exact: true })).toBeVisible();

@@ -12,6 +12,8 @@ export type VocabularyItem = {
   vi: string;
   example: string;
   sourceRef?: string;
+  /** Item-level evidence for the example string; never inherit the vocabulary ref. */
+  exampleSourceRef?: string;
 };
 
 export type GrammarItem = {
@@ -21,6 +23,8 @@ export type GrammarItem = {
   explanation: string;
   examples: string[];
   sourceRef?: string;
+  /** One source ref per example, aligned by index. */
+  exampleSourceRefs?: string[];
 };
 
 export type ListeningItem = {
@@ -45,6 +49,8 @@ export type WritingContent = {
   hint: string;
   targetWords: string[];
   sourceRef?: string;
+  /** One source ref per target word, aligned by index. */
+  targetWordSourceRefs?: string[];
 };
 
 export type LessonMedia = {
@@ -85,6 +91,8 @@ export type PronunciationItem = {
   explanation: string;
   examples: string[];
   sourceRef?: string;
+  /** One source ref per example, aligned by index. */
+  exampleSourceRefs?: string[];
 };
 
 export type CultureItem = {
@@ -100,6 +108,8 @@ export type ExtraSection = {
   title: string;
   content: string[];
   sourceRef?: string;
+  /** One source ref per content entry, aligned by index. */
+  contentSourceRefs?: string[];
 };
 
 export type LessonContent = {
@@ -117,6 +127,8 @@ export type LessonContent = {
   grammar: GrammarItem[];
   listening: ListeningItem[];
   speaking: string[];
+  /** One source ref per speaking prompt, aligned by index. */
+  speakingSourceRefs?: string[];
   reading: ReadingContent | null;
   writing: WritingContent | null;
   dialogues?: DialogueItem[];

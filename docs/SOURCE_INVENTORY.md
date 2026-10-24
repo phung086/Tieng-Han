@@ -55,10 +55,10 @@ learning content uses `classification: "non-learning"` and an explicit review
 reason. Merely marking hundreds of pages `reviewed` with no unit inventory can
 no longer yield complete coverage. Legacy inventories without classification
 remain readable but require review before publication.
-Coverage reports carry `auditVersion: 2`. The publication API and database guard
-require the current audit version as well as `complete`; a cached success report
-from older rules cannot authorize a new publication. Existing published course
-statuses are not changed by this guard.
+Coverage reports carry the current `CURRICULUM_AUDIT_VERSION`. The publication API and database guard
+require that exact version as well as `complete`; a cached success report from older
+rules cannot authorize a new publication. Existing published course statuses are
+not changed by this guard.
 
 `contentPointer` is a JSON pointer relative to the lesson. Supported roots are
 the runtime learning sections and the lesson's filtered `questions` array.
