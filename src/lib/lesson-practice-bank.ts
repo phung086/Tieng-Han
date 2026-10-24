@@ -220,7 +220,7 @@ export function buildLessonPracticeBank(
       skill: "writing",
       type: "input",
       title: "Luyện từ khóa bài viết " + (index + 1),
-      prompt: "Viết lại từ khóa sau, sau đó tự đặt câu: " + target,
+      prompt: "Gõ lại từ khóa bài viết: " + target,
       answer: target,
       explanation: "Từ khóa từ nhiệm vụ viết: " + target,
       sourceRef: lesson.writing?.targetWordSourceRefs?.[index],
