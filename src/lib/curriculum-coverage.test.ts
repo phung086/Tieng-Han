@@ -41,6 +41,17 @@ describe("source, practice and validation coverage are independent release evide
     expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
     expect(auditCurriculumCoverage(bundle).status).toBe("partial");
   });
+  it("keeps source coverage measurable when practice evidence is missing", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[0].practiceQuestionIds = [];
+    const report = auditCurriculumCoverage(bundle);
+
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.validationCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
   it("never substitutes quiz quantity or self-reported quality for missing inventory", () => {
     const bundle = fixture();
     const report = auditCurriculumCoverage(bundle);
