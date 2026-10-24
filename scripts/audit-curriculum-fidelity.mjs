@@ -15,6 +15,8 @@ const backlog = [];
 let coursesChecked = 0;
 let lessonsChecked = 0;
 let lessonsCompared = 0;
+// Reverse parity: inventory entries must also have compiled destinations.
+const compiledLessonIdsByCourse = new Map();
 
 const detail = (error) => error instanceof Error ? error.message : String(error);
 function record(code, scope, description, severity = "issue", nextAction = "") {
@@ -63,6 +65,19 @@ for (const file of files) {
     if (!Array.isArray(questions)) record("INVALID_QUESTIONS", file, "questions must be an array", "issue", "Check the exported runtime course shape.");
     const existingLessons = array(lessons).filter(object);
     const existingQuestions = array(questions).filter(object);
+    const courseKey = String(course.id ?? "").trim();
+    if (!courseKey) {
+      record("COURSE_ID_MISSING", file, "compiled course has no stable id", "issue",
+        "Restore the source course ID so reverse inventory parity can be checked.");
+    } else {
+      if (compiledLessonIdsByCourse.has(courseKey)) {
+        record("DUPLICATE_COURSE_ID", file, courseKey + " appears in more than one exported course artifact", "issue",
+          "Keep one canonical exported artifact per course ID before source parity checks.");
+      }
+      const knownLessons = compiledLessonIdsByCourse.get(courseKey) || new Set();
+      for (const lesson of existingLessons) knownLessons.add(String(lesson.id));
+      compiledLessonIdsByCourse.set(courseKey, knownLessons);
+    }
     const lessonIds = new Set(existingLessons.map(lesson => String(lesson.id)));
     const questionIds = new Set();
 
@@ -192,6 +207,32 @@ for (const file of files) {
   } catch (error) {
     record("COURSE_AUDIT_ERROR", file, detail(error), "issue",
       "Isolate the unreadable exported course; continue auditing the other courses.");
+  }
+}
+
+// Reverse parity matters as much as forward comparison: source lessons must not
+// disappear simply because the compiled-course loop never visits them.
+if (inventory) {
+  for (const [courseId, inventoryCourse] of Object.entries(inventory.courses)) {
+    const scope = String(courseId);
+    if (!object(inventoryCourse) || !object(inventoryCourse.lessons)) {
+      record("INVALID_SOURCE_INVENTORY_COURSE", scope, "expected a lessons object", "issue",
+        "Repair the independently reviewed inventory structure before certifying this course.");
+      continue;
+    }
+    const compiledLessons = compiledLessonIdsByCourse.get(scope);
+    if (!compiledLessons) {
+      record("SOURCE_COURSE_MISSING", scope, "inventory declares a source course with no compiled course artifact in the audit library", "issue",
+        "Restore or compile this source course; do not certify only the courses that happen to be present.");
+      continue;
+    }
+    for (const lessonId of Object.keys(inventoryCourse.lessons)) {
+      if (!compiledLessons.has(String(lessonId))) {
+        record("SOURCE_LESSON_MISSING", scope + " lesson " + lessonId,
+          "inventory declares a source lesson with no compiled lesson destination", "issue",
+          "Recover and compile this lesson from its original pages before claiming complete coverage.");
+      }
+    }
   }
 }
 
