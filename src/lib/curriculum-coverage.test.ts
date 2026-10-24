@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditCurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
+import { auditCurriculumCoverage, CURRICULUM_AUDIT_VERSION, isCurrentCompleteCoverage, type CurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import { parseCourseBundle } from "@/lib/course-bundle";
 
@@ -270,5 +270,47 @@ describe("source, practice and validation coverage are independent release evide
     const report = auditCurriculumCoverage(bundle);
     expect(report.status).toBe("complete");
     expect(report.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+});
+
+
+describe("publication coverage gate rejects inconsistent complete reports", () => {
+  const completeCoverage: CurriculumCoverage = {
+    auditVersion: CURRICULUM_AUDIT_VERSION,
+    status: "complete",
+    basis: "synthetic reviewed inventory",
+    sourceCoverage: { covered: 2, total: 2, percent: 100 },
+    practiceCoverage: { covered: 2, total: 2, percent: 100 },
+    validationCoverage: { covered: 2, total: 2, percent: 100 },
+    derivedContent: 0,
+    issues: [],
+  };
+
+  it("accepts only current, issue-free, internally consistent 100% ratios", () => {
+    expect(isCurrentCompleteCoverage(completeCoverage)).toBe(true);
+    expect(isCurrentCompleteCoverage(undefined)).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, auditVersion: CURRICULUM_AUDIT_VERSION - 1 })).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, issues: ["missing item"] })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      sourceCoverage: { covered: 1, total: 2, percent: 50 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 0, percent: null },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      validationCoverage: { covered: 2, total: 2, percent: 99 },
+    })).toBe(false);
+    expect(isCurrentCompleteCoverage({
+      ...completeCoverage,
+      practiceCoverage: { covered: 2, total: 3, percent: 66.67 },
+    })).toBe(false);
+  });
+
+  it("fails closed when required report fields are missing at runtime", () => {
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, issues: undefined } as unknown as CurriculumCoverage)).toBe(false);
+    expect(isCurrentCompleteCoverage({ ...completeCoverage, sourceCoverage: undefined } as unknown as CurriculumCoverage)).toBe(false);
   });
 });
