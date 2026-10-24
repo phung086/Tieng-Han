@@ -136,6 +136,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("Trang chưa có kiểm kê đơn vị nội dung (không được chỉ đánh dấu đã đọc): " + key);
     }
   }
+  // Keep page-inventory completeness separate from later item, practice and
+  // validation issues so the three coverage gates remain independently useful.
+  const pageInventoryComplete = expectedPages.size > 0 && issues.length === 0;
   for (const lesson of bundle.course.lessons) {
     const aligned = (refs: string[] | undefined, count: number, path: string) => {
       // Missing refs are a coverage gap too: checking only an existing array's
@@ -161,7 +164,6 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     lesson.extraSections?.forEach((item, index) => aligned(item.contentSourceRefs, item.content.length, "lesson " + lesson.id + ".extraSections[" + index + "].content"));
     if (lesson.writing) aligned(lesson.writing.targetWordSourceRefs, lesson.writing.targetWords.length, "lesson " + lesson.id + ".writing.targetWords");
   }
-  const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
   let validated = 0;
@@ -282,7 +284,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     auditVersion: CURRICULUM_AUDIT_VERSION,
     status: !issues.length ? "complete" : represented ? "partial" : "blocked",
     basis: "Reconciled against submitted reviewed inventory; not automatic PDF semantic verification",
-    sourceCoverage: { ...ratio(represented, total), percent: allPagesReviewed ? ratio(represented, total).percent : null },
+    sourceCoverage: { ...ratio(represented, total), percent: pageInventoryComplete ? ratio(represented, total).percent : null },
     practiceCoverage: ratio(practiced, total),
     validationCoverage: ratio(validated, total), derivedContent, issues,
   };
