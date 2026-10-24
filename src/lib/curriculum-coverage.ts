@@ -137,7 +137,17 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
     const targetIndex = indexedPart(parts[2]);
     return targetIndex >= 0 ? lesson.writing?.targetWordSourceRefs?.[targetIndex]?.trim() || undefined : undefined;
   }
+  if (root === "reading" && parts.length === 5 && parts[1] === "questions" && parts[3] === "choices") {
+    const questionIndex = indexedPart(parts[2]);
+    const choiceIndex = indexedPart(parts[4]);
+    return questionIndex >= 0 && choiceIndex >= 0
+      ? lesson.reading?.questions[questionIndex]?.choiceSourceRefs?.[choiceIndex]?.trim() || undefined
+      : undefined;
+  }
   if (index < 0) return undefined;
+  if (root === "listening" && child === "choices" && parts.length === 4) {
+    return lesson.listening[index]?.choiceSourceRefs?.[childIndex]?.trim() || undefined;
+  }
   if (root === "speaking" && parts.length === 2) return lesson.speakingSourceRefs?.[index]?.trim() || undefined;
   if (root === "vocabulary" && child === "example" && parts.length === 3) return lesson.vocabulary[index]?.exampleSourceRef?.trim() || undefined;
   if (root === "grammar" && child === "examples" && parts.length === 4) return lesson.grammar[index]?.exampleSourceRefs?.[childIndex]?.trim() || undefined;
@@ -188,6 +198,10 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       }
     };
     aligned(lesson.speakingSourceRefs, lesson.speaking.length, "lesson " + lesson.id + ".speaking");
+    lesson.listening.forEach((item, index) =>
+      aligned(item.choiceSourceRefs, item.choices.length, "lesson " + lesson.id + ".listening[" + index + "].choices"));
+    lesson.reading?.questions.forEach((question, index) =>
+      aligned(question.choiceSourceRefs, question.choices.length, "lesson " + lesson.id + ".reading.questions[" + index + "].choices"));
     lesson.vocabulary.forEach((item, index) => {
       if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
     });
