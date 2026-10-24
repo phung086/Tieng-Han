@@ -24,7 +24,7 @@ def cited_pages(reference, file_name, page_count):
     if named and any(name.strip().casefold() != file_name.casefold() and '...' not in name for name in named):
         return []
     result = []
-    for match in re.finditer(r'\bpp?\.\s*(\d+(?:\s*[-–—]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-–—]\s*\d+)?)*)', reference, re.I):
+    for match in re.finditer(r'\b(?:pages?|p{1,2}\.?|trang|tr\.)\s*(\d+(?:\s*[-–—]\s*\d+)?(?:\s*,\s*\d+(?:\s*[-–—]\s*\d+)?)*)', reference, re.I):
         for part in match[1].split(','):
             ends = [int(v.strip()) for v in re.split('[-–—]', part)]
             start, end = ends[0], ends[-1]
