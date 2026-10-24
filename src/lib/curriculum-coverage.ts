@@ -133,6 +133,15 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   const index = indexedPart(parts[1]);
   const child = parts[2];
   const childIndex = indexedPart(parts[3]);
+  if (root === "reading" && parts.length === 2 && parts[1] === "title") {
+    return lesson.reading?.titleSourceRef?.trim() || undefined;
+  }
+  if (root === "reading" && parts.length === 2 && parts[1] === "text") {
+    return lesson.reading?.textSourceRef?.trim() || undefined;
+  }
+  if (root === "writing" && parts.length === 2 && parts[1] === "prompt") {
+    return lesson.writing?.promptSourceRef?.trim() || undefined;
+  }
   if (root === "writing" && parts[1] === "targetWords" && parts.length === 3) {
     const targetIndex = indexedPart(parts[2]);
     return targetIndex >= 0 ? lesson.writing?.targetWordSourceRefs?.[targetIndex]?.trim() || undefined : undefined;
@@ -209,6 +218,15 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     lesson.pronunciation?.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".pronunciation[" + index + "].examples"));
     lesson.extraSections?.forEach((item, index) => aligned(item.contentSourceRefs, item.content.length, "lesson " + lesson.id + ".extraSections[" + index + "].content"));
     if (lesson.writing) aligned(lesson.writing.targetWordSourceRefs, lesson.writing.targetWords.length, "lesson " + lesson.id + ".writing.targetWords");
+    if (lesson.reading?.titleSourceRef !== undefined && !lesson.reading.titleSourceRef.trim()) {
+      issues.push("Tham chiếu tiêu đề bài đọc rỗng tại lesson " + lesson.id + ".reading.title");
+    }
+    if (lesson.reading?.textSourceRef !== undefined && !lesson.reading.textSourceRef.trim()) {
+      issues.push("Tham chiếu nội dung bài đọc rỗng tại lesson " + lesson.id + ".reading.text");
+    }
+    if (lesson.writing?.promptSourceRef !== undefined && !lesson.writing.promptSourceRef.trim()) {
+      issues.push("Tham chiếu prompt bài viết rỗng tại lesson " + lesson.id + ".writing.prompt");
+    }
   }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;

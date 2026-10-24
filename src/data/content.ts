@@ -51,13 +51,20 @@ export type ReadingContent = {
     /** One source ref per choice, aligned by index; never inherit the question's ref. */
     choiceSourceRefs?: string[];
   }[];
+  /** Section-level reference; never substitutes for title/text item evidence. */
   sourceRef?: string;
+  /** Exact source evidence for the reading title when inventoried separately. */
+  titleSourceRef?: string;
+  /** Exact source evidence for the reading passage text when inventoried separately. */
+  textSourceRef?: string;
 };
 
 export type WritingContent = {
   prompt: string;
   hint: string;
   targetWords: string[];
+  /** Exact source evidence for the prompt when inventoried separately. */
+  promptSourceRef?: string;
   sourceRef?: string;
   /** One source ref per target word, aligned by index. */
   targetWordSourceRefs?: string[];

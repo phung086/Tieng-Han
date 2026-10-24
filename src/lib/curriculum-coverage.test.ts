@@ -299,4 +299,149 @@ describe("source, practice and validation coverage are independent release evide
   });
 
 
+
+  it("requires exact refs for reading title and passage text instead of inheriting the section ref", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const titleRef = "synthetic.pdf · p.1 · reading-title";
+    const textRef = "synthetic.pdf · p.1 · reading-text";
+    bundle.course.lessons[0].reading = {
+      title: "Reading title", text: "Original reading passage", translation: "Bản dịch",
+      questions: [], sourceRef: "synthetic.pdf · p.1 · reading-section",
+    };
+    bundle.course.questions.push(
+      { id: "q-reading-title", lessonId: 1, skill: "reading", type: "input", title: "Title", prompt: "Title", answer: "Title", explanation: "Fixture", sourceRef: titleRef, origin: "source" },
+      { id: "q-reading-text", lessonId: 1, skill: "reading", type: "input", title: "Passage", prompt: "Passage", answer: "Passage", explanation: "Fixture", sourceRef: textRef, origin: "source" },
+    );
+    bundle.sourceInventory.items.push(
+      { id: "reading-title", lessonId: 1, kind: "readingtitle", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: titleRef, contentPointer: "/reading/title", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-title"], verified: true },
+      { id: "reading-text", lessonId: 1, kind: "reading", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: textRef, contentPointer: "/reading/text", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-text"], verified: true },
+    );
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.status).toBe("partial");
+    expect(missing.sourceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
+    expect(missing.issues.join(" ")).toContain("sourceRef inventory không khớp");
+
+    bundle.course.lessons[0].reading!.titleSourceRef = titleRef;
+    bundle.course.lessons[0].reading!.textSourceRef = textRef;
+    const reconciled = auditCurriculumCoverage(bundle);
+    expect(reconciled.status).toBe("complete");
+    expect(reconciled.sourceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+  });
+
+
+  it("requires an exact ref for an inventoried writing prompt instead of inheriting the task ref", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const promptRef = "synthetic.pdf · p.1 · writing-prompt";
+    bundle.course.lessons[0].writing = {
+      prompt: "Write a short self-introduction.", hint: "Use the lesson grammar.",
+      targetWords: [], sourceRef: "synthetic.pdf · p.1 · writing-task",
+    };
+    bundle.course.questions.push({
+      id: "q-writing-prompt", lessonId: 1, skill: "writing", type: "input",
+      title: "Writing prompt", prompt: "Write a short self-introduction.",
+      answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source",
+    });
+    bundle.sourceInventory.items.push({
+      id: "writing-prompt", lessonId: 1, kind: "writingtask", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef: promptRef, contentPointer: "/writing/prompt",
+      practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-writing-prompt"], verified: true,
+    });
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.status).toBe("partial");
+    expect(missing.sourceCoverage.covered).toBe(2);
+    expect(missing.sourceCoverage.total).toBe(3);
+    expect(missing.sourceCoverage.percent).toBeCloseTo(200 / 3);
+
+    bundle.course.lessons[0].writing!.promptSourceRef = promptRef;
+    const reconciled = auditCurriculumCoverage(bundle);
+    expect(reconciled.status).toBe("complete");
+    expect(reconciled.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
+
+  it("preserves reading/writing item refs through bundle parse before auditing", () => {
+    const bundle = fixture();
+    const sourceInventory = inventory();
+    bundle.sourceInventory = sourceInventory;
+    const lesson = bundle.course.lessons[0];
+    const refs = {
+      title: "synthetic.pdf · p.1 · reading-title",
+      text: "synthetic.pdf · p.1 · reading-text",
+      prompt: "synthetic.pdf · p.1 · writing-prompt",
+      targetWord: "synthetic.pdf · p.1 · writing-target-word",
+    };
+
+    lesson.reading = {
+      title: "Reading title",
+      text: "Read this short passage.",
+      translation: "Đọc đoạn văn ngắn này.",
+      sourceRef: "synthetic.pdf · p.1 · reading-section",
+      titleSourceRef: refs.title,
+      textSourceRef: refs.text,
+      questions: [],
+    };
+    lesson.writing = {
+      prompt: "Write one sentence.",
+      hint: "Use the target word.",
+      targetWords: ["저"],
+      sourceRef: "synthetic.pdf · p.1 · writing-section",
+      promptSourceRef: refs.prompt,
+      targetWordSourceRefs: [refs.targetWord],
+    };
+
+    const sourceItems: Array<{
+      id: string;
+      kind: string;
+      contentPointer: string;
+      sourceRef: string;
+      questionId: string;
+      skill: "reading" | "writing";
+      prompt: string;
+      answer: string;
+    }> = [
+      { id: "reading-title", kind: "readingtitle", contentPointer: "/reading/title",
+        sourceRef: refs.title, questionId: "q-reading-title", skill: "reading",
+        prompt: "Recall the reading title.", answer: "Reading title" },
+      { id: "reading-text", kind: "readingtext", contentPointer: "/reading/text",
+        sourceRef: refs.text, questionId: "q-reading-text", skill: "reading",
+        prompt: "Recall the reading passage.", answer: "Read this short passage." },
+      { id: "writing-prompt", kind: "writingprompt", contentPointer: "/writing/prompt",
+        sourceRef: refs.prompt, questionId: "q-writing-prompt-roundtrip", skill: "writing",
+        prompt: "Recall the writing task.", answer: "Write one sentence." },
+      { id: "writing-target-word", kind: "writingtargetword", contentPointer: "/writing/targetWords/0",
+        sourceRef: refs.targetWord, questionId: "q-writing-target-word", skill: "writing",
+        prompt: "Write the target word.", answer: "저" },
+    ];
+
+    for (const item of sourceItems) {
+      bundle.course.questions.push({
+        id: item.questionId, lessonId: 1, skill: item.skill, type: "input",
+        title: item.id, prompt: item.prompt, answer: item.answer,
+        explanation: "Synthetic round-trip fixture", sourceRef: item.sourceRef, origin: "source",
+      });
+      sourceInventory.items.push({
+        id: item.id, lessonId: 1, kind: item.kind, fileName: "synthetic.pdf", pageNumber: 1,
+        sourceRef: item.sourceRef, contentPointer: item.contentPointer,
+        practiceMethod: "questions", motif: "input", practiceQuestionIds: [item.questionId], verified: true,
+      });
+    }
+
+    const parsed = parseCourseBundle(JSON.stringify(bundle));
+    const roundTripped = parsed.course.lessons[0];
+    expect(roundTripped.reading?.titleSourceRef).toBe(refs.title);
+    expect(roundTripped.reading?.textSourceRef).toBe(refs.text);
+    expect(roundTripped.writing?.promptSourceRef).toBe(refs.prompt);
+    expect(roundTripped.writing?.targetWordSourceRefs).toEqual([refs.targetWord]);
+
+    const report = auditCurriculumCoverage(parsed);
+    expect(report.status).toBe("complete");
+    expect(report.sourceCoverage).toEqual({ covered: 6, total: 6, percent: 100 });
+    expect(report.practiceCoverage).toEqual({ covered: 6, total: 6, percent: 100 });
+    expect(report.validationCoverage).toEqual({ covered: 6, total: 6, percent: 100 });
+  });
+
 });
