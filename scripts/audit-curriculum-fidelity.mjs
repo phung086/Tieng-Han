@@ -15,6 +15,8 @@ const backlog = [];
 let coursesChecked = 0;
 let lessonsChecked = 0;
 let lessonsCompared = 0;
+// Reverse parity: inventory entries must also have compiled destinations.
+const compiledLessonIdsByCourse = new Map();
 
 const detail = (error) => error instanceof Error ? error.message : String(error);
 function record(code, scope, description, severity = "issue", nextAction = "") {
@@ -63,7 +65,34 @@ for (const file of files) {
     if (!Array.isArray(questions)) record("INVALID_QUESTIONS", file, "questions must be an array", "issue", "Check the exported runtime course shape.");
     const existingLessons = array(lessons).filter(object);
     const existingQuestions = array(questions).filter(object);
-    const lessonIds = new Set(existingLessons.map(lesson => String(lesson.id)));
+    const courseKey = String(course.id ?? "").trim();
+    if (!courseKey) {
+      record("COURSE_ID_MISSING", file, "compiled course has no stable id", "issue",
+        "Restore the source course ID so reverse inventory parity can be checked.");
+    } else {
+      if (compiledLessonIdsByCourse.has(courseKey)) {
+        record("DUPLICATE_COURSE_ID", file, courseKey + " appears in more than one exported course artifact", "issue",
+          "Keep one canonical exported artifact per course ID before source parity checks.");
+      }
+      const knownLessons = compiledLessonIdsByCourse.get(courseKey) || new Set();
+      for (const lesson of existingLessons) knownLessons.add(String(lesson.id));
+      compiledLessonIdsByCourse.set(courseKey, knownLessons);
+    }
+    const lessonIds = new Set();
+    for (const lesson of existingLessons) {
+      const rawLessonId = lesson.id;
+      if (rawLessonId === undefined || rawLessonId === null || String(rawLessonId).trim() === "") {
+        record("LESSON_ID_MISSING", file, "compiled lesson has no stable id", "issue",
+          "Restore the original stable lesson ID before comparing source inventory parity.");
+        continue;
+      }
+      const lessonId = String(rawLessonId);
+      if (lessonIds.has(lessonId)) {
+        record("DUPLICATE_LESSON_ID", file, "duplicate lesson id " + lessonId, "issue",
+          "Keep one canonical destination per source lesson; do not collapse or overwrite separate lessons.");
+      }
+      lessonIds.add(lessonId);
+    }
     const questionIds = new Set();
 
     for (const question of existingQuestions) {
@@ -80,6 +109,10 @@ for (const file of files) {
       if (!sourceRef(question)) {
         record("QUESTION_NO_SOURCE", file, String(question.id), "issue", "Restore page/section sourceRef for question " + question.id);
       }
+      if (question.origin !== "source" && question.origin !== "derived") {
+        record("QUESTION_ORIGIN_UNVERIFIED", file, String(question.id), "issue",
+          "Set origin to source or derived before comparing question counts with the original textbook.");
+      }
     }
 
     for (const lesson of existingLessons) {
@@ -92,12 +125,45 @@ for (const file of files) {
           n + (object(dialogue) ? array(dialogue.lines).length : 0), 0);
         const readingQuestions = array(lesson.reading?.questions).length;
         const lessonQuestions = existingQuestions.filter(q => String(q.lessonId) === String(lesson.id));
+        const sourceQuestions = lessonQuestions.filter(question => question.origin === "source");
+        const reading = object(lesson.reading) ? lesson.reading : null;
+        const writing = object(lesson.writing) ? lesson.writing : null;
+        const countNested = (entries, field) => entries.reduce((count, entry) =>
+          count + (object(entry) ? array(entry[field]).length : 0), 0);
+        const countNonemptyField = (entries, field) => entries.filter(entry =>
+          object(entry) && typeof entry[field] === "string" && entry[field].trim().length > 0).length;
+        const speakingPrompts = Array.isArray(lesson.speaking)
+          ? lesson.speaking.length
+          : typeof lesson.speaking === "string" && lesson.speaking.trim() ? 1 : 0;
         const counts = {
           vocabulary: vocab.length,
+          vocabularyExamples: countNonemptyField(vocab, "example"),
           grammar: grammar.length,
+          grammarExamples: countNested(grammar, "examples"),
           dialogueLines,
+          listeningItems: array(lesson.listening).length,
+          listeningChoices: countNested(array(lesson.listening), "choices"),
+          readingTitles: reading && typeof reading.title === "string" && reading.title.trim() ? 1 : 0,
+          readingPassages: reading && typeof reading.text === "string" && reading.text.trim() ? 1 : 0,
           readingQuestions,
-          reviewQuestions: lessonQuestions.length,
+          readingQuestionChoices: countNested(array(reading?.questions), "choices"),
+          speakingPrompts,
+          writingPrompts: writing && typeof writing.prompt === "string" && writing.prompt.trim() ? 1 : 0,
+          writingTargetWords: array(writing?.targetWords).length,
+          pronunciationItems: array(lesson.pronunciation).length,
+          pronunciationTitles: countNonemptyField(array(lesson.pronunciation), "title"),
+          pronunciationExamples: countNested(array(lesson.pronunciation), "examples"),
+          cultureItems: array(lesson.culture).length,
+          cultureTitles: countNonemptyField(array(lesson.culture), "title"),
+          cultureTexts: countNonemptyField(array(lesson.culture), "text"),
+          extraSections: array(lesson.extraSections).length,
+          extraSectionItems: countNested(array(lesson.extraSections), "content"),
+          mediaItems: array(lesson.media).length,
+          illustrations: array(lesson.illustrations).length,
+          reviewQuestions: sourceQuestions.length,
+          reviewQuestionChoices: countNested(sourceQuestions, "choices"),
+          reviewQuestionAnswers: sourceQuestions.filter(question =>
+            typeof question.answer === "string" && question.answer.trim().length > 0).length,
         };
         if (!lessonQuestions.length && (vocab.length || grammar.length || readingQuestions)) {
           record("NO_PRACTICE", label, "source content has no review questions", "issue",
@@ -121,8 +187,21 @@ for (const file of files) {
             "Count all original textbook items and subparts for this lesson independently.");
         } else {
           lessonsCompared++;
+          // Every supported dimension must be explicit, including zero. Otherwise a
+          // partial inventory could silently omit a whole source category and still
+          // look consistent for the keys it happened to declare.
+          for (const key of Object.keys(counts)) {
+            if (!Object.hasOwn(expected, key)) {
+              record("MISSING_SOURCE_COUNT", label, key + " is absent from the independent inventory (write an explicit 0 when the source has none)", "issue",
+                "Complete every supported inventory dimension for this lesson before using count parity as evidence.");
+            }
+          }
           for (const [key, expectedCount] of Object.entries(expected)) {
-            if (!(key in counts)) continue;
+            if (!(key in counts)) {
+              record("UNSUPPORTED_SOURCE_COUNT", label, key + " has no implemented count in this audit", "issue",
+                "Add an explicit count for this source dimension before using it to certify coverage.");
+              continue;
+            }
             if (!Number.isSafeInteger(expectedCount) || expectedCount < 0) {
               record("INVALID_SOURCE_COUNT", label, key + " is not a nonnegative integer", "issue",
                 "Correct the independently validated count in source inventory.");
@@ -130,10 +209,6 @@ for (const file of files) {
               record("COUNT_MISMATCH", label, key + ": expected " + expectedCount + ", got " + counts[key], "issue",
                 "Investigate missing/extra source items and preserve exact exercise patterns.");
             }
-          }
-          if (!("reviewQuestions" in expected)) {
-            record("EXERCISE_COUNT_UNVERIFIED", label, "no sourced reviewQuestions count", "warning",
-              "Count every textbook exercise and subpart, not only the existing quizzes.");
           }
         }
         // Quantity parity alone cannot certify that each source item is exercised.
@@ -146,6 +221,32 @@ for (const file of files) {
   } catch (error) {
     record("COURSE_AUDIT_ERROR", file, detail(error), "issue",
       "Isolate the unreadable exported course; continue auditing the other courses.");
+  }
+}
+
+// Reverse parity matters as much as forward comparison: source lessons must not
+// disappear simply because the compiled-course loop never visits them.
+if (inventory) {
+  for (const [courseId, inventoryCourse] of Object.entries(inventory.courses)) {
+    const scope = String(courseId);
+    if (!object(inventoryCourse) || !object(inventoryCourse.lessons)) {
+      record("INVALID_SOURCE_INVENTORY_COURSE", scope, "expected a lessons object", "issue",
+        "Repair the independently reviewed inventory structure before certifying this course.");
+      continue;
+    }
+    const compiledLessons = compiledLessonIdsByCourse.get(scope);
+    if (!compiledLessons) {
+      record("SOURCE_COURSE_MISSING", scope, "inventory declares a source course with no compiled course artifact in the audit library", "issue",
+        "Restore or compile this source course; do not certify only the courses that happen to be present.");
+      continue;
+    }
+    for (const lessonId of Object.keys(inventoryCourse.lessons)) {
+      if (!compiledLessons.has(String(lessonId))) {
+        record("SOURCE_LESSON_MISSING", scope + " lesson " + lessonId,
+          "inventory declares a source lesson with no compiled lesson destination", "issue",
+          "Recover and compile this lesson from its original pages before claiming complete coverage.");
+      }
+    }
   }
 }
 

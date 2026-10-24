@@ -48,7 +48,11 @@ Example independently validated inventory:
 }
 ```
 
-Numbers above are **illustrative**, not extracted counts for any real textbook. Count parity is necessary but insufficient; item-level traceability and exercise pattern fidelity require separate source-aligned fixtures.
+Numbers above are **illustrative**, not extracted counts for any real textbook.
+
+The count audit implements these per-lesson dimensions: `vocabulary`, `vocabularyExamples`, `grammar`, `grammarExamples`, `dialogueLines`, `listeningItems`, `listeningChoices`, `readingTitles`, `readingPassages`, `readingQuestions`, `readingQuestionChoices`, `speakingPrompts`, `writingPrompts`, `writingTargetWords`, `pronunciationItems`, `pronunciationTitles`, `pronunciationExamples`, `cultureItems`, `cultureTitles`, `cultureTexts`, `extraSections`, `extraSectionItems`, `mediaItems`, `illustrations`, `reviewQuestions`, `reviewQuestionChoices`, and `reviewQuestionAnswers`. A count key outside this set is an **audit issue**, not silently ignored; extend the implementation and tests before relying on a new inventory dimension. The three review-question dimensions count only questions explicitly marked `origin: "source"`; derived practice must not inflate original-textbook counts. Questions with missing/invalid origin are reported as unverified. Every supported dimension must be present for every inventoried lesson, including an explicit `0` when independent page review confirms there are no items of that kind. An omitted key is `MISSING_SOURCE_COUNT` and blocks certification; it is not interpreted as zero. Count parity is necessary but insufficient; item-level traceability and exercise pattern fidelity require separate source-aligned fixtures.
+
+Reverse parity is required as well: every inventoried course and lesson must have a compiled destination. The audit emits `SOURCE_COURSE_MISSING` or `SOURCE_LESSON_MISSING` when an independently inventoried source entry is absent from the exported course library, instead of silently ignoring it because the audit iterates compiled lessons. This checks destination presence only; it does not prove that the PDF inventory itself is exhaustive or semantically reviewed.
 
 ## Agent iteration (external runner required)
 
