@@ -34,13 +34,23 @@ export type ListeningItem = {
   choices: string[];
   answer: string;
   sourceRef?: string;
+  /** One source ref per choice, aligned by index; never inherit the listening item's ref. */
+  choiceSourceRefs?: string[];
 };
 
 export type ReadingContent = {
   title: string;
   text: string;
   translation: string;
-  questions: { id: string; q: string; choices: string[]; answer: string; sourceRef?: string }[];
+  questions: {
+    id: string;
+    q: string;
+    choices: string[];
+    answer: string;
+    sourceRef?: string;
+    /** One source ref per choice, aligned by index; never inherit the question's ref. */
+    choiceSourceRefs?: string[];
+  }[];
   sourceRef?: string;
 };
 
