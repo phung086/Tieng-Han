@@ -165,6 +165,41 @@ test("unknown inventory dimensions fail closed instead of being silently skipped
   assert.ok(result.backlog.some(item => item.code === "UNSUPPORTED_SOURCE_COUNT"));
 });
 
+test("inventory lessons and courses without compiled destinations fail closed", async (t) => {
+  const context = await fixture(t);
+  await writeFile(path.join(context.library, "course.json"), JSON.stringify({
+    id: "course-inventory-parity",
+    lessons: [{ id: 1, vocabulary: [], grammar: [], dialogues: [], reading: null }],
+    questions: [],
+  }));
+  const inventory = path.join(context.root, "inventory.json");
+  const dimensions = [
+    "vocabulary", "vocabularyExamples", "grammar", "grammarExamples", "dialogueLines",
+    "listeningItems", "listeningChoices", "readingTitles", "readingPassages",
+    "readingQuestions", "readingQuestionChoices", "speakingPrompts", "writingPrompts",
+    "writingTargetWords", "pronunciationItems", "pronunciationTitles",
+    "pronunciationExamples", "cultureItems", "cultureTitles", "cultureTexts",
+    "extraSections", "extraSectionItems", "mediaItems", "illustrations",
+    "reviewQuestions", "reviewQuestionChoices", "reviewQuestionAnswers",
+  ];
+  const zeroCounts = Object.fromEntries(dimensions.map((key) => [key, 0]));
+  await writeFile(inventory, JSON.stringify({ courses: {
+    "course-inventory-parity": { lessons: { "1": zeroCounts, "2": zeroCounts } },
+    "source-only-course": { lessons: { "1": zeroCounts } },
+    "malformed-course": {},
+  } }));
+  const run = audit(context, { HANEUL_SOURCE_INVENTORY: inventory });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(await readFile(context.report, "utf8"));
+  assert.equal(result.status, "fail");
+  assert.ok(result.issues.some((issue) =>
+    issue.includes("SOURCE_LESSON_MISSING") && issue.includes("course-inventory-parity lesson 2")));
+  assert.ok(result.issues.some((issue) =>
+    issue.includes("SOURCE_COURSE_MISSING") && issue.includes("source-only-course")));
+  assert.ok(result.issues.some((issue) =>
+    issue.includes("INVALID_SOURCE_INVENTORY_COURSE") && issue.includes("malformed-course")));
+});
+
 test("strict release gate fails on source gaps but still persists its report", async (t) => {
   const context = await fixture(t);
   const run = audit(context, {
