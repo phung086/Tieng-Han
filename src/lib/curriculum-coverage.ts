@@ -195,13 +195,13 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       /(?:writing|exercise|workbook|practice|worksheet|task|translation|연습|작문)/i.test(item.kind) &&
       Boolean(writing && typeof writing.prompt === "string" && writing.prompt.trim());
     const manualWorkbookTask = item.practiceMethod === "workbook" &&
-      item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
+      !item.motif && item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
     // Every mapped question must resolve to this exact source item. When the reviewed
     // inventory specifies a supported motif, at least one linked question must preserve it.
     if (motifMissing) {
       issues.push("Thiếu motif luyện tập cho item " + key + " với practiceMethod=questions");
     }
-    if (linked && item.motif && !motifMatches) {
+    if (item.motif && !motifMatches) {
       issues.push("Sai motif luyện tập cho item " + key + ": yêu cầu " + item.motif);
     }
     if ((linked && motifMatches) || manualWorkbookTask) practiced++;
