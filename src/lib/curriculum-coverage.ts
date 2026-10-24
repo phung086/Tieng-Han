@@ -57,59 +57,61 @@ function decodedPointerParts(pointer: string): string[] {
 }
 
 function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
-  const normalized = kind.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9가-힣]+/g, "");
+  const normalizeKind = (value: string) => value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
+    .replace(/[^a-z0-9\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]+/g, "");
+  const normalized = normalizeKind(kind);
   const parts = decodedPointerParts(pointer);
-  const at = (...aliases: string[]) => aliases.includes(normalized);
+  const at = (...aliases: string[]) => aliases.some(alias => normalizeKind(alias) === normalized);
   const indexed = (value: string | undefined) => value !== undefined && /^\d+$/.test(value);
   if (!parts.length) return false;
-  const [root, index, child, childIndex, leaf] = parts;
+  const [root, index, child, childIndex] = parts;
   switch (root) {
     case "vocabulary":
-      if (parts.length === 2 && indexed(index)) return at("vocabulary", "vocab", "word", "vocabularyitem", "worditem", "tuvung", "tumo");
-      if (parts.length === 3 && indexed(index) && child === "example") return at("vocabularyexample", "vocabexample", "wordexample", "examplevocabulary", "tuvungexample", "cauvidutuvung");
+      if (parts.length === 2 && indexed(index)) return at("vocabulary", "vocab", "word", "vocabularyitem", "worditem", "tuvung", "tumo", "어휘", "단어");
+      if (parts.length === 3 && indexed(index) && child === "example") return at("vocabularyexample", "vocabexample", "wordexample", "examplevocabulary", "tuvungexample", "cauvidutuvung", "어휘예문", "단어예문");
       return false;
     case "grammar":
-      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap");
+      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
       if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap");
-      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau");
+      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau", "문법예문", "예문");
       return false;
     case "listening":
-      if (parts.length === 2 && indexed(index)) return at("listening", "listeningitem", "listeningquestion", "audio", "nghe", "bainghe");
-      if (parts.length === 4 && indexed(index) && child === "choices" && indexed(childIndex)) return at("listeningchoice", "audiochoice", "ngheluachon", "luachonnghe");
+      if (parts.length === 2 && indexed(index)) return at("listening", "listeningitem", "listeningquestion", "audio", "nghe", "bainghe", "듣기", "듣기문항");
+      if (parts.length === 4 && indexed(index) && child === "choices" && indexed(childIndex)) return at("listeningchoice", "audiochoice", "ngheluachon", "luachonnghe", "듣기선택지");
       return false;
     case "speaking":
-      return parts.length === 2 && indexed(index) && at("speaking", "speakingprompt", "noi", "promptnoi");
+      return parts.length === 2 && indexed(index) && at("speaking", "speakingprompt", "noi", "promptnoi", "말하기", "말하기프롬프트");
     case "dialogues":
-      if (parts.length === 2 && indexed(index)) return at("dialogue", "dialogueitem", "conversation", "hoithoai", "doanthoai");
-      if (parts.length === 4 && indexed(index) && child === "lines" && indexed(childIndex)) return at("dialogueline", "dialogueturn", "conversationline", "hoithoailine", "luotthoai");
+      if (parts.length === 2 && indexed(index)) return at("dialogue", "dialogueitem", "conversation", "hoithoai", "doanthoai", "대화", "회화");
+      if (parts.length === 4 && indexed(index) && child === "lines" && indexed(childIndex)) return at("dialogueline", "dialogueturn", "conversationline", "hoithoailine", "luotthoai", "대화문장", "회화문장");
       return false;
     case "reading":
-      if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
-      if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc");
+      if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
+      if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc", "읽기제목");
       if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc");
-      if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc");
-      if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc");
+      if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc", "읽기문항", "독해문항");
+      if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc", "읽기선택지");
       return false;
     case "writing":
-      if (parts.length === 1 || (parts.length === 2 && child === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet");
-      if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet");
+      if (parts.length === 1 || (parts.length === 2 && child === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet", "쓰기목표단어", "목표단어");
       return false;
     case "pronunciation":
-      if (parts.length === 2 && indexed(index)) return at("pronunciation", "pronunciationitem", "pronunciationrule", "phatam", "quytacphatam");
-      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("pronunciationexample", "phatamexample", "viduph atam".replace(/\s/g, ""));
+      if (parts.length === 2 && indexed(index)) return at("pronunciation", "pronunciationitem", "pronunciationrule", "phatam", "quytacphatam", "발음", "발음규칙");
+      if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("pronunciationexample", "phatamexample", "viduphatam", "발음예문");
       return false;
     case "culture":
-      return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa");
+      return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa", "문화", "문화노트");
     case "extraSections":
-      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung");
+      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
       if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung");
       return false;
     case "media":
-      return parts.length === 2 && indexed(index) && at("media", "illustration", "image", "diagram", "audio", "video", "document", "sourcepage", "minhhoa", "anhminhhoa");
+      return parts.length === 2 && indexed(index) && at("media", "illustration", "image", "diagram", "audio", "video", "document", "sourcepage", "minhhoa", "anhminhhoa", "삽화", "그림", "도표", "미디어");
     case "illustrations":
-      return parts.length === 2 && indexed(index) && at("illustration", "image", "diagram", "contextillustration", "vocabularyillustration", "grammarillustration", "dialogueillustration", "minhhoa", "anhminhhoa");
+      return parts.length === 2 && indexed(index) && at("illustration", "image", "diagram", "contextillustration", "vocabularyillustration", "grammarillustration", "dialogueillustration", "minhhoa", "anhminhhoa", "삽화", "그림", "도표");
     case "questions":
-      return parts.length === 2 && indexed(index) && at("question", "sourcequestion", "quizquestion", "reviewquestion", "cauhoi", "cauhoigoc");
+      return parts.length === 2 && indexed(index) && at("question", "sourcequestion", "quizquestion", "reviewquestion", "cauhoi", "cauhoigoc", "문항", "원문문항", "퀴즈문항");
     default:
       return false;
   }
