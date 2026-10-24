@@ -15,7 +15,7 @@ function fixture(): CompiledCourseBundle {
 function inventory(): SourceInventory {
   return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
-      sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", practiceQuestionIds: ["q1"], verified: true },
+      sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q1"], verified: true },
     { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
       sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
   ] };
@@ -158,6 +158,22 @@ describe("source, practice and validation coverage are independent release evide
     const matched = auditCurriculumCoverage(bundle);
     expect(matched.status).toBe("complete");
     expect(matched.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
+  it("requires a motif for question-based items but preserves reviewed manual workbook tasks", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    delete bundle.sourceInventory.items[0].motif;
+
+    const missing = auditCurriculumCoverage(bundle);
+    expect(missing.status).toBe("partial");
+    expect(missing.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(missing.issues.join(" ")).toContain("Thiếu motif luyện tập cho item 1:v1");
+    expect(missing.issues.join(" ")).not.toContain("Thiếu motif luyện tập cho item 1:exercise");
+
+    bundle.sourceInventory.items[0].motif = "input";
+    const declared = auditCurriculumCoverage(bundle);
+    expect(declared.status).toBe("complete");
+    expect(declared.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
   it("normalizes the documented Derived from prefix before matching practice refs", () => {
