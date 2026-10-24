@@ -65,5 +65,52 @@ class CitationAuditTests(unittest.TestCase):
             self.assertIsNone(refs[key], key)
 
 
+    def test_scalar_speaking_is_one_unverified_item_not_characters(self):
+        lesson = {
+            'id': 1,
+            'speaking': '안녕하세요',
+            'speakingSourceRefs': ['book.pdf p.1'],
+        }
+        rows = [row for row in audit.units(lesson) if row[0].startswith('speaking')]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], 'speaking-unstructured')
+        self.assertEqual(rows[0][2], '안녕하세요')
+        self.assertIsNone(rows[0][3])
+
+    def test_source_question_choices_and_answer_are_audited(self):
+        lesson = {'id': 1}
+        questions = [{
+            'id': 'q1',
+            'lessonId': 1,
+            'origin': 'source',
+            'prompt': '어디에 갑니까?',
+            'choices': ['학교에 갑니다', '집에 갑니다'],
+            'answer': '학교에 갑니다',
+            'sourceRef': 'book.pdf p.1',
+        }]
+        rows = list(audit.units(lesson, questions))
+        by_kind = {row[0]: row for row in rows}
+        self.assertIn('question-prompt', by_kind)
+        self.assertIn('question-choice', by_kind)
+        self.assertEqual(by_kind['question-choice'][2], '학교에 갑니다')
+        self.assertEqual(by_kind['question-answer'][2], '학교에 갑니다')
+        self.assertEqual(by_kind['question-answer'][3], 'book.pdf p.1')
+
+    def test_short_answer_key_is_never_claimed_as_literal_match(self):
+        lesson = {'id': 1}
+        questions = [{
+            'id': 'q1',
+            'lessonId': 1,
+            'origin': 'source',
+            'prompt': '정답은?',
+            'choices': [],
+            'answer': '1',
+            'sourceRef': 'book.pdf p.1',
+        }]
+        rows = list(audit.units(lesson, questions))
+        answer = next(row for row in rows if row[0] == 'question-answer')
+        self.assertEqual(len(audit.compact(answer[2])), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
