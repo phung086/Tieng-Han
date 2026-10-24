@@ -96,6 +96,9 @@ describe("exhaustive deterministic practice", () => {
     const bank = buildLessonPracticeBank(input, []);
     expect(bank.filter(q => q.id.includes(":dialogue-"))).toHaveLength(1);
     expect(bank.some(q => q.prompt === input.writing!.prompt && q.answer)).toBe(false);
+    const targetWordDrill = bank.find(q => q.id.includes(":writing-word:0:"));
+    expect(targetWordDrill).toMatchObject({ prompt: "Gõ lại từ khóa bài viết: 저", answer: "저" });
+    expect(targetWordDrill?.prompt).not.toContain("tự đặt câu");
   });
 
   it("uses exact item-level refs for nested practice and never inherits section refs", () => {
