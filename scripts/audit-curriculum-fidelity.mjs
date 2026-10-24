@@ -110,7 +110,7 @@ for (const file of files) {
         record("QUESTION_NO_SOURCE", file, String(question.id), "issue", "Restore page/section sourceRef for question " + question.id);
       }
       if (question.origin !== "source" && question.origin !== "derived") {
-        record("QUESTION_ORIGIN_UNVERIFIED", file, String(question.id), "warning",
+        record("QUESTION_ORIGIN_UNVERIFIED", file, String(question.id), "issue",
           "Set origin to source or derived before comparing question counts with the original textbook.");
       }
     }
