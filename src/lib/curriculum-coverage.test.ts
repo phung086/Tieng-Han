@@ -194,4 +194,48 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("complete");
   });
 
+
+  it("rejects an inventory kind that points to a different content family", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "is N", explanation: "Fixture",
+      examples: [], sourceRef: "synthetic.pdf · p.1 · v1",
+    }];
+    bundle.sourceInventory.items[0].contentPointer = "/grammar/0";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+  });
+
+  it("fails closed for unknown source kinds instead of treating a valid pointer as proof", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[0].kind = "unclassified-source-kind";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+  });
+
+  it("supports source-linked illustrations as inventory destinations", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const ref = "synthetic.pdf · p.1 · illustration";
+    bundle.course.lessons[0].illustrations = [{
+      id: "ill1", kind: "context", targetIds: ["v1"], relation: "context",
+      fileName: "synthetic.pdf", pageNumber: 1, region: [0, 0, 1, 1],
+      alt: "Classroom scene", caption: "Synthetic illustration", sourceRef: ref,
+    }];
+    bundle.course.questions[0].sourceRef = ref;
+    bundle.sourceInventory.items[0] = {
+      ...bundle.sourceInventory.items[0], id: "illustration", kind: "illustration",
+      sourceRef: ref, contentPointer: "/illustrations/0",
+    };
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("complete");
+    expect(report.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(report.practiceCoverage.percent).toBe(100);
+    expect(report.validationCoverage.percent).toBe(100);
+  });
+
+
 });
