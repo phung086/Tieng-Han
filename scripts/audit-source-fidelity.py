@@ -74,8 +74,18 @@ def units(lesson, questions=()):
         for index, question in enumerate(reading.get('questions', [])):
             yield 'reading-question', str(question.get('id', index)), question.get('q'), question.get('sourceRef'), None
 
-    for index, prompt in enumerate(lesson.get('speaking', [])):
-        yield 'speaking-prompt', str(index), prompt, _aligned_ref(lesson.get('speakingSourceRefs'), index), None
+    speaking = lesson.get('speaking', [])
+    if isinstance(speaking, str):
+        # Legacy scalar speaking text has no provable item-level alignment.
+        # Keep it as one unverified unit instead of treating every character
+        # as a separate prompt (which could create a false literal match).
+        if speaking.strip():
+            yield 'speaking-unstructured', 'speaking', speaking, None, None
+    elif isinstance(speaking, list):
+        for index, prompt in enumerate(speaking):
+            yield 'speaking-prompt', str(index), prompt, _aligned_ref(lesson.get('speakingSourceRefs'), index), None
+    elif speaking is not None:
+        yield 'speaking-invalid-shape', 'speaking', '', None, None
 
     writing = lesson.get('writing')
     if writing:
@@ -105,7 +115,27 @@ def units(lesson, questions=()):
     for question in questions or []:
         if question.get('lessonId') != lesson.get('id'):
             continue
-        yield 'question-prompt', str(question.get('id', '')) + ':prompt', question.get('prompt'), question.get('sourceRef'), question.get('origin')
+        question_id = str(question.get('id', ''))
+        reference = question.get('sourceRef')
+        origin = question.get('origin')
+        yield 'question-prompt', question_id + ':prompt', question.get('prompt'), reference, origin
+
+        # For textbook-origin questions, audit the option text and answer key
+        # too; checking only the prompt can miss rewritten choices/answers.
+        if origin == 'source':
+            choices = question.get('choices', [])
+            if isinstance(choices, list):
+                for index, choice in enumerate(choices):
+                    if isinstance(choice, str) and choice.strip():
+                        yield 'question-choice', question_id + ':choice:' + str(index), choice, reference, origin
+                    else:
+                        yield 'question-choice-invalid', question_id + ':choice:' + str(index), '', None, None
+            elif isinstance(choices, str) and choices.strip():
+                yield 'question-choices-invalid-shape', question_id + ':choices', choices, None, None
+
+            answer = question.get('answer')
+            if isinstance(answer, str) and answer.strip():
+                yield 'question-answer', question_id + ':answer', answer, reference, origin
 
 
 def audit(root):
@@ -143,7 +173,11 @@ def audit(root):
                 pages = cited_pages(reference, file_name, source['pageCount'])
                 texts = [page_text(n) for n in pages]
                 candidate = compact(text)
-                if not candidate or not pages:
+                if kind == 'question-answer' and len(candidate) < 3:
+                    # A one/two-character key (for example "A" or "1") is
+                    # too weak for literal containment to prove fidelity.
+                    status = 'requires-review'
+                elif not candidate or not pages:
                     status = 'missing-citation'
                 elif any(text is None for text in texts):
                     status = 'missing-page-evidence'
