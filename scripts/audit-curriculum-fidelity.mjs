@@ -80,6 +80,10 @@ for (const file of files) {
       if (!sourceRef(question)) {
         record("QUESTION_NO_SOURCE", file, String(question.id), "issue", "Restore page/section sourceRef for question " + question.id);
       }
+      if (question.origin !== "source" && question.origin !== "derived") {
+        record("QUESTION_ORIGIN_UNVERIFIED", file, String(question.id), "warning",
+          "Set origin to source or derived before comparing question counts with the original textbook.");
+      }
     }
 
     for (const lesson of existingLessons) {
@@ -92,6 +96,7 @@ for (const file of files) {
           n + (object(dialogue) ? array(dialogue.lines).length : 0), 0);
         const readingQuestions = array(lesson.reading?.questions).length;
         const lessonQuestions = existingQuestions.filter(q => String(q.lessonId) === String(lesson.id));
+        const sourceQuestions = lessonQuestions.filter(question => question.origin === "source");
         const reading = object(lesson.reading) ? lesson.reading : null;
         const writing = object(lesson.writing) ? lesson.writing : null;
         const countNested = (entries, field) => entries.reduce((count, entry) =>
@@ -126,9 +131,9 @@ for (const file of files) {
           extraSectionItems: countNested(array(lesson.extraSections), "content"),
           mediaItems: array(lesson.media).length,
           illustrations: array(lesson.illustrations).length,
-          reviewQuestions: lessonQuestions.length,
-          reviewQuestionChoices: countNested(lessonQuestions, "choices"),
-          reviewQuestionAnswers: lessonQuestions.filter(question =>
+          reviewQuestions: sourceQuestions.length,
+          reviewQuestionChoices: countNested(sourceQuestions, "choices"),
+          reviewQuestionAnswers: sourceQuestions.filter(question =>
             typeof question.answer === "string" && question.answer.trim().length > 0).length,
         };
         if (!lessonQuestions.length && (vocab.length || grammar.length || readingQuestions)) {
