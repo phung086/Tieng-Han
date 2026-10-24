@@ -89,12 +89,11 @@ class CitationAuditTests(unittest.TestCase):
             'sourceRef': 'book.pdf p.1',
         }]
         rows = list(audit.units(lesson, questions))
-        by_kind = {row[0]: row for row in rows}
-        self.assertIn('question-prompt', by_kind)
-        self.assertIn('question-choice', by_kind)
-        self.assertEqual(by_kind['question-choice'][2], '학교에 갑니다')
-        self.assertEqual(by_kind['question-answer'][2], '학교에 갑니다')
-        self.assertEqual(by_kind['question-answer'][3], 'book.pdf p.1')
+        choices = [row for row in rows if row[0] == 'question-choice']
+        self.assertEqual([row[2] for row in choices], ['학교에 갑니다', '집에 갑니다'])
+        answer = next(row for row in rows if row[0] == 'question-answer')
+        self.assertEqual(answer[2], '학교에 갑니다')
+        self.assertEqual(answer[3], 'book.pdf p.1')
 
     def test_short_answer_key_is_never_claimed_as_literal_match(self):
         lesson = {'id': 1}
