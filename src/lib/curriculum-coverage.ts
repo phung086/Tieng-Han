@@ -195,6 +195,27 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (item.verified && reviewedPages.has(pageKey)) validated++;
     else issues.push("Item chưa kiểm chứng: " + key);
   }
+  // Reverse ownership check: inventory -> question links are not enough if the
+  // bundle also contains orphan questions that no source item accounts for.
+  const questionOwners = new Map<string, SourceInventory["items"]>();
+  for (const item of inventory.items) {
+    for (const questionId of new Set(item.practiceQuestionIds)) {
+      const questionKey = item.lessonId + ":" + questionId;
+      questionOwners.set(questionKey, [...(questionOwners.get(questionKey) ?? []), item]);
+    }
+  }
+  for (const question of bundle.course.questions) {
+    const questionKey = question.lessonId + ":" + question.id;
+    const owners = questionOwners.get(questionKey) ?? [];
+    if (owners.length !== 1) {
+      issues.push("Câu hỏi không được gắn với đúng một source item: " + questionKey + " (số liên kết: " + owners.length + ")");
+      continue;
+    }
+    const questionSourceRef = question.sourceRef?.replace(/^Derived from\\s+/i, "").trim();
+    if (!questionSourceRef || questionSourceRef !== owners[0].sourceRef.trim()) {
+      issues.push("sourceRef câu hỏi không khớp source item: " + questionKey);
+    }
+  }
   for (const lesson of bundle.course.lessons) {
     if (!representedLessons.has(lesson.id)) issues.push("Lesson chưa có item kiểm kê: " + lesson.id);
   }
