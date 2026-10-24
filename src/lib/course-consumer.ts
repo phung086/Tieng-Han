@@ -253,7 +253,8 @@ export async function getCourseLibrary(): Promise<RuntimeCourse[]> {
         const needsEvidence = !existing.source?.sourceManifest?.length ||
           !existing.source.sourceInventory ||
           !existing.source.evidenceFingerprint ||
-          existing.source.curriculumCoverage?.auditVersion !== CURRICULUM_AUDIT_VERSION;
+          existing.source.curriculumCoverage?.auditVersion !== CURRICULUM_AUDIT_VERSION ||
+          existing.source.evidenceFingerprint !== fingerprintRuntimeCourseEvidence(existing);
         if (!needsEvidence) continue;
 
         try {
