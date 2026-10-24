@@ -13,8 +13,9 @@ is required: the report uses the existing JSON metadata column.
 ## Create evidence
 
 Review the original textbook page by page. Include appendices, source exercises,
-all subparts and non-quiz content. Use stable item IDs and the most specific
-available `sourceRef`; do not derive source counts from the existing course.
+all subparts and non-quiz content. Use stable item IDs and a distinct, item-level
+`sourceRef` for every source item; never reuse one page/section reference to claim
+multiple items. Do not derive source counts from the existing course.
 Mark `verified: true` only after actual review. The structural validator cannot
 perform semantic comparison with the PDF or independently certify a review flag.
 
@@ -46,8 +47,11 @@ items, destinations, or question mappings produce diagnostics.
 }
 ```
 
-This is a synthetic shape example, not a textbook fixture. Every source page
-must appear exactly once. An unavailable page uses `status: "unavailable"`
+This is a synthetic shape example, not a textbook fixture. Each item-level
+`sourceRef` must include the exact `fileName` and one explicit physical-page
+anchor (for example `p.21`, `page 21`, or `trang 21`) matching `pageNumber`.
+A filename-only reference, missing page anchor, conflicting page number, or
+multi-page range is not sufficient for item coverage. Every source page must appear exactly once. An unavailable page uses `status: "unavailable"`
 and a reason; it keeps the report incomplete instead of being dropped.
 Every reviewed learning page must use `classification: "learning-content"` and
 have its individual source units inventoried. A page genuinely containing no
@@ -62,7 +66,7 @@ not changed by this guard.
 
 `contentPointer` is a JSON pointer relative to the lesson. Supported roots are
 the runtime learning sections and the lesson's filtered `questions` array.
-Use a distinct destination for each source unit; `/grammar/0/examples/1` and
+Item-level `sourceRef` uniqueness is checked after trimming and normalizing cosmetic whitespace around separators, so spacing differences cannot make one anchor look like multiple source items. Use a distinct destination for each source unit; `/grammar/0/examples/1` and
 `/extraSections/0/content/2` can identify original examples and exercise subparts.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
