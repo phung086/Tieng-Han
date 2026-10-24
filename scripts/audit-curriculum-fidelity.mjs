@@ -158,6 +158,15 @@ for (const file of files) {
             "Count all original textbook items and subparts for this lesson independently.");
         } else {
           lessonsCompared++;
+          // Every supported dimension must be explicit, including zero. Otherwise a
+          // partial inventory could silently omit a whole source category and still
+          // look consistent for the keys it happened to declare.
+          for (const key of Object.keys(counts)) {
+            if (!Object.hasOwn(expected, key)) {
+              record("MISSING_SOURCE_COUNT", label, key + " is absent from the independent inventory (write an explicit 0 when the source has none)", "issue",
+                "Complete every supported inventory dimension for this lesson before using count parity as evidence.");
+            }
+          }
           for (const [key, expectedCount] of Object.entries(expected)) {
             if (!(key in counts)) {
               record("UNSUPPORTED_SOURCE_COUNT", label, key + " has no implemented count in this audit", "issue",
@@ -171,10 +180,6 @@ for (const file of files) {
               record("COUNT_MISMATCH", label, key + ": expected " + expectedCount + ", got " + counts[key], "issue",
                 "Investigate missing/extra source items and preserve exact exercise patterns.");
             }
-          }
-          if (!("reviewQuestions" in expected)) {
-            record("EXERCISE_COUNT_UNVERIFIED", label, "no sourced reviewQuestions count", "warning",
-              "Count every textbook exercise and subpart, not only the existing quizzes.");
           }
         }
         // Quantity parity alone cannot certify that each source item is exercised.
