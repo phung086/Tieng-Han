@@ -176,6 +176,16 @@ describe("source, practice and validation coverage are independent release evide
     expect(declared.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
+  it("does not let a manual workbook task bypass a declared motif without a linked matching question", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items[1].motif = "choice";
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.issues.join(" ")).toContain("Sai motif luyện tập cho item 1:exercise");
+  });
+
   it("normalizes the documented Derived from prefix before matching practice refs", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.questions[0].sourceRef = "Derived from synthetic.pdf · p.1 · v1";
