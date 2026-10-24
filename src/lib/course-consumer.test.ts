@@ -129,7 +129,7 @@ function sourceCompleteBundle() {
   const bundle = sampleBundle();
   const sourceRef = "book.pdf · p.10 · v-1";
   const lesson = bundle.course.lessons[0];
-  lesson.vocabulary = [{ ...lesson.vocabulary[0], sourceRef }];
+  lesson.vocabulary = [{ ...lesson.vocabulary[0], example: "", sourceRef }];
   lesson.grammar = [];
   lesson.listening = [];
   lesson.speaking = [];
