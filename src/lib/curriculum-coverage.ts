@@ -33,7 +33,21 @@ export type CurriculumCoverage = {
   issues: string[];
 };
 export function isCurrentCompleteCoverage(coverage: CurriculumCoverage | undefined) {
-  return coverage?.auditVersion === CURRICULUM_AUDIT_VERSION && coverage.status === "complete";
+  if (coverage?.auditVersion !== CURRICULUM_AUDIT_VERSION || coverage.status !== "complete") return false;
+  if (!Array.isArray(coverage.issues) || coverage.issues.length !== 0) return false;
+
+  const ratios = [coverage.sourceCoverage, coverage.practiceCoverage, coverage.validationCoverage];
+  if (!ratios.every(item => item && typeof item === "object")) return false;
+  const total = ratios[0]?.total;
+  if (!Number.isSafeInteger(total) || (total ?? 0) <= 0) return false;
+
+  return ratios.every(item =>
+    Number.isSafeInteger(item.covered) &&
+    Number.isSafeInteger(item.total) &&
+    item.total === total &&
+    item.covered === item.total &&
+    item.percent === 100
+  );
 }
 const ratio = (covered: number, total: number): CoverageRatio => ({ covered, total, percent: total ? covered / total * 100 : null });
 
