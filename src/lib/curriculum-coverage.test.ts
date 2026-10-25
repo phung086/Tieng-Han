@@ -195,6 +195,18 @@ describe("source, practice and validation coverage are independent release evide
   });
 
 
+  it("does not count a vocabulary record without its target word as represented or practiced", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].vocabulary[0].ko = "";
+    bundle.course.lessons[0].vocabulary[0].targetText = "";
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Thiếu nội dung hoặc nguồn cho item 1:v1");
+  });
+
   it("rejects an inventory kind that points to a different content family", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].grammar = [{
