@@ -87,6 +87,46 @@ describe("exhaustive deterministic practice", () => {
     expect(bank.filter(q => q.id.includes("vocab-meaning")).some(q => q.answer === "nghĩa 72")).toBe(true);
   });
 
+  it("does not downgrade malformed source choice exercises to input practice", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "bad-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["학생", "선생님"], answer: "의사", sourceRef: "Sách p.24",
+    }];
+    input.reading!.questions = [{
+      id: "bad-reading", q: "누구입니까?", choices: ["학생", "학생"],
+      answer: "학생", sourceRef: "Sách p.25",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.some(q => q.id === "source-practice:4:listening:0:0")).toBe(false);
+    expect(bank.some(q => q.id === "source-practice:4:reading:0:0")).toBe(false);
+
+    // The source workbook retains the original tasks and option arrays for
+    // manual review instead of silently repairing the source material.
+    const workbook = buildSourceWorkbook(input, []);
+    expect(workbook.find(item => item.title === "Bài nghe 1")?.choices)
+      .toEqual(["학생", "선생님"]);
+    expect(workbook.find(item => item.title === "Đọc hiểu 1")?.choices)
+      .toEqual(["학생", "학생"]);
+  });
+
+  it("keeps genuinely open-ended listening and reading tasks as input", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "open-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: [], answer: "학생", sourceRef: "Sách p.24",
+    }];
+    input.reading!.questions = [{
+      id: "open-reading", q: "누구입니까?", choices: [],
+      answer: "학생", sourceRef: "Sách p.25",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.find(q => q.id === "source-practice:4:listening:0:0")?.type).toBe("input");
+    expect(bank.find(q => q.id === "source-practice:4:reading:0:0")?.type).toBe("input");
+  });
+
   it("does not manufacture graded answers for untranslated dialogue or open writing", () => {
     const input = lesson(1);
     input.dialogues![0].lines[1].vi = "";
