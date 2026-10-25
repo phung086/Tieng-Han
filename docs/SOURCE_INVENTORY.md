@@ -80,6 +80,10 @@ for the prompt string.
 When a grammar pattern is inventoried separately at `/grammar/{index}/pattern`,
 store its exact evidence in `grammar[index].patternSourceRef`. The rule-level
 `grammar[index].sourceRef` does not prove the nested pattern string.
+Likewise, inventory kinds must match pointer depth: `/reading` identifies the reading
+section, while `/reading/text` identifies passage text (`readingText` or an equivalent
+passage-text kind); `/writing` identifies the task, while `/writing/prompt` identifies
+the prompt itself. A section/task kind cannot stand in for its nested text or prompt.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
 same lesson with the matching source reference. For `practiceMethod: "questions"`,
