@@ -255,6 +255,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const seenItems = new Set<string>();
   const representedLessons = new Set<number>();
   const destinations = new Set<string>();
+  const inventoryPointerKeys = new Set(inventory.items.map(item => JSON.stringify([item.lessonId, item.contentPointer])));
+  const missingNestedPointers = new Set<string>();
   for (const item of inventory.items) {
     const key = item.lessonId + ":" + item.id;
     if (seenItems.has(key)) { issues.push("Trùng source item: " + key); continue; }
@@ -263,6 +265,23 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const lesson = bundle.course.lessons.find(lesson => lesson.id === item.lessonId);
     const questions = bundle.course.questions.filter(question => question.lessonId === item.lessonId);
     const content = lesson ? resolvePointer({ ...lesson, questions }, item.contentPointer) : undefined;
+    // An inventoried source question is an aggregate when it contains answer choices.
+    // Each original choice needs its own exact inventory pointer and choiceSourceRef.
+    const questionParent = /^\\/questions\\/(\\d+)$/.exec(item.contentPointer);
+    if (lesson && questionParent) {
+      const questionIndex = Number(questionParent[1]);
+      const parentQuestion = questions[questionIndex];
+      for (const [choiceIndex, choice] of (parentQuestion?.choices ?? []).entries()) {
+        if (typeof choice !== "string" || !choice.trim()) continue;
+        const childPointer = "/questions/" + questionIndex + "/choices/" + choiceIndex;
+        const childKey = JSON.stringify([item.lessonId, childPointer]);
+        if (!inventoryPointerKeys.has(childKey)) {
+          missingNestedPointers.add(childKey);
+          issues.push("Thiếu item-level inventory cho lựa chọn nguồn " + item.lessonId + ":" + childPointer +
+            " (được phát hiện từ " + key + ")");
+        }
+      }
+    }
     const isContentPath = /^\/(vocabulary|grammar|listening|speaking|dialogues|pronunciation|culture|extraSections|questions|media|illustrations)\/\d+(\/|$)|^\/(reading|writing)(\/|$)/.test(item.contentPointer);
     const destination = JSON.stringify([item.lessonId, item.contentPointer]);
     const repeatedDestination = destinations.has(destination);
@@ -335,7 +354,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   for (const lesson of bundle.course.lessons) {
     if (!representedLessons.has(lesson.id)) issues.push("Lesson chưa có item kiểm kê: " + lesson.id);
   }
-  const total = inventory.items.length;
+  const total = inventory.items.length + missingNestedPointers.size;
   if (!total) issues.push("Inventory rỗng không chứng minh độ đầy đủ.");
   return {
     auditVersion: CURRICULUM_AUDIT_VERSION,
