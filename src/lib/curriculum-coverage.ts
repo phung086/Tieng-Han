@@ -320,8 +320,11 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     // The existing source-workbook route exposes culture notes as manually
     // completable reading items. Permit that exact target without inventing a
     // quiz answer, but only when both authored fields are present.
-    const culturePointer = /^\\/culture\\/(\\d+)$/.exec(item.contentPointer);
-    const cultureItem = culturePointer ? lesson?.culture?.[Number(culturePointer[1])] : undefined;
+    const culturePointer = item.contentPointer.split("/");
+    const cultureIndex = culturePointer.length === 3 && culturePointer[1] === "culture" &&
+      culturePointer[2] !== "" && Number.isInteger(Number(culturePointer[2])) && Number(culturePointer[2]) >= 0
+      ? Number(culturePointer[2]) : -1;
+    const cultureItem = cultureIndex >= 0 ? lesson?.culture?.[cultureIndex] : undefined;
     const explicitCultureNote = Boolean(cultureItem && cultureItem.title.trim() && cultureItem.text.trim());
     const manualWorkbookTask = item.practiceMethod === "workbook" &&
       !item.motif && item.practiceQuestionIds.length === 0 &&
