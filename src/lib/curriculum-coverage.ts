@@ -154,6 +154,9 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
       : undefined;
   }
   if (index < 0) return undefined;
+  if (root === "grammar" && child === "pattern" && parts.length === 3) {
+    return lesson.grammar[index]?.patternSourceRef?.trim() || undefined;
+  }
   if (root === "listening" && child === "choices" && parts.length === 4) {
     return lesson.listening[index]?.choiceSourceRefs?.[childIndex]?.trim() || undefined;
   }
@@ -214,7 +217,12 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     lesson.vocabulary.forEach((item, index) => {
       if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
     });
-    lesson.grammar.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".grammar[" + index + "].examples"));
+    lesson.grammar.forEach((item, index) => {
+      if (item.patternSourceRef !== undefined && !item.patternSourceRef.trim()) {
+        issues.push("Tham chiếu mẫu ngữ pháp rỗng tại lesson " + lesson.id + ".grammar[" + index + "].pattern");
+      }
+      aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".grammar[" + index + "].examples");
+    });
     lesson.pronunciation?.forEach((item, index) => aligned(item.exampleSourceRefs, item.examples.length, "lesson " + lesson.id + ".pronunciation[" + index + "].examples"));
     lesson.extraSections?.forEach((item, index) => aligned(item.contentSourceRefs, item.content.length, "lesson " + lesson.id + ".extraSections[" + index + "].content"));
     if (lesson.writing) aligned(lesson.writing.targetWordSourceRefs, lesson.writing.targetWords.length, "lesson " + lesson.id + ".writing.targetWords");
