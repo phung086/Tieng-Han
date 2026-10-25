@@ -8,6 +8,7 @@ import {useLearning} from "@/lib/learning-state";
 import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
+import type { SourceExerciseMotif } from "@/data/content";
 import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
 function readProgress(input: string | null, valid: Set<string>): string[] {
@@ -35,6 +36,17 @@ function readDrafts(input: string | null): Record<string, string> {
     return {};
   }
 }
+
+const sourceExerciseMotifLabels: Record<SourceExerciseMotif, string> = {
+  choice: "Chọn đáp án",
+  "fill-blank": "Điền từ",
+  reorder: "Sắp xếp",
+  matching: "Nối cặp",
+  translation: "Dịch",
+  "role-play": "Đóng vai",
+  "extended-writing": "Viết mở rộng",
+  manual: "Tự luyện thủ công",
+};
 
 export function SourceWorkbook({ lessonId }: { lessonId: number }) {
   const { course, hydrated } = useContent();
@@ -178,18 +190,57 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                     <div>
                       <span className="eyebrow">{category}</span>
                       <h3>{item.title}</h3>
+                      {item.exerciseType ? <p className="eyebrow">Mô típ gốc: {sourceExerciseMotifLabels[item.exerciseType]}</p> : null}
                     </div>
                   </div>
                   <p className="korean-text" style={{ whiteSpace: "pre-wrap" }}>{item.prompt}</p>
-                  {item.choices?.length ? (
+                  {item.exerciseType === "choice" && item.choices?.length ? (
+                    <fieldset className="extra-content">
+                      <legend>Chọn một đáp án</legend>
+                      {item.choices.map((choice, index) => (
+                        <label key={index} style={{ display: "block", padding: "0.25rem 0" }}>
+                          <input
+                            type="radio"
+                            name={item.id}
+                            value={choice}
+                            checked={drafts[item.id] === choice}
+                            onChange={() => updateDraft(item.id, choice)}
+                          />{" "}
+                          {String.fromCharCode(65 + index)}. {choice}
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : item.choices?.length ? (
                     <div className="extra-content">
                       {item.choices.map((choice, index) => (
                         <p key={index}>{String.fromCharCode(65 + index)}. {choice}</p>
                       ))}
                     </div>
                   ) : null}
+                  {item.exerciseType === "reorder" && item.tokens?.length ? (
+                    <div className="extra-content">
+                      <strong>Cụm từ cần sắp xếp</strong>
+                      <p>{item.tokens.map((token, index) => <span key={index}>{index ? " · " : ""}{token}</span>)}</p>
+                    </div>
+                  ) : null}
+                  {item.exerciseType === "matching" && (item.leftItems?.length || item.rightItems?.length) ? (
+                    <div className="extra-content" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                      <div><strong>Cột A</strong>{(item.leftItems ?? []).map((entry, index) => <p key={index}>{index + 1}. {entry}</p>)}</div>
+                      <div><strong>Cột B</strong>{(item.rightItems ?? []).map((entry, index) => <p key={index}>{String.fromCharCode(65 + index)}. {entry}</p>)}</div>
+                    </div>
+                  ) : null}
                   {item.hint ? <p>{item.hint}</p> : null}
-                  {!isFallback && (!item.answer || item.category === "Bài tập bổ sung") ? (
+                  {!isFallback && (
+                    item.exerciseType === "fill-blank" ||
+                    item.exerciseType === "reorder" ||
+                    item.exerciseType === "matching" ||
+                    item.exerciseType === "translation" ||
+                    item.exerciseType === "role-play" ||
+                    item.exerciseType === "extended-writing" ||
+                    item.exerciseType === "manual" ||
+                    (item.exerciseType === "choice" && !item.choices?.length) ||
+                    (!item.exerciseType && (!item.answer || item.category === "Bài tập bổ sung"))
+                  ) ? (
                     <div className="writing-area">
                       <textarea
                         aria-label={"Bài làm cho " + item.title}
