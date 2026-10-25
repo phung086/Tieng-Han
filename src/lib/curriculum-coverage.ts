@@ -103,7 +103,7 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
     case "culture":
       return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa", "문화", "문화노트");
     case "extraSections":
-      if (parts.length === 2 && indexed(index)) return at("extrasection", "workbooksection", "supplementsection", "activitysection", "exercisegroup", "baitapsection", "연습섹션", "보충섹션");
+      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercisesection", "workbooksection", "supplementsection", "activitysection", "exercisegroup", "baitapsection", "연습섹션", "보충섹션");
       if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
       return false;
     case "media":
