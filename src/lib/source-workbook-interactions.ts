@@ -14,10 +14,10 @@ export function readMatchingSelections(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
     return Object.fromEntries(
       Object.entries(parsed).filter(([left, right]) =>
-        /^\\d+$/.test(left) &&
+        /^\d+$/.test(left) &&
         Number(left) < leftCount &&
         typeof right === "string" &&
-        /^\\d+$/.test(right) &&
+        /^\d+$/.test(right) &&
         Number(right) < rightCount,
       ),
     ) as MatchingSelectionMap;
@@ -40,7 +40,7 @@ export function updateMatchingSelection(
   }
   if (rightIndex === "") {
     delete selections[String(leftIndex)];
-  } else if (/^\\d+$/.test(rightIndex) && Number(rightIndex) < rightCount) {
+  } else if (/^\d+$/.test(rightIndex) && Number(rightIndex) < rightCount) {
     selections[String(leftIndex)] = String(Number(rightIndex));
   }
   return JSON.stringify(selections);
