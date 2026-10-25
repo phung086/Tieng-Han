@@ -259,7 +259,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const missingNestedPointers = new Set<string>();
   // Child choice rows cannot stand in for the source question/prompt that owns them.
   for (const item of inventory.items) {
-    const choicePointer = /^\\/questions\\/(\\d+)\\/choices\\/\\d+$/.exec(item.contentPointer);
+    const choicePointer = /^\/questions\/(\d+)\/choices\/\d+$/.exec(item.contentPointer);
     if (!choicePointer) continue;
     const parentPointer = "/questions/" + choicePointer[1];
     const parentKey = JSON.stringify([item.lessonId, parentPointer]);
