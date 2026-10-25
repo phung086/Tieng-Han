@@ -102,6 +102,27 @@ export type CultureItem = {
   sourceRef?: string;
 };
 
+export type SourceExerciseMotif =
+  | "choice" | "fill-blank" | "reorder" | "matching"
+  | "translation" | "role-play" | "extended-writing" | "manual";
+
+/** Optional, source-backed structure for one original exercise subpart.
+ * contentIndex points to the verbatim prompt in ExtraSection.content.
+ * Missing answers stay manual; never infer an answer from the motif alone.
+ */
+export type ExtraSectionExerciseItem = {
+  id: string;
+  contentIndex: number;
+  type: SourceExerciseMotif;
+  choices?: string[];
+  tokens?: string[];
+  leftItems?: string[];
+  rightItems?: string[];
+  answerPairs?: Array<{ left: string; right: string }>;
+  answer?: string;
+  hint?: string;
+};
+
 export type ExtraSection = {
   id: string;
   kind: string;
@@ -110,6 +131,8 @@ export type ExtraSection = {
   sourceRef?: string;
   /** One source ref per content entry, aligned by index. */
   contentSourceRefs?: string[];
+  /** Typed original exercise metadata; content remains the verbatim source prompt. */
+  contentExerciseItems?: ExtraSectionExerciseItem[];
 };
 
 export type LessonContent = {
