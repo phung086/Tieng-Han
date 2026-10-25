@@ -257,9 +257,9 @@ describe("parseCourseBundle", () => {
     const loop = readFileSync(new URL("../../docs/SOURCE_COMPLETE_PRACTICE_LOOP.md", import.meta.url), "utf8");
 
     expect(guide).toContain("không đặt quota cố định");
-    expect(guide).not.toMatch(/12\\s*[–-]\\s*20\\s+câu/i);
+    expect(guide).not.toMatch(/12\s*[–-]\s*20\s+câu/i);
     expect(loop).toContain("Không dùng số câu quiz làm đại diện");
-    expect(loop).toContain("NO FIXED QUIZ CAP");
+    expect(loop).toContain("Số bài tập sinh ra phải theo nhu cầu từng source item");
   });
 
   /* ---- 3. Contract matches submit_course_bundle validation ---- */
