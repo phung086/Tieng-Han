@@ -300,6 +300,14 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
     const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
     const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
+    const sectionContainerIndex = /^\/extraSections\/(\d+)$/.exec(item.contentPointer)?.[1];
+    const sectionContainer = sectionContainerIndex === undefined
+      ? undefined
+      : lesson?.extraSections?.[Number(sectionContainerIndex)];
+    if (!isRawTranscript && Array.isArray(sectionContainer?.content) && sectionContainer.content.length > 1) {
+      issues.push("Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index} thay vì dùng container: " + key);
+      continue;
+    }
     const hasContent = isContentPath && !isRawTranscript && !repeatedDestination &&
       hasPrimarySourceContent(item.contentPointer, content);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
