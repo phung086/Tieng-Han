@@ -23,19 +23,21 @@ describe("source-grounded practice coverage", () => {
       question("q2", "book:p1:v1"),
       question("q3", "book:p1:v1"),
     ]);
-    expect(report.sourceItems).toBe(4);
+    expect(report.sourceItems).toBe(5);
     expect(report.verifiedItems).toBe(1);
-    expect(report.uncovered).toHaveLength(3);
+    expect(report.uncovered).toHaveLength(4);
     expect(report.complete).toBe(false);
   });
 
   it("does not grant example coverage from a shared grammar section reference", () => {
     const report = auditLessonPracticeCoverage(lesson, [question("qg", "book:p2:g1")]);
     const examples = report.items.filter(item => item.kind === "grammar-example");
+    const pattern = report.items.find(item => item.kind === "grammar-pattern");
     expect(examples).toHaveLength(2);
     expect(examples.every(item => item.sourceRef === undefined)).toBe(true);
+    expect(pattern?.sourceRef).toBeUndefined();
     expect(report.verifiedItems).toBe(0);
-    expect(report.uncovered).toHaveLength(4);
+    expect(report.uncovered).toHaveLength(5);
     expect(report.complete).toBe(false);
   });
 
@@ -51,17 +53,20 @@ describe("source-grounded practice coverage", () => {
         id: "g-example", pattern: "입니다", meaning: "", explanation: "",
         examples: ["선생님입니다.", "의사입니다."],
         sourceRef: "book:p2:g-example",
+        patternSourceRef: "book:p2:g-example-pattern",
         exampleSourceRefs: ["book:p2:g-example-0", "book:p2:g-example-1"],
       }],
     };
     const report = auditLessonPracticeCoverage(itemLesson, [
       question("q-word", "book:p1:v-example"),
+      question("q-g-pattern", "book:p2:g-example-pattern"),
       question("q-v-example", "book:p1:v-example-sentence"),
       question("q-g-example-0", "book:p2:g-example-0"),
       question("q-g-example-1", "book:p2:g-example-1"),
     ]);
-    expect(report.sourceItems).toBe(4);
-    expect(report.verifiedItems).toBe(4);
+    expect(report.sourceItems).toBe(5);
+    expect(report.verifiedItems).toBe(5);
+    expect(report.items.find(item => item.kind === "grammar-pattern")?.coveredBy).toEqual(["q-g-pattern"]);
     expect(report.complete).toBe(true);
   });
 
