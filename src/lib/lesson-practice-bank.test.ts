@@ -258,4 +258,32 @@ describe("full-fidelity source workbook", () => {
     const badMatching = buildSourceWorkbook(input, []);
     expect(badMatching.find(item => item.id === "source:4:extra-0:3:0")?.answer).toBeUndefined();
   });
+
+  it("reveals a source reorder answer only when available token chunks can construct it", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "reorder-source",
+      kind: "original-activities",
+      title: "Sắp xếp câu",
+      content: ["Sắp xếp các cụm từ thành câu."],
+      contentSourceRefs: ["Sách p.41 · reorder-1"],
+      contentExerciseItems: [{
+        id: "reorder-source-1",
+        contentIndex: 0,
+        type: "reorder",
+        tokens: ["저는", "학생입니다", "선생님입니다"],
+        answer: "저는 학생입니다.",
+      }],
+    }];
+
+    const getItem = () => buildSourceWorkbook(input, []).find(item => item.exerciseType === "reorder");
+    expect(getItem()?.answer).toBe("저는 학생입니다.");
+
+    input.extraSections![0].contentExerciseItems![0].answer = "저는 의사입니다.";
+    expect(getItem()?.answer).toBeUndefined();
+
+    // A token chunk may be used only as many times as it appears in the source bank.
+    input.extraSections![0].contentExerciseItems![0].answer = "저는 학생입니다 학생입니다.";
+    expect(getItem()?.answer).toBeUndefined();
+  });
 });
