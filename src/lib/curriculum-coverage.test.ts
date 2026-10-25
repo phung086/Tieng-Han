@@ -444,4 +444,74 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.validationCoverage).toEqual({ covered: 6, total: 6, percent: 100 });
   });
 
+  it("requires exact item-level evidence for an independently inventoried grammar pattern and preserves it through bundle parsing", () => {
+    const bundle = fixture();
+    bundle.sourceManifest = [{
+      name: "synthetic.pdf", size: 1, lastModified: 1, pageCount: 1, sha256: "a".repeat(64),
+    }];
+    const patternRef = "synthetic.pdf · p.1 · grammar-pattern";
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary = [];
+    lesson.extraSections = [];
+    lesson.grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Synthetic rule",
+      examples: [], sourceRef: "synthetic.pdf · p.1 · grammar-section",
+    }];
+    bundle.course.questions = [{
+      id: "q-pattern", lessonId: 1, skill: "grammar", type: "input", title: "Pattern",
+      prompt: "Write the grammar pattern", answer: "N입니다", explanation: "Synthetic fixture",
+      sourceRef: patternRef, origin: "source",
+    }];
+    bundle.sourceInventory = {
+      version: 1,
+      pages: [{ fileName: "synthetic.pdf", pageNumber: 1, status: "reviewed", classification: "learning-content" }],
+      items: [{
+        id: "grammar-pattern", lessonId: 1, kind: "grammarpattern", fileName: "synthetic.pdf",
+        pageNumber: 1, sourceRef: patternRef, contentPointer: "/grammar/0/pattern",
+        practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-pattern"], verified: true,
+      }],
+    };
+
+    const withoutExactRef = auditCurriculumCoverage(bundle);
+    expect(withoutExactRef.sourceCoverage.covered).toBe(0);
+    expect(withoutExactRef.issues.join(" ")).toContain("sourceRef inventory không khớp");
+
+    lesson.grammar[0].patternSourceRef = patternRef;
+    const parsed = parseCourseBundle(JSON.stringify(bundle));
+    expect(parsed.course.lessons[0].grammar[0].patternSourceRef).toBe(patternRef);
+    const report = auditCurriculumCoverage(parsed);
+    expect(report.status).toBe("complete");
+    expect(report.sourceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
+    expect(report.validationCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
+  });
+
+  it("rejects an explicitly blank grammar-pattern ref instead of treating it as evidence", () => {
+    const bundle = fixture();
+    bundle.sourceManifest = [{
+      name: "synthetic.pdf", size: 1, lastModified: 1, pageCount: 1, sha256: "a".repeat(64),
+    }];
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary = [];
+    lesson.extraSections = [];
+    lesson.grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Synthetic rule",
+      examples: [], sourceRef: "synthetic.pdf · p.1 · grammar-section", patternSourceRef: " ",
+    }];
+    bundle.course.questions = [];
+    bundle.sourceInventory = {
+      version: 1,
+      pages: [{ fileName: "synthetic.pdf", pageNumber: 1, status: "reviewed", classification: "learning-content" }],
+      items: [{
+        id: "grammar-pattern", lessonId: 1, kind: "grammarpattern", fileName: "synthetic.pdf",
+        pageNumber: 1, sourceRef: "synthetic.pdf · p.1 · grammar-pattern",
+        contentPointer: "/grammar/0/pattern", practiceMethod: "questions", motif: "input",
+        practiceQuestionIds: [], verified: true,
+      }],
+    };
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).not.toBe("complete");
+    expect(report.issues.join(" ")).toContain("Tham chiếu mẫu ngữ pháp rỗng");
+  });
+
 });

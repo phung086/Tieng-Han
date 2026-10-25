@@ -17,6 +17,7 @@ function lesson(wordCount = 3): LessonContent {
     grammar: [{
       id: "g1", pattern: "-입니다", meaning: "là", explanation: "Lối nói trang trọng",
       examples: ["저는 학생입니다.", "여기는 학교입니다."], sourceRef: "Sách p.23 · g1",
+      patternSourceRef: "Sách p.23 · g1 · pattern",
       exampleSourceRefs: ["Sách p.23 · g1 · example-0", "Sách p.23 · g1 · example-1"],
     }],
     listening: [{
@@ -103,6 +104,7 @@ describe("exhaustive deterministic practice", () => {
     const bank = buildLessonPracticeBank(input, []);
     const find = (fragment: string) => bank.find(q => q.id.includes(fragment));
     expect(find(":vocab-example:")?.sourceRef).toBe("Sách p.22 · v0 · example");
+    expect(find(":grammar-pattern:")?.sourceRef).toBe("Sách p.23 · g1 · pattern");
     expect(find(":grammar-example-0:")?.sourceRef).toBe("Sách p.23 · g1 · example-0");
     expect(find(":speaking:0:")?.sourceRef).toBe("Sách p.24 · speaking-0");
     expect(find(":pronunciation-0:")?.sourceRef).toBe("Sách p.28 · pronunciation-example-0");
@@ -110,12 +112,14 @@ describe("exhaustive deterministic practice", () => {
 
     const legacy = lesson(1);
     delete legacy.vocabulary[0].exampleSourceRef;
+    delete legacy.grammar[0].patternSourceRef;
     delete legacy.grammar[0].exampleSourceRefs;
     delete legacy.speakingSourceRefs;
     delete legacy.pronunciation![0].exampleSourceRefs;
     delete legacy.writing!.targetWordSourceRefs;
     const legacyBank = buildLessonPracticeBank(legacy, []);
     expect(legacyBank.find(q => q.id.includes(":vocab-example:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":grammar-pattern:"))?.sourceRef).toBeUndefined();
     expect(legacyBank.find(q => q.id.includes(":grammar-example-0:"))?.sourceRef).toBeUndefined();
     expect(legacyBank.find(q => q.id.includes(":speaking:0:"))?.sourceRef).toBeUndefined();
     expect(legacyBank.find(q => q.id.includes(":pronunciation-0:"))?.sourceRef).toBeUndefined();

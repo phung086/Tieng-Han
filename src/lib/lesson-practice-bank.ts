@@ -101,7 +101,7 @@ export function buildLessonPracticeBank(
       prompt: "Viết mẫu ngữ pháp có nghĩa: " + item.meaning,
       answer: pattern,
       explanation: item.explanation || pattern,
-      sourceRef: item.sourceRef,
+      sourceRef: item.patternSourceRef,
     });
     (item.examples ?? []).forEach((example, exampleIndex) => {
       const sentence = nonEmpty(example);
