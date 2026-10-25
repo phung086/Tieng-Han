@@ -21,7 +21,26 @@ export function illustrationUrl(courseId: string, illustration: LearningIllustra
   return "/api/courses/" + encodeURIComponent(courseId) + "/illustrations?" + new URLSearchParams({ id: illustration.id });
 }
 
+const farPixelEdge = (normalized: number, size: number) => {
+  const pixels = normalized * size;
+  // Avoid rounding a mathematically integral edge outward because of binary
+  // floating-point noise such as (0.2 + 0.4) * 100 === 60.00000000000001.
+  return Math.ceil(pixels - Number.EPSILON * Math.max(1, Math.abs(pixels)) * 4);
+};
+
+/**
+ * Convert normalized crop bounds to a pixel rectangle without dropping edge
+ * pixels when the normalized origin falls between device pixels.
+ */
 export function cropPixels(region: LearningIllustration["region"], width: number, height: number) {
-  const left = Math.floor(region[0] * width), top = Math.floor(region[1] * height);
-  return { left, top, width: Math.max(1, Math.min(width-left, Math.ceil(region[2]*width))), height: Math.max(1, Math.min(height-top, Math.ceil(region[3]*height))) };
+  const left = Math.floor(region[0] * width);
+  const top = Math.floor(region[1] * height);
+  const right = Math.min(width, farPixelEdge(region[0] + region[2], width));
+  const bottom = Math.min(height, farPixelEdge(region[1] + region[3], height));
+  return {
+    left,
+    top,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
 }
