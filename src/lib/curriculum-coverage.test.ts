@@ -360,7 +360,7 @@ describe("source, practice and validation coverage are independent release evide
       pointer: string;
       kind: string;
       expectedChildren: string[];
-      skill: "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing" | "pronunciation";
+      skill: "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
       prompt: string;
       answer: string;
       setup: (bundle: CompiledCourseBundle, ref: string) => void;
