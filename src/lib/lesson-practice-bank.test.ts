@@ -271,7 +271,7 @@ describe("full-fidelity source workbook", () => {
         id: "reorder-source-1",
         contentIndex: 0,
         type: "reorder",
-        tokens: ["저는", "학생입니다", "선생님입니다"],
+        tokens: ["학생입니다", "저는", "선생님입니다"],
         answer: "저는 학생입니다.",
       }],
     }];
