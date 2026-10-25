@@ -275,6 +275,52 @@ describe("source, practice and validation coverage are independent release evide
     expect(validChild.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
+  it("keeps reading and writing section kinds distinct from nested text/prompt kinds", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].extraSections = [];
+    bundle.sourceInventory.pages[1] = {
+      fileName: "synthetic.pdf", pageNumber: 2, status: "reviewed",
+      classification: "non-learning", reason: "Synthetic blank page",
+    };
+
+    const readingRef = "synthetic.pdf · p.1 · reading-text";
+    const promptRef = "synthetic.pdf · p.1 · writing-prompt";
+    bundle.course.lessons[0].reading = {
+      title: "Reading title", text: "Original reading passage", translation: "Bản dịch",
+      questions: [], sourceRef: "synthetic.pdf · p.1 · reading-section", textSourceRef: readingRef,
+    };
+    bundle.course.lessons[0].writing = {
+      prompt: "Write a short self-introduction.", hint: "Use the lesson grammar.",
+      targetWords: [], sourceRef: "synthetic.pdf · p.1 · writing-task", promptSourceRef: promptRef,
+    };
+    bundle.course.questions.push(
+      { id: "q-reading-text", lessonId: 1, skill: "reading", type: "input", title: "Passage", prompt: "Passage", answer: "Original reading passage", explanation: "Fixture", sourceRef: readingRef, origin: "source" },
+      { id: "q-writing-prompt", lessonId: 1, skill: "writing", type: "input", title: "Prompt", prompt: "Write a short self-introduction.", answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source" },
+    );
+    bundle.sourceInventory.items[1] = {
+      ...bundle.sourceInventory.items[1],
+      id: "reading-text", kind: "reading", pageNumber: 1, sourceRef: readingRef,
+      contentPointer: "/reading/text", practiceMethod: "questions", motif: "input",
+      practiceQuestionIds: ["q-reading-text"],
+    };
+    bundle.sourceInventory.items.push({
+      ...bundle.sourceInventory.items[1],
+      id: "writing-prompt", kind: "writingtask", sourceRef: promptRef,
+      contentPointer: "/writing/prompt", practiceQuestionIds: ["q-writing-prompt"],
+    });
+
+    const wrongKinds = auditCurriculumCoverage(bundle);
+    expect(wrongKinds.status).toBe("partial");
+    expect(wrongKinds.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    bundle.sourceInventory.items[1].kind = "readingtext";
+    bundle.sourceInventory.items[2].kind = "writingprompt";
+    const exactKinds = auditCurriculumCoverage(bundle);
+    expect(exactKinds.status).toBe("complete");
+    expect(exactKinds.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(exactKinds.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
   it("fails closed for unknown source kinds instead of treating a valid pointer as proof", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[0].kind = "unclassified-source-kind";
@@ -381,7 +427,7 @@ describe("source, practice and validation coverage are independent release evide
     );
     bundle.sourceInventory.items.push(
       { id: "reading-title", lessonId: 1, kind: "readingtitle", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: titleRef, contentPointer: "/reading/title", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-title"], verified: true },
-      { id: "reading-text", lessonId: 1, kind: "reading", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: textRef, contentPointer: "/reading/text", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-text"], verified: true },
+      { id: "reading-text", lessonId: 1, kind: "readingtext", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: textRef, contentPointer: "/reading/text", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-text"], verified: true },
     );
 
     const missing = auditCurriculumCoverage(bundle);
@@ -411,7 +457,7 @@ describe("source, practice and validation coverage are independent release evide
       answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source",
     });
     bundle.sourceInventory.items.push({
-      id: "writing-prompt", lessonId: 1, kind: "writingtask", fileName: "synthetic.pdf",
+      id: "writing-prompt", lessonId: 1, kind: "writingprompt", fileName: "synthetic.pdf",
       pageNumber: 1, sourceRef: promptRef, contentPointer: "/writing/prompt",
       practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-writing-prompt"], verified: true,
     });
