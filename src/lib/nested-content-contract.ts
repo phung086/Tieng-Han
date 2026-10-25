@@ -15,6 +15,19 @@ const dialogueLine = z.object({
   if (!(line.targetText || line.ko)?.trim()) ctx.addIssue({ code: "custom", path: ["targetText"], message: "targetText or ko is required" });
 });
 
+const sourceExerciseItem = z.object({
+  id,
+  contentIndex: z.number().int().nonnegative(),
+  type: z.enum(["choice", "fill-blank", "reorder", "matching", "translation", "role-play", "extended-writing", "manual"]),
+  choices: strings.optional(),
+  tokens: strings.optional(),
+  leftItems: strings.optional(),
+  rightItems: strings.optional(),
+  answerPairs: z.array(z.object({ left: text, right: text })).optional(),
+  answer: text.optional(),
+  hint: text.optional(),
+});
+
 // This validates fields consumed by the UI before alias normalization can hide
 // malformed input. Unknown extension fields remain on the original bundle.
 const nestedLessonSchema = z.object({
@@ -28,7 +41,10 @@ const nestedLessonSchema = z.object({
   dialogues: z.array(z.object({ ...withId, origin: z.enum(["source", "derived"]).optional(), translationOrigin: z.enum(["source", "derived"]).optional(), lines: z.array(dialogueLine) })).optional(),
   pronunciation: z.array(z.object({ ...withId, title: text, explanation: text, examples: strings, exampleSourceRefs: strings.optional() })).optional(),
   culture: z.array(z.object({ ...withId, title: text, text })).optional(),
-  extraSections: z.array(z.object({ ...withId, kind: text, title: text, content: strings, contentSourceRefs: strings.optional() })).optional(),
+  extraSections: z.array(z.object({
+    ...withId, kind: text, title: text, content: strings, contentSourceRefs: strings.optional(),
+    contentExerciseItems: z.array(sourceExerciseItem).optional(),
+  })).optional(),
   media: z.array(z.object({
     ...withId, type: z.enum(["image", "video", "audio", "document"]),
     role: z.enum(["illustration", "diagram", "source-page", "external"]), src: text, alt: text,
@@ -70,6 +86,41 @@ export function validateNestedContent(value: unknown, prefix: string): BundleVal
       if (typeof itemId !== "string") return;
       if (seen.has(itemId)) errors.push({ path: `${prefix}.${key}[${index}].id`, reason: "duplicate id", expected: "unique item id", actual: itemId });
       seen.add(itemId);
+    });
+  }
+  if (Array.isArray(row.extraSections)) {
+    row.extraSections.forEach((rawSection, sectionIndex) => {
+      if (!rawSection || typeof rawSection !== "object" || Array.isArray(rawSection)) return;
+      const section = rawSection as Record<string, unknown>;
+      if (!Array.isArray(section.contentExerciseItems)) return;
+      const contentLength = Array.isArray(section.content) ? section.content.length : 0;
+      const seenIds = new Set<string>();
+      const seenIndexes = new Set<number>();
+      section.contentExerciseItems.forEach((rawActivity, activityIndex) => {
+        if (!rawActivity || typeof rawActivity !== "object" || Array.isArray(rawActivity)) return;
+        const activity = rawActivity as Record<string, unknown>;
+        if (typeof activity.id === "string") {
+          if (seenIds.has(activity.id)) errors.push({
+            path: `${prefix}.extraSections[${sectionIndex}].contentExerciseItems[${activityIndex}].id`,
+            reason: "duplicate source exercise metadata id", expected: "unique id within section", actual: activity.id,
+          });
+          seenIds.add(activity.id);
+        }
+        const contentIndex = activity.contentIndex;
+        if (typeof contentIndex !== "number" || !Number.isSafeInteger(contentIndex) || contentIndex < 0 || contentIndex >= contentLength) {
+          errors.push({
+            path: `${prefix}.extraSections[${sectionIndex}].contentExerciseItems[${activityIndex}].contentIndex`,
+            reason: "must point to an existing verbatim content entry", expected: `0..${Math.max(0, contentLength - 1)}`, actual: contentIndex,
+          });
+        } else if (seenIndexes.has(contentIndex)) {
+          errors.push({
+            path: `${prefix}.extraSections[${sectionIndex}].contentExerciseItems[${activityIndex}].contentIndex`,
+            reason: "multiple exercise motifs point to the same content entry", expected: "one motif per content entry", actual: contentIndex,
+          });
+        } else {
+          seenIndexes.add(contentIndex);
+        }
+      });
     });
   }
   if (result.success) for (const [index, image] of (result.data.illustrations ?? []).entries()) {

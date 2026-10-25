@@ -261,6 +261,44 @@ describe("parseCourseBundle", () => {
   });
 
   /* ---- 4. Minimal valid course bundle succeeds validation ---- */
+  it("accepts typed source exercise metadata and rejects pointers outside original content", () => {
+    const raw = JSON.parse(validBundleJson()) as {
+      course: { lessons: Array<Record<string, unknown>> };
+    };
+    raw.course.lessons[0].extraSections = [{
+      id: "typed-exercise",
+      kind: "original-activities",
+      title: "Bài tập gốc",
+      content: ["Chọn đáp án đúng: 누구입니까?"],
+      contentSourceRefs: ["SÁCH SƠ CẤP 1.pdf · p.35 · exercise-1"],
+      contentExerciseItems: [{
+        id: "choice-1",
+        contentIndex: 0,
+        type: "choice",
+        choices: ["학생", "의사"],
+        answer: "학생",
+      }],
+    }];
+
+    const parsed = parseCourseBundle(JSON.stringify(raw));
+    expect(parsed.course.lessons[0].extraSections?.[0].contentExerciseItems).toEqual([{
+      id: "choice-1",
+      contentIndex: 0,
+      type: "choice",
+      choices: ["학생", "의사"],
+      answer: "학생",
+    }]);
+    expect(getCompilationContract(sampleLanguage).runtimeSchema.LessonContent.extraSections).toContain("contentExerciseItems");
+
+    const invalid = JSON.parse(JSON.stringify(raw)) as {
+      course: { lessons: Array<Record<string, unknown>> };
+    };
+    const sections = invalid.course.lessons[0].extraSections as Array<Record<string, unknown>>;
+    const activities = sections[0].contentExerciseItems as Array<Record<string, unknown>>;
+    activities[0].contentIndex = 1;
+    expect(() => parseCourseBundle(JSON.stringify(invalid))).toThrow(CourseBundleValidationError);
+  });
+
   it("accepts a minimal valid course bundle", () => {
     const bundle = parseCourseBundle(validBundleJson());
     expect(bundle.course.title).toBe("Tiếng Hàn Sơ cấp 1");

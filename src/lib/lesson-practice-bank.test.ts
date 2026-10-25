@@ -203,4 +203,87 @@ describe("full-fidelity source workbook", () => {
     expect(translationExercise?.answer).toBeUndefined();
     expect(items.find(q => q.title === "Nhiệm vụ viết")?.answer).toBeUndefined();
   });
+
+  it("preserves typed original exercise motifs and only reveals source-backed answer keys", () => {
+    const input = lesson(1);
+    const sourceContent = [
+      "Chọn đáp án đúng: 누구입니까?",
+      "Điền từ còn thiếu: 저는 ___입니다.",
+      "Sắp xếp thành câu: 저는 / 학생입니다",
+      "Nối cột A và B.",
+      "Dịch sang tiếng Hàn: Xin chào.",
+      "Đóng vai A và B.",
+      "Viết một đoạn giới thiệu.",
+      "Bài tập cần kiểm tra lại PDF.",
+    ];
+    input.extraSections = [{
+      id: "typed-exercises",
+      kind: "original-activities",
+      title: "Bài tập gốc",
+      content: sourceContent,
+      contentSourceRefs: sourceContent.map((_, index) => "Sách p.40 · exercise-" + index),
+      contentExerciseItems: [
+        { id: "choice-1", contentIndex: 0, type: "choice", choices: ["학생", "의사"], answer: "학생" },
+        { id: "blank-1", contentIndex: 1, type: "fill-blank", answer: "학생" },
+        { id: "reorder-1", contentIndex: 2, type: "reorder", tokens: ["저는", "학생입니다"], answer: "저는 학생입니다." },
+        { id: "matching-1", contentIndex: 3, type: "matching", leftItems: ["A"], rightItems: ["가"], answerPairs: [{ left: "A", right: "가" }] },
+        { id: "translation-1", contentIndex: 4, type: "translation", answer: "안녕하세요" },
+        { id: "role-play-1", contentIndex: 5, type: "role-play", hint: "Giữ nguyên vai A/B" },
+        { id: "writing-1", contentIndex: 6, type: "extended-writing" },
+        { id: "manual-1", contentIndex: 7, type: "manual" },
+      ],
+    }];
+
+    const items = buildSourceWorkbook(input, []);
+    const at = (index: number) => items.find(item => item.id === "source:4:extra-0:" + index + ":0");
+    expect(at(0)).toMatchObject({ prompt: sourceContent[0], exerciseType: "choice", choices: ["학생", "의사"], answer: "학생", sourceRef: "Sách p.40 · exercise-0" });
+    expect(at(1)).toMatchObject({ exerciseType: "fill-blank", answer: "학생" });
+    expect(at(2)).toMatchObject({ exerciseType: "reorder", tokens: ["저는", "학생입니다"], answer: "저는 학생입니다." });
+    expect(at(3)).toMatchObject({ exerciseType: "matching", leftItems: ["A"], rightItems: ["가"], answer: "A → 가" });
+    expect(at(4)).toMatchObject({ exerciseType: "translation", answer: "안녕하세요" });
+    expect(at(5)).toMatchObject({ exerciseType: "role-play" });
+    expect(at(5)?.answer).toBeUndefined();
+    expect(at(5)?.hint).toContain("Giữ nguyên vai A/B");
+    expect(at(6)).toMatchObject({ exerciseType: "extended-writing" });
+    expect(at(7)).toMatchObject({ exerciseType: "manual" });
+    expect(sourceContent.every((prompt, index) => at(index)?.prompt === prompt)).toBe(true);
+
+    // A malformed choice key must not be exposed as a valid answer.
+    input.extraSections![0].contentExerciseItems![0].answer = "선생님";
+    const malformed = buildSourceWorkbook(input, []);
+    expect(malformed.find(item => item.id === "source:4:extra-0:0:0")?.choices).toEqual(["학생", "의사"]);
+    expect(malformed.find(item => item.id === "source:4:extra-0:0:0")?.answer).toBeUndefined();
+
+    input.extraSections![0].contentExerciseItems![3].answerPairs![0].right = "의사";
+    const badMatching = buildSourceWorkbook(input, []);
+    expect(badMatching.find(item => item.id === "source:4:extra-0:3:0")?.answer).toBeUndefined();
+  });
+
+  it("reveals a source reorder answer only when available token chunks can construct it", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "reorder-source",
+      kind: "original-activities",
+      title: "Sắp xếp câu",
+      content: ["Sắp xếp các cụm từ thành câu."],
+      contentSourceRefs: ["Sách p.41 · reorder-1"],
+      contentExerciseItems: [{
+        id: "reorder-source-1",
+        contentIndex: 0,
+        type: "reorder",
+        tokens: ["학생입니다", "저는", "선생님입니다"],
+        answer: "저는 학생입니다.",
+      }],
+    }];
+
+    const getItem = () => buildSourceWorkbook(input, []).find(item => item.exerciseType === "reorder");
+    expect(getItem()?.answer).toBe("저는 학생입니다.");
+
+    input.extraSections![0].contentExerciseItems![0].answer = "저는 의사입니다.";
+    expect(getItem()?.answer).toBeUndefined();
+
+    // A token chunk may be used only as many times as it appears in the source bank.
+    input.extraSections![0].contentExerciseItems![0].answer = "저는 학생입니다 학생입니다.";
+    expect(getItem()?.answer).toBeUndefined();
+  });
 });

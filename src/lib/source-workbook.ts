@@ -1,4 +1,4 @@
-import type { LessonContent, StudyQuestion } from "@/data/content";
+import type { LessonContent, SourceExerciseMotif, StudyQuestion } from "@/data/content";
 
 export type WorkbookCategory =
   | "Từ vựng" | "Ngữ pháp" | "Nghe" | "Nói" | "Đọc" | "Viết"
@@ -14,10 +14,50 @@ export type WorkbookItem = {
   hint?: string;
   answer?: string;
   choices?: string[];
+  /** Original source exercise motif; absent on legacy/untyped items. */
+  exerciseType?: SourceExerciseMotif;
+  /** Source-provided reorder tokens or matching columns; never generated from guesses. */
+  tokens?: string[];
+  leftItems?: string[];
+  rightItems?: string[];
   sourceRef?: string;
 };
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
+
+// Match StudySession's answer normalization and ensure the answer can be formed
+// from the declared source token chunks. Unused chunks remain valid distractors.
+function canConstructReorderAnswer(tokens: string[] | undefined, answer: string | undefined): boolean {
+  const normalize = (text: string) => text.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
+  const target = normalize(value(answer));
+  const chunks = (tokens ?? []).map(token => normalize(value(token)));
+  if (!target || !chunks.length || chunks.some(chunk => !chunk)) return false;
+
+  const used = chunks.map(() => false);
+  const failed = new Set<string>();
+  function search(position: number): boolean {
+    while (target[position] === " ") position++;
+    if (position >= target.length) return true;
+
+    const key = position + "|" + used.map((isUsed, index) => isUsed ? index : "").join(",");
+    if (failed.has(key)) return false;
+    failed.add(key);
+
+    for (let index = 0; index < chunks.length; index++) {
+      if (used[index]) continue;
+      const chunk = chunks[index];
+      const end = position + chunk.length;
+      if (!target.startsWith(chunk, position) || (end < target.length && target[end] !== " ")) continue;
+
+      used[index] = true;
+      if (search(end)) return true;
+      used[index] = false;
+    }
+    return false;
+  }
+
+  return search(0);
+}
 
 export function buildSourceWorkbook(
   lesson: LessonContent,
@@ -152,14 +192,49 @@ export function buildSourceWorkbook(
       "original-pronunciation": "Phát âm",
       "original-culture": "Văn hóa",
     };
-    section.content.forEach((text, sub) => add({
-      id: id("extra-" + index, sub),
-      category: sourceCategories[section.kind] ?? "Bài tập bổ sung",
-      title: section.title + " · " + (sub + 1),
-      prompt: text,
-      hint: section.kind + " · Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách.",
-      sourceRef: section.contentSourceRefs?.[sub],
-    }));
+    section.content.forEach((text, sub) => {
+      const activity = section.contentExerciseItems?.find(item => item.contentIndex === sub);
+      const choices = activity?.type === "choice" ? activity.choices : undefined;
+      const normalizedChoices = (choices ?? []).map(value);
+      const choiceAnswerIsSafe = Boolean(
+        choices && choices.length >= 2 &&
+        normalizedChoices.every(Boolean) &&
+        new Set(normalizedChoices).size === normalizedChoices.length &&
+        activity?.answer && normalizedChoices.includes(value(activity.answer)),
+      );
+      const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
+      const matchingAnswerIsSafe = Boolean(
+        matchingPairs.length > 0 &&
+        activity?.leftItems?.length &&
+        activity?.rightItems?.length &&
+        matchingPairs.every(pair =>
+          value(pair.left) && value(pair.right) &&
+          activity.leftItems?.includes(pair.left) &&
+          activity.rightItems?.includes(pair.right),
+        ),
+      );
+      const answer = activity?.type === "choice"
+        ? (choiceAnswerIsSafe ? activity.answer : undefined)
+        : activity?.type === "matching"
+          ? (matchingAnswerIsSafe ? matchingPairs.map(pair => pair.left + " → " + pair.right).join("\n") : undefined)
+          : activity?.type === "reorder"
+            ? (canConstructReorderAnswer(activity.tokens, activity.answer) ? activity.answer : undefined)
+            : activity?.answer;
+      add({
+        id: id("extra-" + index, sub),
+        category: sourceCategories[section.kind] ?? "Bài tập bổ sung",
+        title: section.title + " · " + (sub + 1),
+        prompt: text,
+        hint: [section.kind, activity?.hint, "Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách."].filter(Boolean).join(" · "),
+        choices,
+        exerciseType: activity?.type,
+        tokens: activity?.type === "reorder" ? activity.tokens : undefined,
+        leftItems: activity?.type === "matching" ? activity.leftItems : undefined,
+        rightItems: activity?.type === "matching" ? activity.rightItems : undefined,
+        answer,
+        sourceRef: section.contentSourceRefs?.[sub],
+      });
+    });
   });
 
   questions.filter(q => q.lessonId === lesson.id).forEach((question, index) => add({
