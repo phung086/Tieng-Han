@@ -8,6 +8,7 @@ import {useLearning} from "@/lib/learning-state";
 import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
+import { readMatchingSelections, updateMatchingSelection } from "@/lib/source-workbook-interactions";
 import type { SourceExerciseMotif } from "@/data/content";
 import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
@@ -223,17 +224,45 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                       <p>{item.tokens.map((token, index) => <span key={index}>{index ? " · " : ""}{token}</span>)}</p>
                     </div>
                   ) : null}
-                  {item.exerciseType === "matching" && (item.leftItems?.length || item.rightItems?.length) ? (
+                  {item.exerciseType === "matching" && item.leftItems?.length && item.rightItems?.length ? (
                     <div className="extra-content" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div><strong>Cột A</strong>{(item.leftItems ?? []).map((entry, index) => <p key={index}>{index + 1}. {entry}</p>)}</div>
-                      <div><strong>Cột B</strong>{(item.rightItems ?? []).map((entry, index) => <p key={index}>{String.fromCharCode(65 + index)}. {entry}</p>)}</div>
+                      <div>
+                        <strong>Cột A · chọn cặp tương ứng</strong>
+                        {item.leftItems.map((entry, index) => (
+                          <label key={index} style={{ display: "block", marginTop: "0.5rem" }}>
+                            <span>{index + 1}. {entry}</span>
+                            <select
+                              aria-label={"Cột B cho " + entry}
+                              value={readMatchingSelections(drafts[item.id], item.leftItems?.length ?? 0, item.rightItems?.length ?? 0)[String(index)] ?? ""}
+                              onChange={(event) => updateDraft(item.id, updateMatchingSelection(
+                                drafts[item.id],
+                                index,
+                                event.target.value,
+                                item.leftItems?.length ?? 0,
+                                item.rightItems?.length ?? 0,
+                              ))}
+                            >
+                              <option value="">Chọn cặp</option>
+                              {item.rightItems.map((right, rightIndex) => (
+                                <option key={rightIndex} value={String(rightIndex)}>
+                                  {String.fromCharCode(65 + rightIndex)}. {right}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                      <div>
+                        <strong>Cột B</strong>
+                        {item.rightItems.map((entry, index) => <p key={index}>{String.fromCharCode(65 + index)}. {entry}</p>)}
+                      </div>
                     </div>
                   ) : null}
                   {item.hint ? <p>{item.hint}</p> : null}
                   {!isFallback && (
                     item.exerciseType === "fill-blank" ||
                     item.exerciseType === "reorder" ||
-                    item.exerciseType === "matching" ||
+                    (item.exerciseType === "matching" && !(item.leftItems?.length && item.rightItems?.length)) ||
                     item.exerciseType === "translation" ||
                     item.exerciseType === "role-play" ||
                     item.exerciseType === "extended-writing" ||
