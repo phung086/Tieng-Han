@@ -16,7 +16,7 @@ function inventory(): SourceInventory {
   return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q1"], verified: true },
-    { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
+    { id: "exercise", lessonId: 1, kind: "exerciseSection", fileName: "synthetic.pdf", pageNumber: 2,
       sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
   ] };
 }
@@ -208,6 +208,119 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
   });
 
+  it("keeps grammar-section and grammar-pattern inventory kinds distinct", () => {
+    const sectionBundle = fixture(); sectionBundle.sourceInventory = inventory();
+    const sectionRef = "synthetic.pdf · p.1 · grammar-section";
+    sectionBundle.course.lessons[0].vocabulary = [];
+    sectionBundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "is N", explanation: "Fixture",
+      examples: [], sourceRef: sectionRef,
+    }];
+    sectionBundle.course.questions[0].sourceRef = sectionRef;
+    sectionBundle.sourceInventory.items[0] = {
+      ...sectionBundle.sourceInventory.items[0], id: "grammar-pattern-as-section",
+      kind: "grammarpattern", sourceRef: sectionRef, contentPointer: "/grammar/0",
+      practiceQuestionIds: ["q1"],
+    };
+    const sectionReport = auditCurriculumCoverage(sectionBundle);
+    expect(sectionReport.status).toBe("partial");
+    expect(sectionReport.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    const patternBundle = fixture(); patternBundle.sourceInventory = inventory();
+    const patternRef = "synthetic.pdf · p.1 · grammar-pattern";
+    patternBundle.course.lessons[0].vocabulary = [];
+    patternBundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "is N", explanation: "Fixture",
+      examples: [], sourceRef: sectionRef, patternSourceRef: patternRef,
+    }];
+    patternBundle.course.questions[0].sourceRef = patternRef;
+    patternBundle.sourceInventory.items[0] = {
+      ...patternBundle.sourceInventory.items[0], id: "grammar-section-as-pattern",
+      kind: "grammar", sourceRef: patternRef, contentPointer: "/grammar/0/pattern",
+      practiceQuestionIds: ["q1"],
+    };
+    const patternReport = auditCurriculumCoverage(patternBundle);
+    expect(patternReport.status).toBe("partial");
+    expect(patternReport.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+  });
+
+  it("keeps extra-section containers distinct from exercise subparts", () => {
+    const parent = fixture(); parent.sourceInventory = inventory();
+    parent.sourceInventory.items[1].kind = "exercise";
+    const wrongParentKind = auditCurriculumCoverage(parent);
+    expect(wrongParentKind.status).toBe("partial");
+    expect(wrongParentKind.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    parent.sourceInventory.items[1].kind = "exerciseSection";
+    const validParent = auditCurriculumCoverage(parent);
+    expect(validParent.status).toBe("complete");
+    expect(validParent.auditVersion).toBe(5);
+
+    const child = fixture(); child.sourceInventory = inventory();
+    const childRef = child.sourceInventory.items[1].sourceRef;
+    child.course.lessons[0].extraSections![0].contentSourceRefs = [childRef];
+    child.sourceInventory.items[1] = {
+      ...child.sourceInventory.items[1],
+      id: "exercise-subpart",
+      kind: "exerciseSection",
+      contentPointer: "/extraSections/0/content/0",
+    };
+    const wrongChildKind = auditCurriculumCoverage(child);
+    expect(wrongChildKind.status).toBe("partial");
+    expect(wrongChildKind.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    child.sourceInventory.items[1].kind = "exercise";
+    const validChild = auditCurriculumCoverage(child);
+    expect(validChild.status).toBe("complete");
+    expect(validChild.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
+  it("keeps reading and writing section kinds distinct from nested text/prompt kinds", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].extraSections = [];
+    bundle.sourceInventory.pages[1] = {
+      fileName: "synthetic.pdf", pageNumber: 2, status: "reviewed",
+      classification: "non-learning", reason: "Synthetic blank page",
+    };
+
+    const readingRef = "synthetic.pdf · p.1 · reading-text";
+    const promptRef = "synthetic.pdf · p.1 · writing-prompt";
+    bundle.course.lessons[0].reading = {
+      title: "Reading title", text: "Original reading passage", translation: "Bản dịch",
+      questions: [], sourceRef: "synthetic.pdf · p.1 · reading-section", textSourceRef: readingRef,
+    };
+    bundle.course.lessons[0].writing = {
+      prompt: "Write a short self-introduction.", hint: "Use the lesson grammar.",
+      targetWords: [], sourceRef: "synthetic.pdf · p.1 · writing-task", promptSourceRef: promptRef,
+    };
+    bundle.course.questions.push(
+      { id: "q-reading-text", lessonId: 1, skill: "reading", type: "input", title: "Passage", prompt: "Passage", answer: "Original reading passage", explanation: "Fixture", sourceRef: readingRef, origin: "source" },
+      { id: "q-writing-prompt", lessonId: 1, skill: "writing", type: "input", title: "Prompt", prompt: "Write a short self-introduction.", answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source" },
+    );
+    bundle.sourceInventory.items[1] = {
+      ...bundle.sourceInventory.items[1],
+      id: "reading-text", kind: "reading", pageNumber: 1, sourceRef: readingRef,
+      contentPointer: "/reading/text", practiceMethod: "questions", motif: "input",
+      practiceQuestionIds: ["q-reading-text"],
+    };
+    bundle.sourceInventory.items.push({
+      ...bundle.sourceInventory.items[1],
+      id: "writing-prompt", kind: "writingtask", sourceRef: promptRef,
+      contentPointer: "/writing/prompt", practiceQuestionIds: ["q-writing-prompt"],
+    });
+
+    const wrongKinds = auditCurriculumCoverage(bundle);
+    expect(wrongKinds.status).toBe("partial");
+    expect(wrongKinds.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    bundle.sourceInventory.items[1].kind = "readingtext";
+    bundle.sourceInventory.items[2].kind = "writingprompt";
+    const exactKinds = auditCurriculumCoverage(bundle);
+    expect(exactKinds.status).toBe("complete");
+    expect(exactKinds.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(exactKinds.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
   it("fails closed for unknown source kinds instead of treating a valid pointer as proof", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[0].kind = "unclassified-source-kind";
@@ -314,7 +427,7 @@ describe("source, practice and validation coverage are independent release evide
     );
     bundle.sourceInventory.items.push(
       { id: "reading-title", lessonId: 1, kind: "readingtitle", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: titleRef, contentPointer: "/reading/title", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-title"], verified: true },
-      { id: "reading-text", lessonId: 1, kind: "reading", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: textRef, contentPointer: "/reading/text", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-text"], verified: true },
+      { id: "reading-text", lessonId: 1, kind: "readingtext", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: textRef, contentPointer: "/reading/text", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-text"], verified: true },
     );
 
     const missing = auditCurriculumCoverage(bundle);
@@ -344,7 +457,7 @@ describe("source, practice and validation coverage are independent release evide
       answer: "Fixture answer", explanation: "Fixture", sourceRef: promptRef, origin: "source",
     });
     bundle.sourceInventory.items.push({
-      id: "writing-prompt", lessonId: 1, kind: "writingtask", fileName: "synthetic.pdf",
+      id: "writing-prompt", lessonId: 1, kind: "writingprompt", fileName: "synthetic.pdf",
       pageNumber: 1, sourceRef: promptRef, contentPointer: "/writing/prompt",
       practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-writing-prompt"], verified: true,
     });

@@ -3,7 +3,7 @@ import type { LessonContent } from "@/data/content";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 4;
+export const CURRICULUM_AUDIT_VERSION = 5;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -71,8 +71,8 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       if (parts.length === 3 && indexed(index) && child === "example") return at("vocabularyexample", "vocabexample", "wordexample", "examplevocabulary", "tuvungexample", "cauvidutuvung", "어휘예문", "단어예문");
       return false;
     case "grammar":
-      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
-      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
+      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "nguphap", "문법", "문법규칙");
+      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammarpattern", "pattern", "nguphappattern", "maunguphap", "문법패턴");
       if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau", "문법예문", "예문");
       return false;
     case "listening":
@@ -86,14 +86,15 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       if (parts.length === 4 && indexed(index) && child === "lines" && indexed(childIndex)) return at("dialogueline", "dialogueturn", "conversationline", "hoithoailine", "luotthoai", "대화문장", "회화문장");
       return false;
     case "reading":
-      if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
+      if (parts.length === 1) return at("reading", "readingsection", "readingactivity", "docsection", "baidocsection", "읽기섹션", "독해섹션");
       if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc", "읽기제목");
-      if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
+      if (parts.length === 2 && parts[1] === "text") return at("readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
       if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc", "읽기문항", "독해문항");
       if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc", "읽기선택지");
       return false;
     case "writing":
-      if (parts.length === 1 || (parts.length === 2 && parts[1] === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 1) return at("writing", "writingtask", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 2 && parts[1] === "prompt") return at("writingprompt", "writinginstruction", "promptviet", "yeucauviet", "쓰기프롬프트", "쓰기지시문");
       if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet", "쓰기목표단어", "목표단어");
       return false;
     case "pronunciation":
@@ -103,7 +104,7 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
     case "culture":
       return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa", "문화", "문화노트");
     case "extraSections":
-      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
+      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercisesection", "workbooksection", "supplementsection", "activitysection", "exercisegroup", "baitapsection", "연습섹션", "보충섹션");
       if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
       return false;
     case "media":
