@@ -10,6 +10,8 @@ import { LessonMediaGallery } from "@/components/lesson-media-gallery";
 import { buildSourceWorkbook } from "@/lib/source-workbook";
 import { isCurrentCompleteCoverage } from "@/lib/curriculum-coverage";
 
+const WORKBOOK_PAGE_SIZE = 20;
+
 function readProgress(input: string | null, valid: Set<string>): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -60,6 +62,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
   );
   const [drafts, setDrafts] = useState<Record<string, string>>(() => readDrafts(read(draftKey)));
   const [revealed, setRevealed] = useState<string[]>([]);
+  const [pageByCategory, setPageByCategory] = useState<Record<string, number>>({});
 
   if (!lesson) {
     return (
@@ -165,13 +168,18 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
       {Array.from(grouped.entries()).map(([category, entries]) => {
         const isFallback = category === fallbackCategory;
         const doneCount = entries.filter(item => completed.has(item.id)).length;
+        const pageCount = Math.max(1, Math.ceil(entries.length / WORKBOOK_PAGE_SIZE));
+        const currentPage = Math.min(pageByCategory[category] ?? 0, pageCount - 1);
+        const startIndex = currentPage * WORKBOOK_PAGE_SIZE;
+        const endIndex = Math.min(startIndex + WORKBOOK_PAGE_SIZE, entries.length);
+        const visibleEntries = entries.slice(startIndex, endIndex);
         return (
           <details className="lesson-content-card" key={category} open={doneCount !== entries.length}>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: "1.1rem" }}>
               {category} · {isFallback ? entries.length + " bản lưu" : doneCount + "/" + entries.length + " mục"}
             </summary>
             <div className="supplement-stack">
-              {entries.map((item) => (
+              {visibleEntries.map((item) => (
                 <article className="supplement-card" key={item.id}>
                   <div className="supplement-heading">
                     {completed.has(item.id) ? <CheckCircle2 size={20} /> : <Circle size={20} />}
@@ -231,6 +239,31 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                 </article>
               ))}
             </div>
+            {pageCount > 1 ? (
+              <nav className="complete-actions" aria-label={"Phân trang " + category}>
+                <span aria-live="polite">
+                  Trang {currentPage + 1}/{pageCount} · mục {startIndex + 1}–{endIndex}/{entries.length}
+                </span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  aria-label={"Trang trước trong nhóm " + category}
+                  disabled={currentPage === 0}
+                  onClick={() => setPageByCategory(current => ({ ...current, [category]: Math.max(0, currentPage - 1) }))}
+                >
+                  Trang trước
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  aria-label={"Trang tiếp theo trong nhóm " + category}
+                  disabled={currentPage >= pageCount - 1}
+                  onClick={() => setPageByCategory(current => ({ ...current, [category]: currentPage + 1 }))}
+                >
+                  Trang tiếp theo
+                </button>
+              </nav>
+            ) : null}
           </details>
         );
       })}
