@@ -58,7 +58,7 @@ export function buildSourceWorkbook(
       answer: meaning || undefined,
       sourceRef: word.sourceRef ?? lesson.sourceRef,
     });
-    if (value(word.example)) add({
+    add({
       id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
       prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
       sourceRef: word.sourceRef ?? lesson.sourceRef,
