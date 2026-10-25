@@ -19,6 +19,14 @@ describe("authored learning illustration contract",()=>{
     expect(()=>parseCourseBundle(JSON.stringify({...bundle,course:{...bundle.course,lessons:[{...lesson,illustrations:[{...image,targetIds:["unknown"]}]}]}}))).toThrow();
     expect(()=>parseCourseBundle(JSON.stringify({...bundle,course:{...bundle.course,lessons:[lesson,{...lesson,id:2}]}}))).toThrow();
   });
+  it("rounds the far crop edges outward so fractional origins do not clip source pixels",()=>{
+    expect(cropPixels([.105,.205,.3,.4],100,100)).toEqual({
+      left:10, top:20, width:31, height:41,
+    });
+    expect(cropPixels([.1,.2,.3,.4],100,100)).toEqual({
+      left:10, top:20, width:30, height:40,
+    });
+  });
   it("uses only the authored crop, without labels or neighboring page pixels",async()=>{
     const original=await sharp({create:{width:100,height:100,channels:3,background:"red"}}).composite([{input:await sharp({create:{width:30,height:40,channels:3,background:"blue"}}).png().toBuffer(),left:10,top:20}]).png().toBuffer();
     const cropped=await sharp(original).extract(cropPixels([.1,.2,.3,.4],100,100)).raw().toBuffer({resolveWithObject:true});
