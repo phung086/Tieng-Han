@@ -58,11 +58,16 @@ export function buildSourceWorkbook(
       answer: meaning || undefined,
       sourceRef: word.sourceRef ?? lesson.sourceRef,
     });
-    add({
-      id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
-      prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
-      sourceRef: word.sourceRef ?? lesson.sourceRef,
-    });
+    const exampleSourceRef = Reflect.get(word, "exampleSourceRef");
+    if (value(word.example) || (typeof exampleSourceRef === "string" && value(exampleSourceRef))) {
+      add({
+        id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
+        prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
+        sourceRef: typeof exampleSourceRef === "string" && value(exampleSourceRef)
+          ? exampleSourceRef
+          : word.sourceRef ?? lesson.sourceRef,
+      });
+    }
   });
 
   lesson.grammar.forEach((item, index) => {
