@@ -232,7 +232,7 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
  * parent row is absent (for example, a grammar pattern row without its cited
  * example row). Container-level reading/writing/extra-section refs are excluded.
  */
-function declaredItemLevelSourcePointers(lesson: LessonContent): string[] {
+function declaredNestedSourcePointers(lesson: LessonContent): string[] {
   const pointers: string[] = [];
   const add = (pointer: string, ref: unknown) => {
     if (typeof ref === "string" && ref.trim() && !/^Derived from\s+/i.test(ref.trim())) {
@@ -240,22 +240,18 @@ function declaredItemLevelSourcePointers(lesson: LessonContent): string[] {
     }
   };
 
-  lesson.vocabulary.forEach((item, index) => {
-    add("/vocabulary/" + index, item.sourceRef);
-    add("/vocabulary/" + index + "/example", item.exampleSourceRef);
-  });
+  // These fields have dedicated item-level refs; a missing inventory row must
+  // be visible even if the parent pointer itself was never inventoried.
+  lesson.vocabulary.forEach((item, index) =>
+    add("/vocabulary/" + index + "/example", item.exampleSourceRef));
   lesson.grammar.forEach((item, index) => {
-    // The grammar object ref may describe the containing section; the dedicated
-    // pattern/example refs are the unambiguous item-level declarations.
     add("/grammar/" + index + "/pattern", item.patternSourceRef);
     item.exampleSourceRefs?.forEach((ref, childIndex) =>
       add("/grammar/" + index + "/examples/" + childIndex, ref));
   });
-  lesson.listening.forEach((item, index) => {
-    add("/listening/" + index, item.sourceRef);
+  lesson.listening.forEach((item, index) =>
     item.choiceSourceRefs?.forEach((ref, childIndex) =>
-      add("/listening/" + index + "/choices/" + childIndex, ref));
-  });
+      add("/listening/" + index + "/choices/" + childIndex, ref)));
   lesson.speakingSourceRefs?.forEach((ref, index) => add("/speaking/" + index, ref));
   lesson.dialogues?.forEach((item, index) => {
     if (item.origin !== "derived") {
@@ -266,31 +262,21 @@ function declaredItemLevelSourcePointers(lesson: LessonContent): string[] {
   if (lesson.reading) {
     add("/reading/title", lesson.reading.titleSourceRef);
     add("/reading/text", lesson.reading.textSourceRef);
-    lesson.reading.questions.forEach((question, questionIndex) => {
-      add("/reading/questions/" + questionIndex, question.sourceRef);
+    lesson.reading.questions.forEach((question, questionIndex) =>
       question.choiceSourceRefs?.forEach((ref, choiceIndex) =>
-        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref));
-    });
+        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref)));
   }
   if (lesson.writing) {
     add("/writing/prompt", lesson.writing.promptSourceRef);
     lesson.writing.targetWordSourceRefs?.forEach((ref, index) =>
       add("/writing/targetWords/" + index, ref));
   }
-  lesson.pronunciation?.forEach((item, index) => {
-    add("/pronunciation/" + index, item.sourceRef);
+  lesson.pronunciation?.forEach((item, index) =>
     item.exampleSourceRefs?.forEach((ref, childIndex) =>
-      add("/pronunciation/" + index + "/examples/" + childIndex, ref));
-  });
-  lesson.culture?.forEach((item, index) => add("/culture/" + index, item.sourceRef));
-  lesson.extraSections?.forEach((item, index) => {
+      add("/pronunciation/" + index + "/examples/" + childIndex, ref)));
+  lesson.extraSections?.forEach((item, index) =>
     item.contentSourceRefs?.forEach((ref, childIndex) =>
-      add("/extraSections/" + index + "/content/" + childIndex, ref));
-  });
-  lesson.media?.forEach((item, index) => {
-    if (item.role !== "external") add("/media/" + index, item.sourceRef);
-  });
-  lesson.illustrations?.forEach((item, index) => add("/illustrations/" + index, item.sourceRef));
+      add("/extraSections/" + index + "/content/" + childIndex, ref)));
   return pointers;
 }
 
@@ -416,14 +402,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   // the bundle must not disappear from the inventory denominator merely because
   // no parent inventory row exists to discover it.
   for (const lesson of bundle.course.lessons) {
-    const requiredPointers = declaredItemLevelSourcePointers(lesson);
-    const lessonQuestions = bundle.course.questions.filter(question => question.lessonId === lesson.id);
-    lessonQuestions.forEach((question, index) => {
-      if (question.origin === "source" && typeof question.sourceRef === "string" &&
-        question.sourceRef.trim() && !/^Derived from\s+/i.test(question.sourceRef.trim())) {
-        requiredPointers.push("/questions/" + index);
-      }
-    });
+    const requiredPointers = declaredNestedSourcePointers(lesson);
     for (const pointer of requiredPointers) {
       const pointerKey = JSON.stringify([lesson.id, pointer]);
       if (!inventoryPointerKeys.has(pointerKey)) {
