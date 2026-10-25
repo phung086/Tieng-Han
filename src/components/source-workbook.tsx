@@ -228,7 +228,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                     <div className="extra-content" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                       <div>
                         <strong>Cột A · chọn cặp tương ứng</strong>
-                        {item.leftItems.map((entry, index) => (
+                        {(item.leftItems ?? []).map((entry, index) => (
                           <label key={index} style={{ display: "block", marginTop: "0.5rem" }}>
                             <span>{index + 1}. {entry}</span>
                             <select
@@ -243,7 +243,7 @@ function WorkbookContent({ lessonId }: { lessonId: number }) {
                               ))}
                             >
                               <option value="">Chọn cặp</option>
-                              {item.rightItems.map((right, rightIndex) => (
+                              {(item.rightItems ?? []).map((right, rightIndex) => (
                                 <option key={rightIndex} value={String(rightIndex)}>
                                   {String.fromCharCode(65 + rightIndex)}. {right}
                                 </option>
