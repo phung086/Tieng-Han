@@ -16,7 +16,7 @@ function inventory(): SourceInventory {
   return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q1"], verified: true },
-    { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
+    { id: "exercise", lessonId: 1, kind: "exerciseSection", fileName: "synthetic.pdf", pageNumber: 2,
       sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0", practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
   ] };
 }
@@ -242,6 +242,37 @@ describe("source, practice and validation coverage are independent release evide
     const patternReport = auditCurriculumCoverage(patternBundle);
     expect(patternReport.status).toBe("partial");
     expect(patternReport.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+  });
+
+  it("keeps extra-section containers distinct from exercise subparts", () => {
+    const parent = fixture(); parent.sourceInventory = inventory();
+    parent.sourceInventory.items[1].kind = "exercise";
+    const wrongParentKind = auditCurriculumCoverage(parent);
+    expect(wrongParentKind.status).toBe("partial");
+    expect(wrongParentKind.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    parent.sourceInventory.items[1].kind = "exerciseSection";
+    const validParent = auditCurriculumCoverage(parent);
+    expect(validParent.status).toBe("complete");
+    expect(validParent.auditVersion).toBe(5);
+
+    const child = fixture(); child.sourceInventory = inventory();
+    const childRef = child.sourceInventory.items[1].sourceRef;
+    child.course.lessons[0].extraSections![0].contentSourceRefs = [childRef];
+    child.sourceInventory.items[1] = {
+      ...child.sourceInventory.items[1],
+      id: "exercise-subpart",
+      kind: "exerciseSection",
+      contentPointer: "/extraSections/0/content/0",
+    };
+    const wrongChildKind = auditCurriculumCoverage(child);
+    expect(wrongChildKind.status).toBe("partial");
+    expect(wrongChildKind.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    child.sourceInventory.items[1].kind = "exercise";
+    const validChild = auditCurriculumCoverage(child);
+    expect(validChild.status).toBe("complete");
+    expect(validChild.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
   it("fails closed for unknown source kinds instead of treating a valid pointer as proof", () => {
