@@ -303,6 +303,25 @@ describe("source, practice and validation coverage are independent release evide
       "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
     );
 
+    // Pointing at the entire content array must not bypass the same aggregate guard.
+    const contentArray = fixture();
+    contentArray.sourceInventory = inventory();
+    contentArray.course.lessons[0].extraSections![0].content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+    contentArray.sourceInventory.items[1] = {
+      ...contentArray.sourceInventory.items[1],
+      kind: "exerciseSection",
+      contentPointer: "/extraSections/0/content",
+    };
+    const contentArrayReport = auditCurriculumCoverage(contentArray);
+    expect(contentArrayReport.status).toBe("partial");
+    expect(contentArrayReport.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(contentArrayReport.issues.join(" ")).toContain(
+      "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
+    );
+
     const children = fixture();
     children.sourceInventory = inventory();
     const section = children.course.lessons[0].extraSections![0];
