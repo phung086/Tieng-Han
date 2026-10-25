@@ -28,6 +28,27 @@ function optionsFor(
   return choices;
 }
 
+/**
+ * Preserve the source exercise's declared motif. undefined means the source
+ * has no choice motif (open-ended input is allowed); null means it declared
+ * choices but they cannot be graded without changing or guessing the source.
+ */
+function sourceChoiceOptions(
+  rawChoices: string[] | undefined,
+  answer: string,
+): string[] | null | undefined {
+  if (!rawChoices?.length) return undefined;
+  const choices = rawChoices.map(nonEmpty);
+  if (
+    !answer ||
+    choices.length < 2 ||
+    choices.some((choice) => !choice) ||
+    new Set(choices).size !== choices.length ||
+    !choices.includes(answer)
+  ) return null;
+  return choices;
+}
+
 export function buildLessonPracticeBank(
   lesson: LessonContent,
   originalQuestions: StudyQuestion[],
@@ -122,17 +143,19 @@ export function buildLessonPracticeBank(
 
   (lesson.listening ?? []).forEach((item, index) => {
     const answer = nonEmpty(item.answer);
-    const choices = Array.from(new Set((item.choices ?? []).map(nonEmpty))).filter(Boolean);
-    const usableChoice = choices.length > 1 && choices.includes(answer);
+    const choices = sourceChoiceOptions(item.choices, answer);
+    // A malformed source multiple-choice task must remain in the workbook;
+    // never silently change its motif to input or remove/repair source options.
+    if (choices === null) return;
     add({
       id: stableId(lesson.id, "listening", index),
       lessonId: lesson.id,
       skill: "listening",
-      type: usableChoice ? "choice" : "input",
+      type: choices ? "choice" : "input",
       title: "Luyện nghe " + (index + 1),
       prompt: nonEmpty(item.text),
       translation: nonEmpty(item.meaning) || undefined,
-      choices: usableChoice ? choices : undefined,
+      choices,
       answer,
       explanation: nonEmpty(item.meaning) || answer,
       sourceRef: item.sourceRef ?? lesson.sourceRef,
@@ -141,17 +164,19 @@ export function buildLessonPracticeBank(
 
   lesson.reading?.questions?.forEach((item, index) => {
     const answer = nonEmpty(item.answer);
-    const choices = Array.from(new Set((item.choices ?? []).map(nonEmpty))).filter(Boolean);
-    const usableChoice = choices.length > 1 && choices.includes(answer);
+    const choices = sourceChoiceOptions(item.choices, answer);
+    // Keep malformed source choices visible for manual review, not as a
+    // different auto-graded exercise.
+    if (choices === null) return;
     add({
       id: stableId(lesson.id, "reading", index),
       lessonId: lesson.id,
       skill: "reading",
-      type: usableChoice ? "choice" : "input",
+      type: choices ? "choice" : "input",
       title: "Đọc hiểu " + (index + 1),
       prompt: nonEmpty(item.q),
       translation: nonEmpty(lesson.reading?.text) || undefined,
-      choices: usableChoice ? choices : undefined,
+      choices,
       answer,
       explanation: "Đáp án trong bài đọc: " + answer,
       sourceRef: item.sourceRef ?? lesson.reading?.sourceRef ?? lesson.sourceRef,
