@@ -287,6 +287,54 @@ describe("source, practice and validation coverage are independent release evide
     expect(validChild.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
+  it("requires one inventory item per exercise-section content entry when a container has multiple entries", () => {
+    const parent = fixture();
+    parent.sourceInventory = inventory();
+    parent.course.lessons[0].extraSections![0].content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+
+    const parentReport = auditCurriculumCoverage(parent);
+    expect(parentReport.status).toBe("partial");
+    expect(parentReport.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(parentReport.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(parentReport.issues.join(" ")).toContain(
+      "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
+    );
+
+    const children = fixture();
+    children.sourceInventory = inventory();
+    const section = children.course.lessons[0].extraSections![0];
+    const firstRef = children.sourceInventory.items[1].sourceRef;
+    const secondRef = "synthetic.pdf · p.2 · exercise-second";
+    section.content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+    section.contentSourceRefs = [firstRef, secondRef];
+
+    const parentItem = children.sourceInventory.items[1];
+    children.sourceInventory.items[1] = {
+      ...parentItem,
+      id: "exercise-subpart-0",
+      kind: "exercise",
+      contentPointer: "/extraSections/0/content/0",
+    };
+    children.sourceInventory.items.push({
+      ...parentItem,
+      id: "exercise-subpart-1",
+      kind: "exercise",
+      sourceRef: secondRef,
+      contentPointer: "/extraSections/0/content/1",
+    });
+
+    const childReport = auditCurriculumCoverage(children);
+    expect(childReport.status).toBe("complete");
+    expect(childReport.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(childReport.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
   it("keeps reading and writing section kinds distinct from nested text/prompt kinds", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].extraSections = [];
