@@ -639,14 +639,14 @@ describe("source, practice and validation coverage are independent release evide
       prompt: "Choose the Korean word", choices: ["학생", "의사"], answer: "학생",
       explanation: "Synthetic fixture", sourceRef: questionRef, choiceSourceRefs: choiceRefs, origin: "source",
     }];
-    const pages: SourceInventory["pages"] = [1, 2].map(pageNumber => ({
+    const pages: SourceInventory["pages"] = [1, 2].map((pageNumber): SourceInventory["pages"][number] => ({
       fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content",
     }));
     const items: SourceInventory["items"] = [
       { id: "question-1", lessonId: 1, kind: "question", fileName: "synthetic.pdf", pageNumber: 1,
         sourceRef: questionRef, contentPointer: "/questions/0", practiceMethod: "questions", motif: "choice",
         practiceQuestionIds: ["q1"], verified: true },
-      ...choiceRefs.map((sourceRef, index) => ({
+      ...choiceRefs.map((sourceRef, index): SourceInventory["items"][number] => ({
         id: "question-1-choice-" + index, lessonId: 1, kind: "questionChoice", fileName: "synthetic.pdf", pageNumber: 1,
         sourceRef, contentPointer: "/questions/0/choices/" + index, practiceMethod: "questions", motif: "choice",
         practiceQuestionIds: ["q1"], verified: true,
