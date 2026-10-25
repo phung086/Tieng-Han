@@ -25,6 +25,40 @@ export type WorkbookItem = {
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
 
+// Match StudySession's answer normalization and ensure the answer can be formed
+// from the declared source token chunks. Unused chunks remain valid distractors.
+function canConstructReorderAnswer(tokens: string[] | undefined, answer: string | undefined): boolean {
+  const normalize = (text: string) => text.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
+  const target = normalize(value(answer));
+  const chunks = (tokens ?? []).map(token => normalize(value(token)));
+  if (!target || !chunks.length || chunks.some(chunk => !chunk)) return false;
+
+  const used = chunks.map(() => false);
+  const failed = new Set<string>();
+  function search(position: number): boolean {
+    while (target[position] === " ") position++;
+    if (position >= target.length) return true;
+
+    const key = position + "|" + used.map((isUsed, index) => isUsed ? index : "").join(",");
+    if (failed.has(key)) return false;
+    failed.add(key);
+
+    for (let index = 0; index < chunks.length; index++) {
+      if (used[index]) continue;
+      const chunk = chunks[index];
+      const end = position + chunk.length;
+      if (!target.startsWith(chunk, position) || (end < target.length && target[end] !== " ")) continue;
+
+      used[index] = true;
+      if (search(end)) return true;
+      used[index] = false;
+    }
+    return false;
+  }
+
+  return search(0);
+}
+
 export function buildSourceWorkbook(
   lesson: LessonContent,
   questions: StudyQuestion[],
@@ -183,8 +217,8 @@ export function buildSourceWorkbook(
         ? (choiceAnswerIsSafe ? activity.answer : undefined)
         : activity?.type === "matching"
           ? (matchingAnswerIsSafe ? matchingPairs.map(pair => pair.left + " → " + pair.right).join("\n") : undefined)
-          : activity?.type === "reorder" && !(activity.tokens?.length && activity.tokens.every(token => value(token)))
-            ? undefined
+          : activity?.type === "reorder"
+            ? (canConstructReorderAnswer(activity.tokens, activity.answer) ? activity.answer : undefined)
             : activity?.answer;
       add({
         id: id("extra-" + index, sub),
