@@ -208,6 +208,42 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
   });
 
+  it("keeps grammar-section and grammar-pattern inventory kinds distinct", () => {
+    const sectionBundle = fixture(); sectionBundle.sourceInventory = inventory();
+    const sectionRef = "synthetic.pdf · p.1 · grammar-section";
+    sectionBundle.course.lessons[0].vocabulary = [];
+    sectionBundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "is N", explanation: "Fixture",
+      examples: [], sourceRef: sectionRef,
+    }];
+    sectionBundle.course.questions[0].sourceRef = sectionRef;
+    sectionBundle.sourceInventory.items[0] = {
+      ...sectionBundle.sourceInventory.items[0], id: "grammar-pattern-as-section",
+      kind: "grammarpattern", sourceRef: sectionRef, contentPointer: "/grammar/0",
+      practiceQuestionIds: ["q1"],
+    };
+    const sectionReport = auditCurriculumCoverage(sectionBundle);
+    expect(sectionReport.status).toBe("partial");
+    expect(sectionReport.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+
+    const patternBundle = fixture(); patternBundle.sourceInventory = inventory();
+    const patternRef = "synthetic.pdf · p.1 · grammar-pattern";
+    patternBundle.course.lessons[0].vocabulary = [];
+    patternBundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "is N", explanation: "Fixture",
+      examples: [], sourceRef: sectionRef, patternSourceRef: patternRef,
+    }];
+    patternBundle.course.questions[0].sourceRef = patternRef;
+    patternBundle.sourceInventory.items[0] = {
+      ...patternBundle.sourceInventory.items[0], id: "grammar-section-as-pattern",
+      kind: "grammar", sourceRef: patternRef, contentPointer: "/grammar/0/pattern",
+      practiceQuestionIds: ["q1"],
+    };
+    const patternReport = auditCurriculumCoverage(patternBundle);
+    expect(patternReport.status).toBe("partial");
+    expect(patternReport.issues.join(" ")).toContain("SOURCE_KIND_POINTER_MISMATCH");
+  });
+
   it("fails closed for unknown source kinds instead of treating a valid pointer as proof", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.sourceInventory.items[0].kind = "unclassified-source-kind";
