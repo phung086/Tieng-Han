@@ -3,7 +3,7 @@ import type { LessonContent } from "@/data/content";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 5;
+export const CURRICULUM_AUDIT_VERSION = 6;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -121,6 +121,63 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
 function indexedPart(value: string | undefined): number {
   return value !== undefined && /^\d+$/.test(value) ? Number(value) : -1;
 }
+/** Return nested source units that must have their own inventory row when an
+ * aggregate parent is inventoried. A parent ref cannot silently stand in for
+ * its learner-facing examples, turns, choices, prompts, or reading units.
+ */
+function requiredNestedSourcePointers(lesson: LessonContent, pointer: string): string[] {
+  const parts = decodedPointerParts(pointer);
+  const index = indexedPart(parts[1]);
+  const hasText = (value: unknown) => typeof value === "string" && Boolean(value.trim());
+  const required: string[] = [];
+  const add = (childPointer: string, value: unknown) => {
+    if (hasText(value)) required.push(childPointer);
+  };
+
+  if (parts[0] === "vocabulary" && parts.length === 2 && index >= 0) {
+    const item = lesson.vocabulary[index];
+    if (item) add(pointer + "/example", item.example);
+  } else if (parts[0] === "grammar" && parts.length === 2 && index >= 0) {
+    const item = lesson.grammar[index];
+    if (item) {
+      add(pointer + "/pattern", item.pattern);
+      item.examples.forEach((example, childIndex) => add(pointer + "/examples/" + childIndex, example));
+    }
+  } else if (parts[0] === "listening" && parts.length === 2 && index >= 0) {
+    const item = lesson.listening[index];
+    item?.choices.forEach((choice, childIndex) => add(pointer + "/choices/" + childIndex, choice));
+  } else if (parts[0] === "dialogues" && parts.length === 2 && index >= 0) {
+    const item = lesson.dialogues?.[index];
+    item?.lines.forEach((line, childIndex) => add(pointer + "/lines/" + childIndex, line.targetText || line.ko));
+  } else if (parts[0] === "reading" && parts.length === 1 && lesson.reading) {
+    add("/reading/title", lesson.reading.title);
+    add("/reading/text", lesson.reading.text);
+    lesson.reading.questions.forEach((question, questionIndex) => {
+      add("/reading/questions/" + questionIndex, question.q);
+      question.choices.forEach((choice, choiceIndex) =>
+        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, choice));
+    });
+  } else if (parts[0] === "reading" && parts.length === 3 && parts[1] === "questions") {
+    const questionIndex = indexedPart(parts[2]);
+    const question = questionIndex >= 0 ? lesson.reading?.questions[questionIndex] : undefined;
+    question?.choices.forEach((choice, childIndex) =>
+      add(pointer + "/choices/" + childIndex, choice));
+  } else if (parts[0] === "writing" && parts.length === 1 && lesson.writing) {
+    add("/writing/prompt", lesson.writing.prompt);
+    lesson.writing.targetWords.forEach((word, childIndex) =>
+      add("/writing/targetWords/" + childIndex, word));
+  } else if (parts[0] === "pronunciation" && parts.length === 2 && index >= 0) {
+    const item = lesson.pronunciation?.[index];
+    item?.examples.forEach((example, childIndex) => add(pointer + "/examples/" + childIndex, example));
+  } else if (parts[0] === "extraSections" && index >= 0 &&
+    ((parts.length === 2) || (parts.length === 3 && parts[2] === "content"))) {
+    const item = lesson.extraSections?.[index];
+    if (item && item.content.length > 1) {
+      item.content.forEach((entry, childIndex) => add("/extraSections/" + index + "/content/" + childIndex, entry));
+    }
+  }
+  return required;
+}
 
 /** Resolve evidence for the exact item named by contentPointer. A parent
  * section's sourceRef is never reused for a nested string-array item. */
@@ -167,6 +224,101 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   if (root === "pronunciation" && child === "examples" && parts.length === 4) return lesson.pronunciation?.[index]?.exampleSourceRefs?.[childIndex]?.trim() || undefined;
   if (root === "extraSections" && child === "content" && parts.length === 4) return lesson.extraSections?.[index]?.contentSourceRefs?.[childIndex]?.trim() || undefined;
   return undefined;
+}
+
+/** Item-level refs in the bundle are declarations of source-backed units. Every
+ * such unit must also appear in the independent inventory; checking only from
+ * inventory rows toward nested children misses unlisted children when their
+ * parent row is absent (for example, a grammar pattern row without its cited
+ * example row). Container-level reading/writing/extra-section refs are excluded.
+ */
+function declaredNestedSourcePointers(lesson: LessonContent): string[] {
+  const pointers: string[] = [];
+  const add = (pointer: string, ref: unknown) => {
+    if (typeof ref === "string" && ref.trim() && !/^Derived from\s+/i.test(ref.trim())) {
+      pointers.push(pointer);
+    }
+  };
+
+  // These fields have dedicated item-level refs; a missing inventory row must
+  // be visible even if the parent pointer itself was never inventoried.
+  lesson.vocabulary.forEach((item, index) =>
+    add("/vocabulary/" + index + "/example", item.exampleSourceRef));
+  lesson.grammar.forEach((item, index) => {
+    add("/grammar/" + index + "/pattern", item.patternSourceRef);
+    item.exampleSourceRefs?.forEach((ref, childIndex) =>
+      add("/grammar/" + index + "/examples/" + childIndex, ref));
+  });
+  lesson.listening.forEach((item, index) =>
+    item.choiceSourceRefs?.forEach((ref, childIndex) =>
+      add("/listening/" + index + "/choices/" + childIndex, ref)));
+  lesson.speakingSourceRefs?.forEach((ref, index) => add("/speaking/" + index, ref));
+  lesson.dialogues?.forEach((item, index) => {
+    if (item.origin !== "derived") {
+      item.lines.forEach((line, childIndex) =>
+        add("/dialogues/" + index + "/lines/" + childIndex, line.sourceRef));
+    }
+  });
+  if (lesson.reading) {
+    add("/reading/title", lesson.reading.titleSourceRef);
+    add("/reading/text", lesson.reading.textSourceRef);
+    lesson.reading.questions.forEach((question, questionIndex) =>
+      question.choiceSourceRefs?.forEach((ref, choiceIndex) =>
+        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref)));
+  }
+  if (lesson.writing) {
+    add("/writing/prompt", lesson.writing.promptSourceRef);
+    lesson.writing.targetWordSourceRefs?.forEach((ref, index) =>
+      add("/writing/targetWords/" + index, ref));
+  }
+  lesson.pronunciation?.forEach((item, index) =>
+    item.exampleSourceRefs?.forEach((ref, childIndex) =>
+      add("/pronunciation/" + index + "/examples/" + childIndex, ref)));
+  lesson.extraSections?.forEach((item, index) =>
+    item.contentSourceRefs?.forEach((ref, childIndex) =>
+      add("/extraSections/" + index + "/content/" + childIndex, ref)));
+  return pointers;
+}
+
+/** A resolved object can be non-empty while its learner-facing source unit is blank.
+ * Check the primary text field for each source-bearing pointer before counting it.
+ */
+function hasPrimarySourceContent(pointer: string, content: unknown): boolean {
+  const parts = decodedPointerParts(pointer);
+  const hasText = (value: unknown) => typeof value === "string" && Boolean(value.trim());
+  if (typeof content === "string") return hasText(content);
+  if (Array.isArray(content)) return content.some(hasText);
+  if (!content || typeof content !== "object") return false;
+
+  const row = content as Record<string, unknown>;
+  const field = (...keys: string[]) => keys.some(key => hasText(row[key]));
+  const textArray = (key: string) => Array.isArray(row[key]) && (row[key] as unknown[]).some(hasText);
+  switch (parts[0]) {
+    case "vocabulary": return parts.length === 2 && field("targetText", "ko");
+    case "grammar": return parts.length === 2 && field("pattern");
+    case "listening": return parts.length === 2 && field("text");
+    case "dialogues": {
+      if (parts.length === 4 && parts[2] === "lines") return field("targetText", "ko");
+      if (parts.length !== 2 || !Array.isArray(row.lines)) return false;
+      return (row.lines as unknown[]).some(line => {
+        if (!line || typeof line !== "object" || Array.isArray(line)) return false;
+        const turn = line as Record<string, unknown>;
+        return hasText(turn.targetText) || hasText(turn.ko);
+      });
+    }
+    case "reading":
+      if (parts.length === 1) return field("text");
+      if (parts.length === 3 && parts[1] === "questions") return field("q", "prompt");
+      return false;
+    case "writing": return parts.length === 1 && field("prompt");
+    case "pronunciation": return parts.length === 2 && field("explanation");
+    case "culture": return parts.length === 2 && field("title") && field("text");
+    case "extraSections": return parts.length === 2 && textArray("content");
+    case "questions": return parts.length === 2 && field("prompt");
+    case "media": return parts.length === 2 && field("url", "src", "fileName", "resourcePath", "dataUrl", "alt", "caption", "text");
+    case "illustrations": return parts.length === 2 && field("alt", "caption", "fileName", "url", "src");
+    default: return Object.values(row).some(hasText);
+  }
 }
 
 /** Structural reconciliation against a submitted, independently reviewed source
@@ -244,6 +396,21 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const seenItems = new Set<string>();
   const representedLessons = new Set<number>();
   const destinations = new Set<string>();
+  const inventoryPointerKeys = new Set(inventory.items.map(item => JSON.stringify([item.lessonId, item.contentPointer])));
+  const missingNestedPointers = new Set<string>();
+  // Reconcile in the reverse direction too: an explicit item-level source ref in
+  // the bundle must not disappear from the inventory denominator merely because
+  // no parent inventory row exists to discover it.
+  for (const lesson of bundle.course.lessons) {
+    const requiredPointers = declaredNestedSourcePointers(lesson);
+    for (const pointer of requiredPointers) {
+      const pointerKey = JSON.stringify([lesson.id, pointer]);
+      if (!inventoryPointerKeys.has(pointerKey)) {
+        missingNestedPointers.add(pointerKey);
+        issues.push("Thiếu item-level inventory cho nội dung có sourceRef " + lesson.id + ":" + pointer);
+      }
+    }
+  }
   for (const item of inventory.items) {
     const key = item.lessonId + ":" + item.id;
     if (seenItems.has(key)) { issues.push("Trùng source item: " + key); continue; }
@@ -252,6 +419,21 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const lesson = bundle.course.lessons.find(lesson => lesson.id === item.lessonId);
     const questions = bundle.course.questions.filter(question => question.lessonId === item.lessonId);
     const content = lesson ? resolvePointer({ ...lesson, questions }, item.contentPointer) : undefined;
+    if (lesson) {
+      const sectionIndexForChildren = /^\/extraSections\/(\d+)(?:\/|$)/.exec(item.contentPointer)?.[1];
+      const isRawTranscriptForChildren = sectionIndexForChildren !== undefined &&
+        lesson.extraSections?.[Number(sectionIndexForChildren)]?.kind === "source-transcript";
+      if (!isRawTranscriptForChildren) {
+        for (const childPointer of requiredNestedSourcePointers(lesson, item.contentPointer)) {
+          const childKey = JSON.stringify([item.lessonId, childPointer]);
+          if (!inventoryPointerKeys.has(childKey)) {
+            missingNestedPointers.add(childKey);
+            issues.push("Thiếu item-level inventory cho mục con " + item.lessonId + ":" + childPointer +
+              " (được phát hiện từ " + key + ")");
+          }
+        }
+      }
+    }
     const isContentPath = /^\/(vocabulary|grammar|listening|speaking|dialogues|pronunciation|culture|extraSections|questions|media|illustrations)\/\d+(\/|$)|^\/(reading|writing)(\/|$)/.test(item.contentPointer);
     const destination = JSON.stringify([item.lessonId, item.contentPointer]);
     const repeatedDestination = destinations.has(destination);
@@ -259,9 +441,20 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
     const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
     const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
-    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
-      (typeof content !== "string" || Boolean(content.trim())) &&
-      (!Array.isArray(content) || content.length > 0);
+    // Both the section object and its whole content array are aggregate destinations.
+    // A multi-entry source section must be inventoried through /content/{index} items.
+    const sectionContainerMatch = /^\/extraSections\/(\d+)(?:\/content)?$/.exec(item.contentPointer);
+    const sectionContainerIndex = sectionContainerMatch?.[1];
+    const sectionContainer = sectionContainerIndex === undefined
+      ? undefined
+      : lesson?.extraSections?.[Number(sectionContainerIndex)];
+    if (sectionContainerMatch && !isRawTranscript &&
+      Array.isArray(sectionContainer?.content) && sectionContainer.content.length > 1) {
+      issues.push("Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index} thay vì dùng container: " + key);
+      continue;
+    }
+    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination &&
+      hasPrimarySourceContent(item.contentPointer, content);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
       continue;
@@ -318,7 +511,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   for (const lesson of bundle.course.lessons) {
     if (!representedLessons.has(lesson.id)) issues.push("Lesson chưa có item kiểm kê: " + lesson.id);
   }
-  const total = inventory.items.length;
+  const total = inventory.items.length + missingNestedPointers.size;
   if (!total) issues.push("Inventory rỗng không chứng minh độ đầy đủ.");
   return {
     auditVersion: CURRICULUM_AUDIT_VERSION,

@@ -195,6 +195,18 @@ describe("source, practice and validation coverage are independent release evide
   });
 
 
+  it("does not count a vocabulary record without its target word as represented or practiced", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].vocabulary[0].ko = "";
+    bundle.course.lessons[0].vocabulary[0].targetText = "";
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Thiếu nội dung hoặc nguồn cho item 1:v1");
+  });
+
   it("rejects an inventory kind that points to a different content family", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].grammar = [{
@@ -254,7 +266,7 @@ describe("source, practice and validation coverage are independent release evide
     parent.sourceInventory.items[1].kind = "exerciseSection";
     const validParent = auditCurriculumCoverage(parent);
     expect(validParent.status).toBe("complete");
-    expect(validParent.auditVersion).toBe(5);
+    expect(validParent.auditVersion).toBe(6);
 
     const child = fixture(); child.sourceInventory = inventory();
     const childRef = child.sourceInventory.items[1].sourceRef;
@@ -273,6 +285,154 @@ describe("source, practice and validation coverage are independent release evide
     const validChild = auditCurriculumCoverage(child);
     expect(validChild.status).toBe("complete");
     expect(validChild.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
+  it("requires one inventory item per exercise-section content entry when a container has multiple entries", () => {
+    const parent = fixture();
+    parent.sourceInventory = inventory();
+    parent.course.lessons[0].extraSections![0].content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+
+    const parentReport = auditCurriculumCoverage(parent);
+    expect(parentReport.status).toBe("partial");
+    expect(parentReport.sourceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
+    expect(parentReport.practiceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
+    expect(parentReport.issues.join(" ")).toContain(
+      "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
+    );
+
+    // Pointing at the entire content array must not bypass the same aggregate guard.
+    const contentArray = fixture();
+    contentArray.sourceInventory = inventory();
+    contentArray.course.lessons[0].extraSections![0].content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+    contentArray.sourceInventory.items[1] = {
+      ...contentArray.sourceInventory.items[1],
+      kind: "exerciseSection",
+      contentPointer: "/extraSections/0/content",
+    };
+    const contentArrayReport = auditCurriculumCoverage(contentArray);
+    expect(contentArrayReport.status).toBe("partial");
+    expect(contentArrayReport.sourceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
+    expect(contentArrayReport.issues.join(" ")).toContain(
+      "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
+    );
+
+    const children = fixture();
+    children.sourceInventory = inventory();
+    const section = children.course.lessons[0].extraSections![0];
+    const firstRef = children.sourceInventory.items[1].sourceRef;
+    const secondRef = "synthetic.pdf · p.2 · exercise-second";
+    section.content = [
+      "Translate the first source sentence.",
+      "Complete the second source exercise.",
+    ];
+    section.contentSourceRefs = [firstRef, secondRef];
+
+    const parentItem = children.sourceInventory.items[1];
+    children.sourceInventory.items[1] = {
+      ...parentItem,
+      id: "exercise-subpart-0",
+      kind: "exercise",
+      contentPointer: "/extraSections/0/content/0",
+    };
+    children.sourceInventory.items.push({
+      ...parentItem,
+      id: "exercise-subpart-1",
+      kind: "exercise",
+      sourceRef: secondRef,
+      contentPointer: "/extraSections/0/content/1",
+    });
+
+    const childReport = auditCurriculumCoverage(children);
+    expect(childReport.status).toBe("complete");
+    expect(childReport.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+    expect(childReport.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
+  it("requires separate inventory rows for nested source units hidden behind aggregate pointers", () => {
+    const cases: Array<{
+      id: string;
+      pointer: string;
+      kind: string;
+      expectedChildren: string[];
+      skill: "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing";
+      prompt: string;
+      answer: string;
+      setup: (bundle: CompiledCourseBundle, ref: string) => void;
+    }> = [
+      {
+        id: "vocabulary-parent", pointer: "/vocabulary/0", kind: "vocabulary",
+        expectedChildren: ["/vocabulary/0/example"], skill: "vocabulary",
+        prompt: "Recall the example", answer: "저는 학생입니다.",
+        setup: (bundle, ref) => { bundle.course.lessons[0].vocabulary[0].example = "저는 학생입니다."; bundle.course.lessons[0].vocabulary[0].sourceRef = ref; },
+      },
+      {
+        id: "grammar-parent", pointer: "/grammar/0", kind: "grammar",
+        expectedChildren: ["/grammar/0/pattern", "/grammar/0/examples/0"], skill: "grammar",
+        prompt: "Recall the pattern", answer: "N입니다",
+        setup: (bundle, ref) => { bundle.course.lessons[0].grammar = [{ id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Fixture", examples: ["저는 학생입니다."], sourceRef: ref }]; },
+      },
+      {
+        id: "listening-parent", pointer: "/listening/0", kind: "listening",
+        expectedChildren: ["/listening/0/choices/0", "/listening/0/choices/1"], skill: "listening",
+        prompt: "Recall the listening item", answer: "B",
+        setup: (bundle, ref) => { bundle.course.lessons[0].listening = [{ id: "l1", text: "Listen to the dialogue", meaning: "Nghe hội thoại", choices: ["A", "B"], answer: "B", sourceRef: ref }]; },
+      },
+      {
+        id: "dialogue-parent", pointer: "/dialogues/0", kind: "dialogue",
+        expectedChildren: ["/dialogues/0/lines/0", "/dialogues/0/lines/1"], skill: "speaking",
+        prompt: "Recall the dialogue", answer: "안녕하세요.",
+        setup: (bundle, ref) => { bundle.course.lessons[0].dialogues = [{ id: "d1", title: "Greeting", sourceRef: ref, lines: [{ speaker: "A", targetText: "안녕하세요.", ko: "안녕하세요.", sourceRef: "synthetic.pdf · p.1 · line-a" }, { speaker: "B", targetText: "네, 안녕하세요.", ko: "네, 안녕하세요.", sourceRef: "synthetic.pdf · p.1 · line-b" }] }]; },
+      },
+      {
+        id: "reading-parent", pointer: "/reading", kind: "readingsection",
+        expectedChildren: ["/reading/title", "/reading/text", "/reading/questions/0", "/reading/questions/0/choices/0", "/reading/questions/0/choices/1"], skill: "reading",
+        prompt: "Recall the reading section", answer: "Passage",
+        setup: (bundle, ref) => { bundle.course.lessons[0].reading = { title: "Title", text: "Passage", translation: "Đoạn đọc", sourceRef: ref, questions: [{ id: "r1", q: "Question?", choices: ["A", "B"], answer: "A", sourceRef: "synthetic.pdf · p.1 · reading-question" }] }; },
+      },
+      {
+        id: "writing-parent", pointer: "/writing", kind: "writingtask",
+        expectedChildren: ["/writing/prompt", "/writing/targetWords/0"], skill: "writing",
+        prompt: "Recall the writing task", answer: "저",
+        setup: (bundle, ref) => { bundle.course.lessons[0].writing = { prompt: "Write one sentence using 저.", hint: "Fixture", targetWords: ["저"], sourceRef: ref }; },
+      },
+      {
+        id: "pronunciation-parent", pointer: "/pronunciation/0", kind: "pronunciation",
+        expectedChildren: ["/pronunciation/0/examples/0"], skill: "speaking",
+        prompt: "Recall the pronunciation rule", answer: "학교",
+        setup: (bundle, ref) => { bundle.course.lessons[0].pronunciation = [{ id: "p1", title: "Pronunciation", explanation: "Pronunciation rule", examples: ["학교"], sourceRef: ref }]; },
+      },
+    ];
+
+    for (const scenario of cases) {
+      const bundle = fixture();
+      bundle.sourceInventory = inventory();
+      const ref = "synthetic.pdf · p.1 · " + scenario.id;
+      scenario.setup(bundle, ref);
+      bundle.course.questions[0] = {
+        ...bundle.course.questions[0], skill: scenario.skill, type: "input",
+        title: scenario.id, prompt: scenario.prompt, answer: scenario.answer,
+        explanation: "Synthetic parent fixture", sourceRef: ref, origin: "source",
+      };
+      bundle.sourceInventory.items[0] = {
+        ...bundle.sourceInventory.items[0], id: scenario.id, kind: scenario.kind,
+        sourceRef: ref, contentPointer: scenario.pointer, practiceMethod: "questions",
+        motif: "input", practiceQuestionIds: ["q1"],
+      };
+
+      const report = auditCurriculumCoverage(bundle);
+      expect(report.status, scenario.id).toBe("partial");
+      expect(report.sourceCoverage.total, scenario.id).toBe(2 + scenario.expectedChildren.length);
+      expect(report.issues.join(" "), scenario.id).toContain("Thiếu item-level inventory cho mục con");
+      for (const childPointer of scenario.expectedChildren) {
+        expect(report.issues.join(" "), scenario.id).toContain(childPointer);
+      }
+    }
   });
 
   it("keeps reading and writing section kinds distinct from nested text/prompt kinds", () => {
@@ -625,6 +785,59 @@ describe("source, practice and validation coverage are independent release evide
     const report = auditCurriculumCoverage(bundle);
     expect(report.status).not.toBe("complete");
     expect(report.issues.join(" ")).toContain("Tham chiếu mẫu ngữ pháp rỗng");
+  });
+
+  it("requires inventory for explicitly referenced child items even when their parent row is absent", () => {
+    const bundle = fixture();
+    bundle.sourceManifest = [{
+      name: "synthetic.pdf", size: 1, lastModified: 1, pageCount: 1, sha256: "a".repeat(64),
+    }];
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary = [];
+    lesson.extraSections = [];
+    const patternRef = "synthetic.pdf · p.1 · grammar-pattern";
+    const exampleRef = "synthetic.pdf · p.1 · grammar-example";
+    lesson.grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Synthetic rule",
+      examples: ["저는 학생입니다."], sourceRef: "synthetic.pdf · p.1 · grammar-section",
+      patternSourceRef: patternRef, exampleSourceRefs: [exampleRef],
+    }];
+    bundle.course.questions = [{
+      id: "q-pattern", lessonId: 1, skill: "grammar", type: "input", title: "Pattern",
+      prompt: "Write the grammar pattern", answer: "N입니다", explanation: "Synthetic fixture",
+      sourceRef: "Derived from " + patternRef, origin: "derived",
+    }];
+    bundle.sourceInventory = {
+      version: 1,
+      pages: [{ fileName: "synthetic.pdf", pageNumber: 1, status: "reviewed", classification: "learning-content" }],
+      items: [{
+        id: "grammar-pattern", lessonId: 1, kind: "grammarpattern", fileName: "synthetic.pdf",
+        pageNumber: 1, sourceRef: patternRef, contentPointer: "/grammar/0/pattern",
+        practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-pattern"], verified: true,
+      }],
+    };
+
+    const incomplete = auditCurriculumCoverage(bundle);
+    expect(incomplete.status).toBe("partial");
+    expect(incomplete.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(incomplete.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(incomplete.issues.join(" ")).toContain("/grammar/0/examples/0");
+
+    bundle.course.questions.push({
+      id: "q-example", lessonId: 1, skill: "grammar", type: "input", title: "Example",
+      prompt: "Complete the example", answer: "저는 학생입니다.", explanation: "Synthetic fixture",
+      sourceRef: "Derived from " + exampleRef, origin: "derived",
+    });
+    bundle.sourceInventory.items.push({
+      id: "grammar-example", lessonId: 1, kind: "grammarexample", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef: exampleRef, contentPointer: "/grammar/0/examples/0",
+      practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-example"], verified: true,
+    });
+    const complete = auditCurriculumCoverage(bundle);
+    expect(complete.status).toBe("complete");
+    expect(complete.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(complete.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(complete.validationCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
 });
