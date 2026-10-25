@@ -161,14 +161,24 @@ export function buildSourceWorkbook(
     section.content.forEach((text, sub) => {
       const activity = section.contentExerciseItems?.find(item => item.contentIndex === sub);
       const choices = activity?.type === "choice" ? activity.choices : undefined;
+      const normalizedChoices = (choices ?? []).map(value);
       const choiceAnswerIsSafe = Boolean(
         choices && choices.length >= 2 &&
-        choices.every(choice => value(choice)) &&
-        new Set(choices).size === choices.length &&
-        activity?.answer && choices.includes(activity.answer),
+        normalizedChoices.every(Boolean) &&
+        new Set(normalizedChoices).size === normalizedChoices.length &&
+        activity?.answer && normalizedChoices.includes(value(activity.answer)),
       );
       const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
-      const matchingAnswerIsSafe = matchingPairs.length > 0 && matchingPairs.every(pair => value(pair.left) && value(pair.right));
+      const matchingAnswerIsSafe = Boolean(
+        matchingPairs.length > 0 &&
+        activity?.leftItems?.length &&
+        activity?.rightItems?.length &&
+        matchingPairs.every(pair =>
+          value(pair.left) && value(pair.right) &&
+          activity.leftItems?.includes(pair.left) &&
+          activity.rightItems?.includes(pair.right),
+        ),
+      );
       const answer = activity?.type === "choice"
         ? (choiceAnswerIsSafe ? activity.answer : undefined)
         : activity?.type === "matching"
