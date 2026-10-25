@@ -639,25 +639,23 @@ describe("source, practice and validation coverage are independent release evide
       prompt: "Choose the Korean word", choices: ["학생", "의사"], answer: "학생",
       explanation: "Synthetic fixture", sourceRef: questionRef, choiceSourceRefs: choiceRefs, origin: "source",
     }];
-    bundle.sourceInventory = {
-      version: 1,
-      pages: [1, 2].map(pageNumber => ({
-        fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content",
+    const pages: SourceInventory["pages"] = [1, 2].map(pageNumber => ({
+      fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content",
+    }));
+    const items: SourceInventory["items"] = [
+      { id: "question-1", lessonId: 1, kind: "question", fileName: "synthetic.pdf", pageNumber: 1,
+        sourceRef: questionRef, contentPointer: "/questions/0", practiceMethod: "questions", motif: "choice",
+        practiceQuestionIds: ["q1"], verified: true },
+      ...choiceRefs.map((sourceRef, index) => ({
+        id: "question-1-choice-" + index, lessonId: 1, kind: "questionChoice", fileName: "synthetic.pdf", pageNumber: 1,
+        sourceRef, contentPointer: "/questions/0/choices/" + index, practiceMethod: "questions", motif: "choice",
+        practiceQuestionIds: ["q1"], verified: true,
       })),
-      items: [
-        { id: "question-1", lessonId: 1, kind: "question", fileName: "synthetic.pdf", pageNumber: 1,
-          sourceRef: questionRef, contentPointer: "/questions/0", practiceMethod: "questions", motif: "choice",
-          practiceQuestionIds: ["q1"], verified: true },
-        ...choiceRefs.map((sourceRef, index) => ({
-          id: "question-1-choice-" + index, lessonId: 1, kind: "questionChoice", fileName: "synthetic.pdf", pageNumber: 1,
-          sourceRef, contentPointer: "/questions/0/choices/" + index, practiceMethod: "questions", motif: "choice",
-          practiceQuestionIds: ["q1"], verified: true,
-        })),
-        { id: "exercise", lessonId: 1, kind: "exerciseSection", fileName: "synthetic.pdf", pageNumber: 2,
-          sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0",
-          practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
-      ],
-    };
+      { id: "exercise", lessonId: 1, kind: "exerciseSection", fileName: "synthetic.pdf", pageNumber: 2,
+        sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0",
+        practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
+    ];
+    bundle.sourceInventory = { version: 1, pages, items };
 
     const parsed = parseCourseBundle(JSON.stringify(bundle));
     expect(parsed.course.questions[0].choiceSourceRefs).toEqual(choiceRefs);
