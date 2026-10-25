@@ -73,6 +73,9 @@ When a reading title or passage text is inventoried separately as
 Likewise, an independently inventoried `/writing/prompt` needs
 `writing.promptSourceRef`; the task-level `writing.sourceRef` is not proof
 for the prompt string.
+When a grammar pattern is inventoried separately at `/grammar/{index}/pattern`,
+store its exact evidence in `grammar[index].patternSourceRef`. The rule-level
+`grammar[index].sourceRef` does not prove the nested pattern string.
 `practiceMethod: "workbook"` preserves open-ended/manual activities without
 inventing answer keys. Question mappings must point to real questions in the
 same lesson with the matching source reference. For `practiceMethod: "questions"`,
