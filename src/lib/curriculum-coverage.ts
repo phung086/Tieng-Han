@@ -353,7 +353,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const questions = bundle.course.questions.filter(question => question.lessonId === item.lessonId);
     const content = lesson ? resolvePointer({ ...lesson, questions }, item.contentPointer) : undefined;
     if (lesson) {
-      const sectionIndexForChildren = /^\\/extraSections\\/(\\d+)(?:\\/|$)/.exec(item.contentPointer)?.[1];
+      const sectionIndexForChildren = /^\/extraSections\/(\d+)(?:\/|$)/.exec(item.contentPointer)?.[1];
       const isRawTranscriptForChildren = sectionIndexForChildren !== undefined &&
         lesson.extraSections?.[Number(sectionIndexForChildren)]?.kind === "source-transcript";
       if (!isRawTranscriptForChildren) {
