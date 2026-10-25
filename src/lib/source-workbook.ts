@@ -33,7 +33,8 @@ export function buildSourceWorkbook(
 
     // Keep a stable, reviewable placeholder instead of silently dropping a
     // source-backed slot whose extracted text is empty. The placeholder is
-    // explicitly excluded from authored/practice coverage by its category.
+    // visibly marked as fallback; the coverage audit still fails closed because
+    // the original source content remains empty.
     items.push({
       ...item,
       category: "Nguồn dự phòng · chưa tính là bài biên soạn",
