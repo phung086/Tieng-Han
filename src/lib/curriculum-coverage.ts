@@ -267,7 +267,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const content = lesson ? resolvePointer({ ...lesson, questions }, item.contentPointer) : undefined;
     // An inventoried source question is an aggregate when it contains answer choices.
     // Each original choice needs its own exact inventory pointer and choiceSourceRef.
-    const questionParent = /^\\/questions\\/(\\d+)$/.exec(item.contentPointer);
+    const questionParent = /^\/questions\/(\d+)$/.exec(item.contentPointer);
     if (lesson && questionParent) {
       const questionIndex = Number(questionParent[1]);
       const parentQuestion = questions[questionIndex];
