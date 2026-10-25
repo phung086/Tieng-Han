@@ -3,7 +3,7 @@ import type { LessonContent } from "@/data/content";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 4;
+export const CURRICULUM_AUDIT_VERSION = 5;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -103,7 +103,7 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
     case "culture":
       return parts.length === 2 && indexed(index) && at("culture", "culturalnote", "vanhoa", "noidungvanhoa", "문화", "문화노트");
     case "extraSections":
-      if (parts.length === 2 && indexed(index)) return at("extrasection", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
+      if (parts.length === 2 && indexed(index)) return at("extrasection", "workbooksection", "supplementsection", "activitysection", "exercisegroup", "baitapsection", "연습섹션", "보충섹션");
       if (parts.length === 4 && indexed(index) && child === "content" && indexed(childIndex)) return at("extrasectionitem", "exercise", "workbook", "worksheet", "task", "problem", "question", "translation", "drill", "practice", "baitap", "baitapgoc", "dich", "supplement", "baitapbosung", "연습", "문제", "과제", "번역", "보충문제");
       return false;
     case "media":
