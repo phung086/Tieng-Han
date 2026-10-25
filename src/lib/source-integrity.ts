@@ -4,7 +4,8 @@ import type { ImportJob, ImportJobPage, ImportSourceFingerprint } from "@/lib/im
 export const sourceFingerprintSchema = z.object({
   // Validate non-blank names without trimming: the filename is part of the source fingerprint.
   name: z.string().refine((value) => value.trim().length > 0, { message: "source filename must not be blank" }),
-  size: z.number().int().nonnegative(),
+  // An imported PDF/DOCX must contain bytes; zero-byte files cannot represent a usable textbook source.
+  size: z.number().int().positive(),
   lastModified: z.number().int().nonnegative(),
   pageCount: z.number().int().positive(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
