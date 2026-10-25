@@ -266,7 +266,7 @@ describe("source, practice and validation coverage are independent release evide
     parent.sourceInventory.items[1].kind = "exerciseSection";
     const validParent = auditCurriculumCoverage(parent);
     expect(validParent.status).toBe("complete");
-    expect(validParent.auditVersion).toBe(5);
+    expect(validParent.auditVersion).toBe(6);
 
     const child = fixture(); child.sourceInventory = inventory();
     const childRef = child.sourceInventory.items[1].sourceRef;
@@ -297,8 +297,8 @@ describe("source, practice and validation coverage are independent release evide
 
     const parentReport = auditCurriculumCoverage(parent);
     expect(parentReport.status).toBe("partial");
-    expect(parentReport.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
-    expect(parentReport.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(parentReport.sourceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
+    expect(parentReport.practiceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
     expect(parentReport.issues.join(" ")).toContain(
       "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
     );
@@ -317,7 +317,7 @@ describe("source, practice and validation coverage are independent release evide
     };
     const contentArrayReport = auditCurriculumCoverage(contentArray);
     expect(contentArrayReport.status).toBe("partial");
-    expect(contentArrayReport.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(contentArrayReport.sourceCoverage).toEqual({ covered: 1, total: 4, percent: 25 });
     expect(contentArrayReport.issues.join(" ")).toContain(
       "Section nguồn có nhiều mục con; cần kiểm kê từng mục /content/{index}",
     );
@@ -352,6 +352,87 @@ describe("source, practice and validation coverage are independent release evide
     expect(childReport.status).toBe("complete");
     expect(childReport.sourceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
     expect(childReport.practiceCoverage).toEqual({ covered: 3, total: 3, percent: 100 });
+  });
+
+  it("requires separate inventory rows for nested source units hidden behind aggregate pointers", () => {
+    const cases: Array<{
+      id: string;
+      pointer: string;
+      kind: string;
+      expectedChildren: string[];
+      skill: "vocabulary" | "grammar" | "listening" | "speaking" | "reading" | "writing" | "pronunciation";
+      prompt: string;
+      answer: string;
+      setup: (bundle: CompiledCourseBundle, ref: string) => void;
+    }> = [
+      {
+        id: "vocabulary-parent", pointer: "/vocabulary/0", kind: "vocabulary",
+        expectedChildren: ["/vocabulary/0/example"], skill: "vocabulary",
+        prompt: "Recall the example", answer: "저는 학생입니다.",
+        setup: (bundle, ref) => { bundle.course.lessons[0].vocabulary[0].example = "저는 학생입니다."; bundle.course.lessons[0].vocabulary[0].sourceRef = ref; },
+      },
+      {
+        id: "grammar-parent", pointer: "/grammar/0", kind: "grammar",
+        expectedChildren: ["/grammar/0/pattern", "/grammar/0/examples/0"], skill: "grammar",
+        prompt: "Recall the pattern", answer: "N입니다",
+        setup: (bundle, ref) => { bundle.course.lessons[0].grammar = [{ id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Fixture", examples: ["저는 학생입니다."], sourceRef: ref }]; },
+      },
+      {
+        id: "listening-parent", pointer: "/listening/0", kind: "listening",
+        expectedChildren: ["/listening/0/choices/0", "/listening/0/choices/1"], skill: "listening",
+        prompt: "Recall the listening item", answer: "B",
+        setup: (bundle, ref) => { bundle.course.lessons[0].listening = [{ id: "l1", text: "Listen to the dialogue", meaning: "Nghe hội thoại", choices: ["A", "B"], answer: "B", sourceRef: ref }]; },
+      },
+      {
+        id: "dialogue-parent", pointer: "/dialogues/0", kind: "dialogue",
+        expectedChildren: ["/dialogues/0/lines/0", "/dialogues/0/lines/1"], skill: "speaking",
+        prompt: "Recall the dialogue", answer: "안녕하세요.",
+        setup: (bundle, ref) => { bundle.course.lessons[0].dialogues = [{ id: "d1", title: "Greeting", sourceRef: ref, lines: [{ speaker: "A", targetText: "안녕하세요.", ko: "안녕하세요.", sourceRef: "synthetic.pdf · p.1 · line-a" }, { speaker: "B", targetText: "네, 안녕하세요.", ko: "네, 안녕하세요.", sourceRef: "synthetic.pdf · p.1 · line-b" }] }]; },
+      },
+      {
+        id: "reading-parent", pointer: "/reading", kind: "readingsection",
+        expectedChildren: ["/reading/title", "/reading/text", "/reading/questions/0", "/reading/questions/0/choices/0", "/reading/questions/0/choices/1"], skill: "reading",
+        prompt: "Recall the reading section", answer: "Passage",
+        setup: (bundle, ref) => { bundle.course.lessons[0].reading = { title: "Title", text: "Passage", translation: "Đoạn đọc", sourceRef: ref, questions: [{ id: "r1", q: "Question?", choices: ["A", "B"], answer: "A", sourceRef: "synthetic.pdf · p.1 · reading-question" }] }; },
+      },
+      {
+        id: "writing-parent", pointer: "/writing", kind: "writingtask",
+        expectedChildren: ["/writing/prompt", "/writing/targetWords/0"], skill: "writing",
+        prompt: "Recall the writing task", answer: "저",
+        setup: (bundle, ref) => { bundle.course.lessons[0].writing = { prompt: "Write one sentence using 저.", hint: "Fixture", targetWords: ["저"], sourceRef: ref }; },
+      },
+      {
+        id: "pronunciation-parent", pointer: "/pronunciation/0", kind: "pronunciation",
+        expectedChildren: ["/pronunciation/0/examples/0"], skill: "speaking",
+        prompt: "Recall the pronunciation rule", answer: "학교",
+        setup: (bundle, ref) => { bundle.course.lessons[0].pronunciation = [{ id: "p1", title: "Pronunciation", explanation: "Pronunciation rule", examples: ["학교"], sourceRef: ref }]; },
+      },
+    ];
+
+    for (const scenario of cases) {
+      const bundle = fixture();
+      bundle.sourceInventory = inventory();
+      const ref = "synthetic.pdf · p.1 · " + scenario.id;
+      scenario.setup(bundle, ref);
+      bundle.course.questions[0] = {
+        ...bundle.course.questions[0], skill: scenario.skill, type: "input",
+        title: scenario.id, prompt: scenario.prompt, answer: scenario.answer,
+        explanation: "Synthetic parent fixture", sourceRef: ref, origin: "source",
+      };
+      bundle.sourceInventory.items[0] = {
+        ...bundle.sourceInventory.items[0], id: scenario.id, kind: scenario.kind,
+        sourceRef: ref, contentPointer: scenario.pointer, practiceMethod: "questions",
+        motif: "input", practiceQuestionIds: ["q1"],
+      };
+
+      const report = auditCurriculumCoverage(bundle);
+      expect(report.status, scenario.id).toBe("partial");
+      expect(report.sourceCoverage.total, scenario.id).toBe(2 + scenario.expectedChildren.length);
+      expect(report.issues.join(" "), scenario.id).toContain("Thiếu item-level inventory cho mục con");
+      for (const childPointer of scenario.expectedChildren) {
+        expect(report.issues.join(" "), scenario.id).toContain(childPointer);
+      }
+    }
   });
 
   it("keeps reading and writing section kinds distinct from nested text/prompt kinds", () => {
