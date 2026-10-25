@@ -235,7 +235,7 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
 function declaredItemLevelSourcePointers(lesson: LessonContent): string[] {
   const pointers: string[] = [];
   const add = (pointer: string, ref: unknown) => {
-    if (typeof ref === "string" && ref.trim() && !/^Derived from\\s+/i.test(ref.trim())) {
+    if (typeof ref === "string" && ref.trim() && !/^Derived from\s+/i.test(ref.trim())) {
       pointers.push(pointer);
     }
   };
@@ -420,7 +420,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const lessonQuestions = bundle.course.questions.filter(question => question.lessonId === lesson.id);
     lessonQuestions.forEach((question, index) => {
       if (question.origin === "source" && typeof question.sourceRef === "string" &&
-        question.sourceRef.trim() && !/^Derived from\\s+/i.test(question.sourceRef.trim())) {
+        question.sourceRef.trim() && !/^Derived from\s+/i.test(question.sourceRef.trim())) {
         requiredPointers.push("/questions/" + index);
       }
     });
