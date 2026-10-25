@@ -11,7 +11,7 @@ function lessonWithEmptySourceSlots(): LessonContent {
     vi: "Bài 9",
     objective: "Synthetic regression fixture",
     sourceRef: "Sách.pdf · p.1",
-    vocabulary: [{ id: "v1", ko: "학생", vi: "học sinh", example: "", sourceRef: "Sách.pdf · p.1 · v1" }],
+    vocabulary: [Object.assign({ id: "v1", ko: "학생", vi: "học sinh", example: "", sourceRef: "Sách.pdf · p.1 · v1" }, { exampleSourceRef: "Sách.pdf · p.1 · v1 · example" })],
     grammar: [{
       id: "g1", pattern: "-입니다", meaning: "là", explanation: "Lối nói trang trọng",
       examples: [""], sourceRef: "Sách.pdf · p.2 · g1",
