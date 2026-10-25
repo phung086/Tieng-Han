@@ -18,6 +18,7 @@ export type WorkbookItem = {
 };
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
+const EMPTY_SOURCE_PROMPT = "Nội dung nguồn trống — cần đối chiếu PDF.";
 
 export function buildSourceWorkbook(
   lesson: LessonContent,
@@ -25,7 +26,25 @@ export function buildSourceWorkbook(
 ): WorkbookItem[] {
   const items: WorkbookItem[] = [];
   function add(item: WorkbookItem) {
-    if (value(item.prompt)) items.push(item);
+    if (value(item.prompt)) {
+      items.push(item);
+      return;
+    }
+
+    // Keep a stable, reviewable placeholder instead of silently dropping a
+    // source-backed slot whose extracted text is empty. The placeholder is
+    // visibly marked as fallback; the coverage audit still fails closed because
+    // the original source content remains empty.
+    items.push({
+      ...item,
+      category: "Nguồn dự phòng · chưa tính là bài biên soạn",
+      prompt: EMPTY_SOURCE_PROMPT,
+      hint: [value(item.hint), "Mục nguồn rỗng; đối chiếu PDF trước khi học. Chưa được tính là nội dung đã xác minh."]
+        .filter(Boolean)
+        .join(" · "),
+      answer: undefined,
+      choices: undefined,
+    });
   }
   const id = (kind: string, index: number, sub = 0) =>
     "source:" + lesson.id + ":" + kind + ":" + index + ":" + sub;
@@ -39,11 +58,16 @@ export function buildSourceWorkbook(
       answer: meaning || undefined,
       sourceRef: word.sourceRef ?? lesson.sourceRef,
     });
-    if (value(word.example)) add({
-      id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
-      prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
-      sourceRef: word.sourceRef ?? lesson.sourceRef,
-    });
+    const exampleSourceRef = Reflect.get(word, "exampleSourceRef");
+    if (value(word.example) || (typeof exampleSourceRef === "string" && value(exampleSourceRef))) {
+      add({
+        id: id("vocab-example", index), category: "Từ vựng", title: "Câu ví dụ " + (index + 1),
+        prompt: word.example, hint: "Đọc thành tiếng và đặt một câu tương tự.",
+        sourceRef: typeof exampleSourceRef === "string" && value(exampleSourceRef)
+          ? exampleSourceRef
+          : word.sourceRef ?? lesson.sourceRef,
+      });
+    }
   });
 
   lesson.grammar.forEach((item, index) => {
