@@ -317,8 +317,15 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const explicitWritingTask = item.contentPointer === "/writing" &&
       /(?:writing|exercise|workbook|practice|worksheet|task|translation|연습|작문)/i.test(item.kind) &&
       Boolean(writing && typeof writing.prompt === "string" && writing.prompt.trim());
+    // The existing source-workbook route exposes culture notes as manually
+    // completable reading items. Permit that exact target without inventing a
+    // quiz answer, but only when both authored fields are present.
+    const culturePointer = /^\\/culture\\/(\\d+)$/.exec(item.contentPointer);
+    const cultureItem = culturePointer ? lesson?.culture?.[Number(culturePointer[1])] : undefined;
+    const explicitCultureNote = Boolean(cultureItem && cultureItem.title.trim() && cultureItem.text.trim());
     const manualWorkbookTask = item.practiceMethod === "workbook" &&
-      !item.motif && item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
+      !item.motif && item.practiceQuestionIds.length === 0 &&
+      (explicitExerciseSection || explicitWritingTask || explicitCultureNote);
     // Every mapped question must resolve to this exact source item. When the reviewed
     // inventory specifies a supported motif, at least one linked question must preserve it.
     if (motifMissing) {
