@@ -226,6 +226,74 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   return undefined;
 }
 
+/** Item-level refs in the bundle are declarations of source-backed units. Every
+ * such unit must also appear in the independent inventory; checking only from
+ * inventory rows toward nested children misses unlisted children when their
+ * parent row is absent (for example, a grammar pattern row without its cited
+ * example row). Container-level reading/writing/extra-section refs are excluded.
+ */
+function declaredItemLevelSourcePointers(lesson: LessonContent): string[] {
+  const pointers: string[] = [];
+  const add = (pointer: string, ref: unknown) => {
+    if (typeof ref === "string" && ref.trim() && !/^Derived from\\s+/i.test(ref.trim())) {
+      pointers.push(pointer);
+    }
+  };
+
+  lesson.vocabulary.forEach((item, index) => {
+    add("/vocabulary/" + index, item.sourceRef);
+    add("/vocabulary/" + index + "/example", item.exampleSourceRef);
+  });
+  lesson.grammar.forEach((item, index) => {
+    // The grammar object ref may describe the containing section; the dedicated
+    // pattern/example refs are the unambiguous item-level declarations.
+    add("/grammar/" + index + "/pattern", item.patternSourceRef);
+    item.exampleSourceRefs?.forEach((ref, childIndex) =>
+      add("/grammar/" + index + "/examples/" + childIndex, ref));
+  });
+  lesson.listening.forEach((item, index) => {
+    add("/listening/" + index, item.sourceRef);
+    item.choiceSourceRefs?.forEach((ref, childIndex) =>
+      add("/listening/" + index + "/choices/" + childIndex, ref));
+  });
+  lesson.speakingSourceRefs?.forEach((ref, index) => add("/speaking/" + index, ref));
+  lesson.dialogues?.forEach((item, index) => {
+    if (item.origin !== "derived") {
+      item.lines.forEach((line, childIndex) =>
+        add("/dialogues/" + index + "/lines/" + childIndex, line.sourceRef));
+    }
+  });
+  if (lesson.reading) {
+    add("/reading/title", lesson.reading.titleSourceRef);
+    add("/reading/text", lesson.reading.textSourceRef);
+    lesson.reading.questions.forEach((question, questionIndex) => {
+      add("/reading/questions/" + questionIndex, question.sourceRef);
+      question.choiceSourceRefs?.forEach((ref, choiceIndex) =>
+        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref));
+    });
+  }
+  if (lesson.writing) {
+    add("/writing/prompt", lesson.writing.promptSourceRef);
+    lesson.writing.targetWordSourceRefs?.forEach((ref, index) =>
+      add("/writing/targetWords/" + index, ref));
+  }
+  lesson.pronunciation?.forEach((item, index) => {
+    add("/pronunciation/" + index, item.sourceRef);
+    item.exampleSourceRefs?.forEach((ref, childIndex) =>
+      add("/pronunciation/" + index + "/examples/" + childIndex, ref));
+  });
+  lesson.culture?.forEach((item, index) => add("/culture/" + index, item.sourceRef));
+  lesson.extraSections?.forEach((item, index) => {
+    item.contentSourceRefs?.forEach((ref, childIndex) =>
+      add("/extraSections/" + index + "/content/" + childIndex, ref));
+  });
+  lesson.media?.forEach((item, index) => {
+    if (item.role !== "external") add("/media/" + index, item.sourceRef);
+  });
+  lesson.illustrations?.forEach((item, index) => add("/illustrations/" + index, item.sourceRef));
+  return pointers;
+}
+
 /** A resolved object can be non-empty while its learner-facing source unit is blank.
  * Check the primary text field for each source-bearing pointer before counting it.
  */
