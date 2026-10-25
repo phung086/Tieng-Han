@@ -189,6 +189,8 @@ export type StudyQuestion = {
   prompt: string;
   translation?: string;
   choices?: string[];
+  /** One exact source reference per choice, aligned by index; no parent-ref inheritance. */
+  choiceSourceRefs?: string[];
   tokens?: string[];
   answer: string;
   explanation: string;

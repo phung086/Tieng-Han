@@ -64,6 +64,7 @@ not changed by this guard.
 `contentPointer` is a JSON pointer relative to the lesson. Supported roots are
 the runtime learning sections and the lesson's filtered `questions` array.
 The inventory `kind` must match the destination category (for example, `vocabulary` → `/vocabulary/0`, `grammar-example` → `/grammar/0/examples/0`, and `illustration` → `/illustrations/0`). Mismatched or unsupported kind/path pairs fail closed instead of being counted as represented. `illustrations` is supported when present in a lesson.
+For choices attached to a top-level course question, use `/questions/{index}/choices/{choiceIndex}`, kind `questionChoice`, and `choiceSourceRefs` on that question. The inventory item links to the parent question ID and must use the parent's actual practice motif; the audit checks the exact choice ref as well as the parent's question type. When a source question with choices is inventoried at `/questions/{index}`, every non-empty choice also requires its own child inventory row; the parent row alone cannot count all options as covered. Missing choice rows remain in the coverage denominator and keep the report partial. Conversely, choice child rows require the parent question row too, so options alone cannot hide a missing source prompt.
 Use a distinct destination for each source unit; `/grammar/0/examples/1` and
 `/extraSections/0/content/2` can identify original examples and exercise subparts.
 For extra-section destinations, use a section kind such as `exerciseSection` for
