@@ -38,12 +38,13 @@ describe("empty source workbook slots", () => {
     const items = buildSourceWorkbook(lessonWithEmptySourceSlots(), []);
     const placeholders = items.filter(item => item.prompt === EMPTY_PROMPT);
 
-    expect(placeholders).toHaveLength(4);
+    expect(placeholders).toHaveLength(5);
     expect(placeholders.map(item => item.id)).toEqual([
       "source:9:grammar-example-0:0:0",
       "source:9:listening:0:0",
       "source:9:speaking:0:0",
       "source:9:writing:0:0",
+      "source:9:extra-0:0:0",
     ]);
     expect(placeholders.every(item => item.category === "Nguồn dự phòng · chưa tính là bài biên soạn")).toBe(true);
     expect(placeholders.every(item => item.answer === undefined && item.choices === undefined)).toBe(true);
