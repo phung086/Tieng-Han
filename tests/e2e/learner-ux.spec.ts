@@ -475,3 +475,69 @@ test("account settings expose profile password and session controls without over
   await expect(page.locator('a[href="/import"]')).toHaveCount(0);
   await expectNoPageOverflow(page);
 });
+
+
+test("source workbook paginates long item groups and preserves progress across refresh", async ({ page }) => {
+  const longLesson = {
+    ...lesson,
+    vocabulary: Array.from({ length: 45 }, (_, index) => ({
+      id: "long-v-" + (index + 1),
+      ko: "단어" + (index + 1),
+      vi: "từ " + (index + 1),
+      sourceRef: "synthetic-book.pdf · p.1 · vocabulary-" + (index + 1),
+    })),
+    grammar: [],
+    listening: [],
+    speaking: [],
+    reading: null,
+    writing: null,
+    dialogues: [],
+    pronunciation: [],
+    culture: [],
+    extraSections: [],
+    media: [],
+  };
+  const longCourse = {
+    ...courses[0],
+    lessons: [longLesson, lessonTwo],
+    questions: [],
+  };
+  const longCourses = [longCourse, ...courses.slice(1)];
+
+  // Register after mockRuntime so this fixture takes precedence for this test.
+  await page.route("**/api/courses", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ courses: longCourses, activeCourseId: longCourse.id }),
+    });
+  });
+
+  await page.goto("/practice/workbook?lesson=1");
+
+  const pager = page.getByRole("navigation", { name: "Phân trang Từ vựng" });
+  const group = page.locator("details.lesson-content-card").filter({ has: pager });
+  await expect(group.locator(".supplement-card")).toHaveCount(20);
+  await expect(pager).toContainText("Trang 1/3 · mục 1–20/45");
+  await expect(group.locator("summary")).toContainText("0/45 mục");
+
+  await pager.getByRole("button", { name: "Trang tiếp theo trong nhóm Từ vựng" }).click();
+  await expect(group.locator(".supplement-card")).toHaveCount(20);
+  await expect(pager).toContainText("Trang 2/3 · mục 21–40/45");
+  await group.getByRole("button", { name: "Đã luyện mục này" }).first().click();
+  await expect(group.locator("summary")).toContainText("1/45 mục");
+
+  await page.reload();
+  const reloadedPager = page.getByRole("navigation", { name: "Phân trang Từ vựng" });
+  const reloadedGroup = page.locator("details.lesson-content-card").filter({ has: reloadedPager });
+  await expect(reloadedPager).toContainText("Trang 1/3 · mục 1–20/45");
+  await expect(reloadedGroup.locator("summary")).toContainText("1/45 mục");
+  await expect(reloadedGroup.getByRole("button", { name: "Đánh dấu chưa luyện" })).toHaveCount(1);
+
+  await reloadedPager.getByRole("button", { name: "Trang tiếp theo trong nhóm Từ vựng" }).click();
+  await reloadedPager.getByRole("button", { name: "Trang tiếp theo trong nhóm Từ vựng" }).click();
+  await expect(reloadedPager).toContainText("Trang 3/3 · mục 41–45/45");
+  await expect(reloadedGroup.locator(".supplement-card")).toHaveCount(5);
+  await expect(reloadedGroup.locator("summary")).toContainText("1/45 mục");
+  await expectNoPageOverflow(page);
+});
