@@ -472,6 +472,19 @@ function validateQuestion(
     }
   }
 
+  if (row.choiceSourceRefs !== undefined) {
+    const refs = row.choiceSourceRefs;
+    const choices = row.choices;
+    if (!Array.isArray(refs) || !Array.isArray(choices) || refs.length !== choices.length ||
+      refs.some(ref => typeof ref !== "string" || !ref.trim())) {
+      errors.push({
+        path: `${prefix}.choiceSourceRefs`,
+        reason: "must contain one non-empty source ref per choice, aligned by index",
+        expected: "string[] aligned with choices",
+      });
+    }
+  }
+
   if (row.type === "reorder" && !Array.isArray(row.tokens)) {
     errors.push({
       path: `${prefix}.tokens`,
@@ -844,6 +857,7 @@ export function getCompilationContract(language: LanguageProfile) {
         prompt: "string",
         translation: "string optional",
         choices: "string[] optional",
+        choiceSourceRefs: "string[] optional; one exact source ref per choice, aligned by index",
         tokens: "string[] optional",
         answer: "string",
         explanation: "string",
