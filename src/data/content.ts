@@ -23,6 +23,8 @@ export type GrammarItem = {
   explanation: string;
   examples: string[];
   sourceRef?: string;
+  /** Exact evidence for /grammar/{index}/pattern when inventoried separately. */
+  patternSourceRef?: string;
   /** One source ref per example, aligned by index. */
   exampleSourceRefs?: string[];
 };
