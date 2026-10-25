@@ -412,6 +412,26 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   const destinations = new Set<string>();
   const inventoryPointerKeys = new Set(inventory.items.map(item => JSON.stringify([item.lessonId, item.contentPointer])));
   const missingNestedPointers = new Set<string>();
+  // Reconcile in the reverse direction too: an explicit item-level source ref in
+  // the bundle must not disappear from the inventory denominator merely because
+  // no parent inventory row exists to discover it.
+  for (const lesson of bundle.course.lessons) {
+    const requiredPointers = declaredItemLevelSourcePointers(lesson);
+    const lessonQuestions = bundle.course.questions.filter(question => question.lessonId === lesson.id);
+    lessonQuestions.forEach((question, index) => {
+      if (question.origin === "source" && typeof question.sourceRef === "string" &&
+        question.sourceRef.trim() && !/^Derived from\\s+/i.test(question.sourceRef.trim())) {
+        requiredPointers.push("/questions/" + index);
+      }
+    });
+    for (const pointer of requiredPointers) {
+      const pointerKey = JSON.stringify([lesson.id, pointer]);
+      if (!inventoryPointerKeys.has(pointerKey)) {
+        missingNestedPointers.add(pointerKey);
+        issues.push("Thiếu item-level inventory cho nội dung có sourceRef " + lesson.id + ":" + pointer);
+      }
+    }
+  }
   for (const item of inventory.items) {
     const key = item.lessonId + ":" + item.id;
     if (seenItems.has(key)) { issues.push("Trùng source item: " + key); continue; }
