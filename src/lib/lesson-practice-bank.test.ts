@@ -253,5 +253,9 @@ describe("full-fidelity source workbook", () => {
     const malformed = buildSourceWorkbook(input, []);
     expect(malformed.find(item => item.id === "source:4:extra-0:0:0")?.choices).toEqual(["학생", "의사"]);
     expect(malformed.find(item => item.id === "source:4:extra-0:0:0")?.answer).toBeUndefined();
+
+    input.extraSections![0].contentExerciseItems![3].answerPairs![0].right = "의사";
+    const badMatching = buildSourceWorkbook(input, []);
+    expect(badMatching.find(item => item.id === "source:4:extra-0:3:0")?.answer).toBeUndefined();
   });
 });
