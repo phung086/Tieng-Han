@@ -787,4 +787,57 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("Tham chiếu mẫu ngữ pháp rỗng");
   });
 
+  it("requires inventory for explicitly referenced child items even when their parent row is absent", () => {
+    const bundle = fixture();
+    bundle.sourceManifest = [{
+      name: "synthetic.pdf", size: 1, lastModified: 1, pageCount: 1, sha256: "a".repeat(64),
+    }];
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary = [];
+    lesson.extraSections = [];
+    const patternRef = "synthetic.pdf · p.1 · grammar-pattern";
+    const exampleRef = "synthetic.pdf · p.1 · grammar-example";
+    lesson.grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Synthetic rule",
+      examples: ["저는 학생입니다."], sourceRef: "synthetic.pdf · p.1 · grammar-section",
+      patternSourceRef: patternRef, exampleSourceRefs: [exampleRef],
+    }];
+    bundle.course.questions = [{
+      id: "q-pattern", lessonId: 1, skill: "grammar", type: "input", title: "Pattern",
+      prompt: "Write the grammar pattern", answer: "N입니다", explanation: "Synthetic fixture",
+      sourceRef: "Derived from " + patternRef, origin: "derived",
+    }];
+    bundle.sourceInventory = {
+      version: 1,
+      pages: [{ fileName: "synthetic.pdf", pageNumber: 1, status: "reviewed", classification: "learning-content" }],
+      items: [{
+        id: "grammar-pattern", lessonId: 1, kind: "grammarpattern", fileName: "synthetic.pdf",
+        pageNumber: 1, sourceRef: patternRef, contentPointer: "/grammar/0/pattern",
+        practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-pattern"], verified: true,
+      }],
+    };
+
+    const incomplete = auditCurriculumCoverage(bundle);
+    expect(incomplete.status).toBe("partial");
+    expect(incomplete.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(incomplete.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(incomplete.issues.join(" ")).toContain("/grammar/0/examples/0");
+
+    bundle.course.questions.push({
+      id: "q-example", lessonId: 1, skill: "grammar", type: "input", title: "Example",
+      prompt: "Complete the example", answer: "저는 학생입니다.", explanation: "Synthetic fixture",
+      sourceRef: "Derived from " + exampleRef, origin: "derived",
+    });
+    bundle.sourceInventory.items.push({
+      id: "grammar-example", lessonId: 1, kind: "grammarexample", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef: exampleRef, contentPointer: "/grammar/0/examples/0",
+      practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-example"], verified: true,
+    });
+    const complete = auditCurriculumCoverage(bundle);
+    expect(complete.status).toBe("complete");
+    expect(complete.sourceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(complete.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+    expect(complete.validationCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+  });
+
 });
