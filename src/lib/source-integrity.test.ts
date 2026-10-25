@@ -46,5 +46,7 @@ describe("source manifest fingerprint integrity", () => {
     expect(sameSourceManifest([expected], [fingerprint({ sha256: "not-a-hash" })])).toBe(false);
     expect(sameSourceManifest([expected], [fingerprint({ name: " SÁCH SƠ CẤP 1.pdf " })])).toBe(false);
     expect(sourceManifestSchema.safeParse([fingerprint({ name: "   " })]).success).toBe(false);
+    expect(sourceManifestSchema.safeParse([fingerprint({ size: 0 })]).success).toBe(false);
+    expect(sameSourceManifest([expected], [fingerprint({ size: 0 })])).toBe(false);
   });
 });
