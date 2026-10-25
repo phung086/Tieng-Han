@@ -71,8 +71,8 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       if (parts.length === 3 && indexed(index) && child === "example") return at("vocabularyexample", "vocabexample", "wordexample", "examplevocabulary", "tuvungexample", "cauvidutuvung", "어휘예문", "단어예문");
       return false;
     case "grammar":
-      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
-      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammar", "grammarrule", "grammarpattern", "nguphap", "maunguphap", "문법", "문법규칙", "문법패턴");
+      if (parts.length === 2 && indexed(index)) return at("grammar", "grammarrule", "nguphap", "문법", "문법규칙");
+      if (parts.length === 3 && indexed(index) && child === "pattern") return at("grammarpattern", "pattern", "nguphappattern", "maunguphap", "문법패턴");
       if (parts.length === 4 && indexed(index) && child === "examples" && indexed(childIndex)) return at("grammarexample", "grammarsample", "nguphapexample", "caumau", "문법예문", "예문");
       return false;
     case "listening":
