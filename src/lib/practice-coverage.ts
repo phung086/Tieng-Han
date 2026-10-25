@@ -9,6 +9,7 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
 export type CoverageKind =
   | "vocabulary"
   | "vocabulary-example"
+  | "grammar-pattern"
   | "grammar-example"
   | "dialogue-line"
   | "reading-title"
@@ -51,13 +52,16 @@ export function auditLessonPracticeCoverage(
       add(`vocabulary:${v.id || i}:example`, "vocabulary-example", v.exampleSourceRef);
     }
   });
-  lesson.grammar.forEach((g, i) =>
+  lesson.grammar.forEach((g, i) => {
+    if (g.pattern.trim()) {
+      add(`grammar:${g.id || i}:pattern`, "grammar-pattern", g.patternSourceRef);
+    }
     g.examples.forEach((example, j) => {
       if (example.trim()) {
         add(`grammar:${g.id || i}:example:${j}`, "grammar-example", g.exampleSourceRefs?.[j]);
       }
-    }),
-  );
+    });
+  });
   lesson.dialogues?.forEach((d, i) =>
     d.lines.forEach((line, j) =>
       add(`dialogue:${d.id || i}:line:${j}`, "dialogue-line", line.sourceRef),
