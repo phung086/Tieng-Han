@@ -532,9 +532,11 @@ test("source workbook paginates long item groups and preserves progress across r
   const reloadedGroup = page.locator("details.lesson-content-card").filter({ has: reloadedPager });
   await expect(reloadedPager).toContainText("Trang 1/3 · mục 1–20/45");
   await expect(reloadedGroup.locator("summary")).toContainText("1/45 mục");
-  await expect(reloadedGroup.getByRole("button", { name: "Đánh dấu chưa luyện" })).toHaveCount(1);
 
+  // The completed item was on page 2 before reload; revisit that page to
+  // verify its individual completion state survived, not just the aggregate.
   await reloadedPager.getByRole("button", { name: "Trang tiếp theo trong nhóm Từ vựng" }).click();
+  await expect(reloadedGroup.getByRole("button", { name: "Đánh dấu chưa luyện" })).toHaveCount(1);
   await reloadedPager.getByRole("button", { name: "Trang tiếp theo trong nhóm Từ vựng" }).click();
   await expect(reloadedPager).toContainText("Trang 3/3 · mục 41–45/45");
   await expect(reloadedGroup.locator(".supplement-card")).toHaveCount(5);
