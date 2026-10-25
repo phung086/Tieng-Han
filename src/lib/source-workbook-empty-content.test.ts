@@ -61,4 +61,10 @@ describe("empty source workbook slots", () => {
     expect(items.some(item => item.prompt === "Bài tập gốc hợp lệ" && item.category === "Bài tập gốc")).toBe(true);
     expect(items.some(item => item.id === "source:9:extra-0:1:0" && item.prompt === EMPTY_PROMPT)).toBe(true);
   });
+  it("does not invent a missing example without an item-level source reference", () => {
+    const lesson = lessonWithEmptySourceSlots();
+    Reflect.deleteProperty(lesson.vocabulary[0], "exampleSourceRef");
+    const items = buildSourceWorkbook(lesson, []);
+    expect(items.some(item => item.id === "source:9:vocab-example:0:0")).toBe(false);
+  });
 });
