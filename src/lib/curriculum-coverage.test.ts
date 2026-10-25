@@ -675,6 +675,16 @@ describe("source, practice and validation coverage are independent release evide
     expect(missingChoiceReport.practiceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
     expect(missingChoiceReport.issues.join(" ")).toContain("Thiếu item-level inventory cho lựa chọn nguồn");
 
+    // Child choice rows cannot certify the parent question/prompt when its row is absent.
+    const missingParentInventory = JSON.parse(JSON.stringify(bundle)) as CompiledCourseBundle;
+    missingParentInventory.sourceInventory!.items = missingParentInventory.sourceInventory!.items
+      .filter(item => item.contentPointer !== "/questions/0");
+    const missingParentReport = auditCurriculumCoverage(missingParentInventory);
+    expect(missingParentReport.status).toBe("partial");
+    expect(missingParentReport.sourceCoverage).toEqual({ covered: 3, total: 4, percent: 75 });
+    expect(missingParentReport.practiceCoverage).toEqual({ covered: 3, total: 4, percent: 75 });
+    expect(missingParentReport.issues.join(" ")).toContain("Thiếu item-level inventory cho câu hỏi cha");
+
     const missingRefs = JSON.parse(JSON.stringify(bundle)) as CompiledCourseBundle;
     delete missingRefs.course.questions[0].choiceSourceRefs;
     const missingReport = auditCurriculumCoverage(parseCourseBundle(JSON.stringify(missingRefs)));
