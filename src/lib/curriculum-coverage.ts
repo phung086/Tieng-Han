@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LessonContent } from "@/data/content";
+import type { LessonContent, StudyQuestion } from "@/data/content";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
