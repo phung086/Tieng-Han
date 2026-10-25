@@ -18,8 +18,9 @@ describe("source workbook matching interactions", () => {
   it("ignores malformed JSON, non-numeric keys, and out-of-range indices", () => {
     expect(readMatchingSelections("{", 2, 2)).toEqual({});
     expect(readMatchingSelections(JSON.stringify({
-      nope: "0", "0": "9", "1": "1", "2": "0", "0x": "1", "0": 1,
+      nope: "0", "0": "9", "1": "1", "2": "0", "0x": "1",
     }), 2, 2)).toEqual({ "1": "1" });
+    expect(readMatchingSelections(JSON.stringify({ "0": 1 }), 2, 2)).toEqual({});
   });
 
   it("does not store out-of-range selections or invalid left indices", () => {
