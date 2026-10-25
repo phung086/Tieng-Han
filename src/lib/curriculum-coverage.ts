@@ -169,6 +169,47 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   return undefined;
 }
 
+/** A resolved object can be non-empty while its learner-facing source unit is blank.
+ * Check the primary text field for each source-bearing pointer before counting it.
+ */
+function hasPrimarySourceContent(pointer: string, content: unknown): boolean {
+  const parts = decodedPointerParts(pointer);
+  const hasText = (value: unknown) => typeof value === "string" && Boolean(value.trim());
+  if (typeof content === "string") return hasText(content);
+  if (Array.isArray(content)) return content.some(hasText);
+  if (!content || typeof content !== "object") return false;
+
+  const row = content as Record<string, unknown>;
+  const field = (...keys: string[]) => keys.some(key => hasText(row[key]));
+  const textArray = (key: string) => Array.isArray(row[key]) && (row[key] as unknown[]).some(hasText);
+  switch (parts[0]) {
+    case "vocabulary": return parts.length === 2 && field("targetText", "ko");
+    case "grammar": return parts.length === 2 && field("pattern");
+    case "listening": return parts.length === 2 && field("text");
+    case "dialogues": {
+      if (parts.length === 4 && parts[2] === "lines") return field("targetText", "ko");
+      if (parts.length !== 2 || !Array.isArray(row.lines)) return false;
+      return (row.lines as unknown[]).some(line => {
+        if (!line || typeof line !== "object" || Array.isArray(line)) return false;
+        const turn = line as Record<string, unknown>;
+        return hasText(turn.targetText) || hasText(turn.ko);
+      });
+    }
+    case "reading":
+      if (parts.length === 1) return field("text");
+      if (parts.length === 3 && parts[1] === "questions") return field("q", "prompt");
+      return false;
+    case "writing": return parts.length === 1 && field("prompt");
+    case "pronunciation": return parts.length === 2 && field("explanation");
+    case "culture": return parts.length === 2 && field("title") && field("text");
+    case "extraSections": return parts.length === 2 && textArray("content");
+    case "questions": return parts.length === 2 && field("prompt");
+    case "media": return parts.length === 2 && field("url", "src", "fileName", "resourcePath", "dataUrl", "alt", "caption", "text");
+    case "illustrations": return parts.length === 2 && field("alt", "caption", "fileName", "url", "src");
+    default: return Object.values(row).some(hasText);
+  }
+}
+
 /** Structural reconciliation against a submitted, independently reviewed source
  * inventory. It does not pretend that schema validation reads the PDF itself.
  */
@@ -259,9 +300,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
     const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
     const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
-    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
-      (typeof content !== "string" || Boolean(content.trim())) &&
-      (!Array.isArray(content) || content.length > 0);
+    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination &&
+      hasPrimarySourceContent(item.contentPointer, content);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
       continue;
