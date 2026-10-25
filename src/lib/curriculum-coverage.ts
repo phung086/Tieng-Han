@@ -112,7 +112,11 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
     case "illustrations":
       return parts.length === 2 && indexed(index) && at("illustration", "image", "diagram", "contextillustration", "vocabularyillustration", "grammarillustration", "dialogueillustration", "minhhoa", "anhminhhoa", "삽화", "그림", "도표");
     case "questions":
-      return parts.length === 2 && indexed(index) && at("question", "sourcequestion", "quizquestion", "reviewquestion", "cauhoi", "cauhoigoc", "문항", "원문문항", "퀴즈문항");
+      if (parts.length === 2 && indexed(index)) return at("question", "sourcequestion", "quizquestion", "reviewquestion", "cauhoi", "cauhoigoc", "문항", "원문문항", "퀴즈문항");
+      if (parts.length === 4 && indexed(index) && child === "choices" && indexed(childIndex)) {
+        return at("questionChoice", "quizChoice", "sourceQuestionChoice", "questionOption", "choiceOption", "cauhoiluachon", "luachoncauhoi", "문항선택지");
+      }
+      return false;
     default:
       return false;
   }
@@ -124,7 +128,7 @@ function indexedPart(value: string | undefined): number {
 
 /** Resolve evidence for the exact item named by contentPointer. A parent
  * section's sourceRef is never reused for a nested string-array item. */
-function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: unknown): string | undefined {
+function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: unknown, questions: StudyQuestion[]): string | undefined {
   if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) {
     const ref = (resolved as { sourceRef?: unknown }).sourceRef;
     if (typeof ref === "string" && ref.trim()) return ref.trim();
@@ -146,6 +150,11 @@ function sourceRefAtPointer(lesson: LessonContent, pointer: string, resolved: un
   if (root === "writing" && parts[1] === "targetWords" && parts.length === 3) {
     const targetIndex = indexedPart(parts[2]);
     return targetIndex >= 0 ? lesson.writing?.targetWordSourceRefs?.[targetIndex]?.trim() || undefined : undefined;
+  }
+  if (root === "questions" && parts.length === 4 && child === "choices") {
+    return index >= 0 && childIndex >= 0
+      ? questions[index]?.choiceSourceRefs?.[childIndex]?.trim() || undefined
+      : undefined;
   }
   if (root === "reading" && parts.length === 5 && parts[1] === "questions" && parts[3] === "choices") {
     const questionIndex = indexedPart(parts[2]);
@@ -215,6 +224,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       aligned(item.choiceSourceRefs, item.choices.length, "lesson " + lesson.id + ".listening[" + index + "].choices"));
     lesson.reading?.questions.forEach((question, index) =>
       aligned(question.choiceSourceRefs, question.choices.length, "lesson " + lesson.id + ".reading.questions[" + index + "].choices"));
+    bundle.course.questions.filter(question => question.lessonId === lesson.id).forEach((question, index) =>
+      aligned(question.choiceSourceRefs, question.choices?.length ?? 0, "lesson " + lesson.id + ".questions[" + index + "].choices"));
     lesson.vocabulary.forEach((item, index) => {
       if (item.exampleSourceRef !== undefined && !item.exampleSourceRef.trim()) issues.push("Tham chiếu ví dụ từ vựng rỗng tại lesson " + lesson.id + ".vocabulary[" + index + "]");
     });
@@ -270,15 +281,21 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("SOURCE_KIND_POINTER_MISMATCH: loại " + item.kind + " không khớp contentPointer " + item.contentPointer + " cho item " + key);
       continue;
     }
-    const targetSourceRef = lesson ? sourceRefAtPointer(lesson, item.contentPointer, content) : undefined;
+    const targetSourceRef = lesson ? sourceRefAtPointer(lesson, item.contentPointer, content, questions) : undefined;
     if (!targetSourceRef || targetSourceRef !== item.sourceRef.trim()) {
       issues.push("sourceRef inventory không khớp tham chiếu item đích " + key + " → " + item.contentPointer);
       continue;
     }
     represented++;
     representedLessons.add(item.lessonId);
+    const choicePointer = /^\/questions\/(\d+)\/choices\/(\d+)$/.exec(item.contentPointer);
+    const choiceQuestion = choicePointer ? questions[Number(choicePointer[1])] : undefined;
+    const choiceIndex = choicePointer ? Number(choicePointer[2]) : -1;
     const linkedQuestions = item.practiceQuestionIds.map(id => questions.find(question =>
-      question.id === id && question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef));
+      question.id === id && (choicePointer
+        ? question.id === choiceQuestion?.id &&
+          question.choiceSourceRefs?.[choiceIndex]?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef
+        : question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef)));
     const linked = linkedQuestions.length > 0 && linkedQuestions.every(question => question !== undefined);
     const motifMissing = item.practiceMethod === "questions" && !item.motif;
     const motifMatches = item.motif
