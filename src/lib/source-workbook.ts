@@ -1,4 +1,4 @@
-import type { LessonContent, StudyQuestion } from "@/data/content";
+import type { LessonContent, SourceExerciseMotif, StudyQuestion } from "@/data/content";
 
 export type WorkbookCategory =
   | "Từ vựng" | "Ngữ pháp" | "Nghe" | "Nói" | "Đọc" | "Viết"
@@ -14,6 +14,12 @@ export type WorkbookItem = {
   hint?: string;
   answer?: string;
   choices?: string[];
+  /** Original source exercise motif; absent on legacy/untyped items. */
+  exerciseType?: SourceExerciseMotif;
+  /** Source-provided reorder tokens or matching columns; never generated from guesses. */
+  tokens?: string[];
+  leftItems?: string[];
+  rightItems?: string[];
   sourceRef?: string;
 };
 
@@ -152,14 +158,39 @@ export function buildSourceWorkbook(
       "original-pronunciation": "Phát âm",
       "original-culture": "Văn hóa",
     };
-    section.content.forEach((text, sub) => add({
-      id: id("extra-" + index, sub),
-      category: sourceCategories[section.kind] ?? "Bài tập bổ sung",
-      title: section.title + " · " + (sub + 1),
-      prompt: text,
-      hint: section.kind + " · Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách.",
-      sourceRef: section.contentSourceRefs?.[sub],
-    }));
+    section.content.forEach((text, sub) => {
+      const activity = section.contentExerciseItems?.find(item => item.contentIndex === sub);
+      const choices = activity?.type === "choice" ? activity.choices : undefined;
+      const choiceAnswerIsSafe = Boolean(
+        choices && choices.length >= 2 &&
+        choices.every(choice => value(choice)) &&
+        new Set(choices).size === choices.length &&
+        activity?.answer && choices.includes(activity.answer),
+      );
+      const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
+      const matchingAnswerIsSafe = matchingPairs.length > 0 && matchingPairs.every(pair => value(pair.left) && value(pair.right));
+      const answer = activity?.type === "choice"
+        ? (choiceAnswerIsSafe ? activity.answer : undefined)
+        : activity?.type === "matching"
+          ? (matchingAnswerIsSafe ? matchingPairs.map(pair => pair.left + " → " + pair.right).join("\n") : undefined)
+          : activity?.type === "reorder" && !(activity.tokens?.length && activity.tokens.every(token => value(token)))
+            ? undefined
+            : activity?.answer;
+      add({
+        id: id("extra-" + index, sub),
+        category: sourceCategories[section.kind] ?? "Bài tập bổ sung",
+        title: section.title + " · " + (sub + 1),
+        prompt: text,
+        hint: [section.kind, activity?.hint, "Giữ nguyên lời bài tập nguồn; tự làm hoặc đối chiếu đáp án trong sách."].filter(Boolean).join(" · "),
+        choices,
+        exerciseType: activity?.type,
+        tokens: activity?.type === "reorder" ? activity.tokens : undefined,
+        leftItems: activity?.type === "matching" ? activity.leftItems : undefined,
+        rightItems: activity?.type === "matching" ? activity.rightItems : undefined,
+        answer,
+        sourceRef: section.contentSourceRefs?.[sub],
+      });
+    });
   });
 
   questions.filter(q => q.lessonId === lesson.id).forEach((question, index) => add({
