@@ -38,8 +38,9 @@ describe("empty source workbook slots", () => {
     const items = buildSourceWorkbook(lessonWithEmptySourceSlots(), []);
     const placeholders = items.filter(item => item.prompt === EMPTY_PROMPT);
 
-    expect(placeholders).toHaveLength(5);
+    expect(placeholders).toHaveLength(6);
     expect(placeholders.map(item => item.id)).toEqual([
+      "source:9:vocab-example:0:0",
       "source:9:grammar-example-0:0:0",
       "source:9:listening:0:0",
       "source:9:speaking:0:0",
