@@ -69,6 +69,15 @@ inventing answer keys. Question mappings must point to real questions in the
 same lesson with the matching source reference. Added questions can carry
 `origin: "derived"`; legacy origin remains unknown.
 
+For original exercise subparts retained in `extraSections.content`, the optional
+`contentExerciseItems` array can annotate a verbatim content entry by
+`contentIndex` with its source-backed motif (`choice`, `fill-blank`,
+`reorder`, `matching`, `translation`, `role-play`, `extended-writing`,
+or `manual`). Keep `content` unchanged and align `contentSourceRefs` by index.
+Choices, tokens, matching columns and answer keys are optional source evidence,
+not generated defaults. Missing or uncertain answers stay manual; a declared
+motif alone never proves that an answer key is correct.
+
 The three coverage ratios measure representation, practice availability, and
 reviewed items independently. A complete report means structural reconciliation
 with the **submitted reviewed inventory**. It does not prove that an incomplete
