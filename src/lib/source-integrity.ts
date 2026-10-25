@@ -2,8 +2,10 @@ import { z } from "zod";
 import type { ImportJob, ImportJobPage, ImportSourceFingerprint } from "@/lib/import-jobs";
 
 export const sourceFingerprintSchema = z.object({
-  name: z.string().trim().min(1),
-  size: z.number().int().nonnegative(),
+  // Validate non-blank names without trimming: the filename is part of the source fingerprint.
+  name: z.string().refine((value) => value.trim().length > 0, { message: "source filename must not be blank" }),
+  // An imported PDF/DOCX must contain bytes; zero-byte files cannot represent a usable textbook source.
+  size: z.number().int().positive(),
   lastModified: z.number().int().nonnegative(),
   pageCount: z.number().int().positive(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
@@ -23,7 +25,7 @@ export function sameSourceManifest(expected: ImportSourceFingerprint[], received
   const byName = new Map(received.map(item => [item.name, item]));
   return expected.every(item => {
     const actual = byName.get(item.name);
-    return actual && actual.sha256 === item.sha256 && actual.size === item.size &&
+    return actual && actual.sha256.toLowerCase() === item.sha256.toLowerCase() && actual.size === item.size &&
       actual.lastModified === item.lastModified && actual.pageCount === item.pageCount;
   });
 }
