@@ -91,7 +91,10 @@ same lesson with the matching source reference. For `practiceMethod: "questions"
 `motif` is required and must be one of `choice`, `input`, or `reorder`;
 at least one mapped question must use that form or practice coverage remains
 incomplete. Omit `motif` only when the source activity is intentionally retained
-as a manually reviewed workbook task.
+as a manually reviewed workbook task. A culture note may use this path at
+`/culture/{index}` with kind `culture` and a matching item-level `sourceRef`
+when its title and text are both present; the source-workbook route records it
+as a manually completable reading item without fabricating an answer key.
 Added questions can carry `origin: "derived"`; legacy origin remains unknown.
 
 The three coverage ratios measure representation, practice availability, and
