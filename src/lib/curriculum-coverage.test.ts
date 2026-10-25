@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { auditCurriculumCoverage, type SourceInventory } from "@/lib/curriculum-coverage";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 import { parseCourseBundle } from "@/lib/course-bundle";
+import { buildSourceWorkbook } from "@/lib/source-workbook";
 
 function fixture(): CompiledCourseBundle {
   return parseCourseBundle(JSON.stringify({ format: "haneul-course-bundle", version: 1,
@@ -93,6 +94,40 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory.items[0].practiceQuestionIds = [];
     expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
   });
+  it("allows a reviewed culture note to use the manual source workbook without inventing a quiz answer", () => {
+    const bundle = fixture();
+    bundle.sourceInventory = inventory();
+    const lesson = bundle.course.lessons[0];
+    lesson.vocabulary = [];
+    lesson.culture = [{
+      id: "culture-1", title: "Chào hỏi", text: "Cách chào hỏi trong văn hóa Hàn Quốc",
+      sourceRef: "synthetic.pdf · p.1 · culture-1",
+    }];
+    bundle.course.questions = [];
+    bundle.sourceInventory.items[0] = {
+      id: "culture-1", lessonId: 1, kind: "culture", fileName: "synthetic.pdf", pageNumber: 1,
+      sourceRef: "synthetic.pdf · p.1 · culture-1", contentPointer: "/culture/0",
+      practiceMethod: "workbook", practiceQuestionIds: [], verified: true,
+    };
+
+    const workbook = buildSourceWorkbook(lesson, bundle.course.questions);
+    expect(workbook.some(item =>
+      item.category === "Văn hóa" &&
+      item.prompt === "Cách chào hỏi trong văn hóa Hàn Quốc" &&
+      item.sourceRef === "synthetic.pdf · p.1 · culture-1",
+    )).toBe(true);
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("complete");
+    expect(report.practiceCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
+
+    // A declared quiz motif cannot be bypassed by the manual-workbook exception.
+    bundle.sourceInventory.items[0].motif = "choice";
+    const motifReport = auditCurriculumCoverage(bundle);
+    expect(motifReport.practiceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(motifReport.issues.join(" ")).toContain("Sai motif luyện tập");
+  });
+
   it("rejects an inventory ref that matches the filename but not the referenced item", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].vocabulary[0].sourceRef = "synthetic.pdf · p.1 · different-item";
