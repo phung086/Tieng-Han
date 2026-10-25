@@ -86,14 +86,15 @@ function sourceKindMatchesPointer(kind: string, pointer: string): boolean {
       if (parts.length === 4 && indexed(index) && child === "lines" && indexed(childIndex)) return at("dialogueline", "dialogueturn", "conversationline", "hoithoailine", "luotthoai", "대화문장", "회화문장");
       return false;
     case "reading":
-      if (parts.length === 1) return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
+      if (parts.length === 1) return at("reading", "readingsection", "readingactivity", "docsection", "baidocsection", "읽기섹션", "독해섹션");
       if (parts.length === 2 && parts[1] === "title") return at("readingtitle", "tieudedoc", "읽기제목");
-      if (parts.length === 2 && parts[1] === "text") return at("reading", "readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
+      if (parts.length === 2 && parts[1] === "text") return at("readingpassage", "readingtext", "doc", "baidoc", "읽기", "독해", "읽기지문");
       if (parts.length === 3 && parts[1] === "questions" && indexed(parts[2])) return at("readingquestion", "comprehensionquestion", "docquestion", "cauhoidoc", "읽기문항", "독해문항");
       if (parts.length === 5 && parts[1] === "questions" && indexed(parts[2]) && parts[3] === "choices" && indexed(parts[4])) return at("readingchoice", "docchoice", "luachondoc", "읽기선택지");
       return false;
     case "writing":
-      if (parts.length === 1 || (parts.length === 2 && parts[1] === "prompt")) return at("writing", "writingtask", "writingprompt", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 1) return at("writing", "writingtask", "viet", "baitapviet", "nhiemvuviet", "쓰기", "작문", "쓰기과제");
+      if (parts.length === 2 && parts[1] === "prompt") return at("writingprompt", "writinginstruction", "promptviet", "yeucauviet", "쓰기프롬프트", "쓰기지시문");
       if (parts.length === 3 && parts[1] === "targetWords" && indexed(parts[2])) return at("writingtargetword", "targetword", "writingword", "tukhoa", "tukhoaviet", "tukhoabaitviet", "쓰기목표단어", "목표단어");
       return false;
     case "pronunciation":
