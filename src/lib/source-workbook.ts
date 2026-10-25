@@ -18,6 +18,7 @@ export type WorkbookItem = {
 };
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
+const EMPTY_SOURCE_PROMPT = "Nội dung nguồn trống — cần đối chiếu PDF.";
 
 export function buildSourceWorkbook(
   lesson: LessonContent,
@@ -25,7 +26,24 @@ export function buildSourceWorkbook(
 ): WorkbookItem[] {
   const items: WorkbookItem[] = [];
   function add(item: WorkbookItem) {
-    if (value(item.prompt)) items.push(item);
+    if (value(item.prompt)) {
+      items.push(item);
+      return;
+    }
+
+    // Keep a stable, reviewable placeholder instead of silently dropping a
+    // source-backed slot whose extracted text is empty. The placeholder is
+    // explicitly excluded from authored/practice coverage by its category.
+    items.push({
+      ...item,
+      category: "Nguồn dự phòng · chưa tính là bài biên soạn",
+      prompt: EMPTY_SOURCE_PROMPT,
+      hint: [value(item.hint), "Mục nguồn rỗng; đối chiếu PDF trước khi học. Chưa được tính là nội dung đã xác minh."]
+        .filter(Boolean)
+        .join(" · "),
+      answer: undefined,
+      choices: undefined,
+    });
   }
   const id = (kind: string, index: number, sub = 0) =>
     "source:" + lesson.id + ":" + kind + ":" + index + ":" + sub;
