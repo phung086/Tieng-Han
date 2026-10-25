@@ -29,6 +29,7 @@ import type {
 import { handleMcpEventRpc } from "@/lib/mcp-events";
 import type { LessonContent, StudyQuestion } from "@/data/content";
 import { prepareImportCompilation } from "@/lib/import-compiler";
+import { sameSourceManifest } from "@/lib/source-integrity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,27 +47,6 @@ function withoutResult(job: ImportJob) {
   const summary: Partial<ImportJob> = { ...job };
   delete summary.resultBundle;
   return summary;
-}
-
-function sameSourceManifest(
-  job: ImportJob,
-  bundle: CompiledCourseBundle,
-) {
-  const received = bundle.sourceManifest ?? [];
-  if (received.length !== job.sourceManifest.length) return false;
-
-  const byName = new Map(received.map((item) => [item.name, item]));
-
-  return job.sourceManifest.every((expected) => {
-    const actual = byName.get(expected.name);
-    return Boolean(
-      actual &&
-        actual.sha256 === expected.sha256 &&
-        actual.size === expected.size &&
-        actual.pageCount === expected.pageCount &&
-        actual.lastModified === expected.lastModified,
-    );
-  });
 }
 
 function imageContent(dataUrl: string) {
@@ -592,7 +572,7 @@ function buildMcpServer() {
         if (!job) throw new Error("Không tìm thấy import job.");
 
         const parsed = parseCourseBundle(JSON.stringify(bundle));
-        if (!sameSourceManifest(job, parsed)) {
+        if (!sameSourceManifest(job.sourceManifest, parsed.sourceManifest ?? [])) {
           throw new Error(
             "sourceManifest của bundle không khớp bộ PDF trong import job.",
           );
