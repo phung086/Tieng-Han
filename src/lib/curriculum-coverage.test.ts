@@ -627,4 +627,57 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("Tham chiếu mẫu ngữ pháp rỗng");
   });
 
+  it("reconciles top-level question choices through exact item refs and the parent question motif", () => {
+    const bundle = fixture();
+    const questionRef = "synthetic.pdf · p.1 · question-1";
+    const choiceRefs = [
+      "synthetic.pdf · p.1 · question-1 · choice-0",
+      "synthetic.pdf · p.1 · question-1 · choice-1",
+    ];
+    bundle.course.questions = [{
+      id: "q1", lessonId: 1, skill: "vocabulary", type: "choice", title: "Source question",
+      prompt: "Choose the Korean word", choices: ["학생", "의사"], answer: "학생",
+      explanation: "Synthetic fixture", sourceRef: questionRef, choiceSourceRefs: choiceRefs, origin: "source",
+    }];
+    bundle.sourceInventory = {
+      version: 1,
+      pages: [1, 2].map(pageNumber => ({
+        fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content",
+      })),
+      items: [
+        { id: "question-1", lessonId: 1, kind: "question", fileName: "synthetic.pdf", pageNumber: 1,
+          sourceRef: questionRef, contentPointer: "/questions/0", practiceMethod: "questions", motif: "choice",
+          practiceQuestionIds: ["q1"], verified: true },
+        ...choiceRefs.map((sourceRef, index) => ({
+          id: "question-1-choice-" + index, lessonId: 1, kind: "questionChoice", fileName: "synthetic.pdf", pageNumber: 1,
+          sourceRef, contentPointer: "/questions/0/choices/" + index, practiceMethod: "questions", motif: "choice",
+          practiceQuestionIds: ["q1"], verified: true,
+        })),
+        { id: "exercise", lessonId: 1, kind: "exerciseSection", fileName: "synthetic.pdf", pageNumber: 2,
+          sourceRef: "synthetic.pdf · p.2 · exercise", contentPointer: "/extraSections/0",
+          practiceMethod: "workbook", practiceQuestionIds: [], verified: true },
+      ],
+    };
+
+    const parsed = parseCourseBundle(JSON.stringify(bundle));
+    expect(parsed.course.questions[0].choiceSourceRefs).toEqual(choiceRefs);
+    const report = auditCurriculumCoverage(parsed);
+    expect(report.status).toBe("complete");
+    expect(report.sourceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(report.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(report.validationCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+
+    const missingRefs = JSON.parse(JSON.stringify(bundle)) as CompiledCourseBundle;
+    delete missingRefs.course.questions[0].choiceSourceRefs;
+    const missingReport = auditCurriculumCoverage(parseCourseBundle(JSON.stringify(missingRefs)));
+    expect(missingReport.status).toBe("partial");
+    expect(missingReport.sourceCoverage.covered).toBe(2);
+    expect(missingReport.practiceCoverage.covered).toBe(2);
+    expect(missingReport.issues.join(" ")).toContain("sourceRef inventory không khớp");
+
+    const malformed = JSON.parse(JSON.stringify(bundle)) as CompiledCourseBundle;
+    malformed.course.questions[0].choiceSourceRefs = [choiceRefs[0]];
+    expect(() => parseCourseBundle(JSON.stringify(malformed))).toThrow(/choiceSourceRefs/);
+  });
+
 });
