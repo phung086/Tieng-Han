@@ -668,7 +668,7 @@ describe("source, practice and validation coverage are independent release evide
     // Parent question inventory alone must not hide the source choices as sub-items.
     const missingChoiceInventory = JSON.parse(JSON.stringify(bundle)) as CompiledCourseBundle;
     missingChoiceInventory.sourceInventory!.items = missingChoiceInventory.sourceInventory!.items
-      .filter(item => !/^\\/questions\\/\\d+\\/choices\\/\\d+$/.test(item.contentPointer));
+      .filter(item => !/^\/questions\/\d+\/choices\/\d+$/.test(item.contentPointer));
     const missingChoiceReport = auditCurriculumCoverage(missingChoiceInventory);
     expect(missingChoiceReport.status).toBe("partial");
     expect(missingChoiceReport.sourceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
