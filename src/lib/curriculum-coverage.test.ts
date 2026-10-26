@@ -58,6 +58,23 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.sourceCoverage.percent).toBeNull();
     expect(report.issues.join(" ")).toContain("Thiếu fingerprint kiểm kê cho nguồn");
   });
+  it("blocks duplicate fingerprints instead of trusting the first or last entry", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.sources!.push({ fileName: "synthetic.pdf", sha256: "a".repeat(64) });
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.issues.join(" ")).toContain("Trùng fingerprint kiểm kê cho nguồn");
+  });
+  it("blocks fingerprints for files outside the imported source manifest", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.sources = [{ fileName: "other.pdf", sha256: "a".repeat(64) }];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.issues.join(" ")).toContain("Fingerprint kiểm kê tham chiếu nguồn ngoài sourceManifest");
+    expect(report.issues.join(" ")).toContain("Thiếu fingerprint kiểm kê cho nguồn");
+  });
   it("never substitutes quiz quantity or self-reported quality for missing inventory", () => {
     const bundle = fixture();
     const report = auditCurriculumCoverage(bundle);
