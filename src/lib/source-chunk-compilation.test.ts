@@ -102,8 +102,8 @@ describe("source page batching", () => {
     const pieces = parts.flat().map(part => part.text);
 
     expect(pieces.join("")).toBe(source);
-    expect(pieces.some(piece => /[\\uD800-\\uDBFF]$/.test(piece))).toBe(false);
-    expect(pieces.some(piece => /^[\\uDC00-\\uDFFF]/.test(piece))).toBe(false);
+    expect(pieces.some(piece => /[\uD800-\uDBFF]$/.test(piece))).toBe(false);
+    expect(pieces.some(piece => /^[\uDC00-\uDFFF]/.test(piece))).toBe(false);
     expect(parts.every(part => formatSourcePages(part).length <= maxCharacters)).toBe(true);
   });
 
