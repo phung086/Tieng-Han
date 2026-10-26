@@ -2,9 +2,15 @@ import { z } from "zod";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 2;
+export const CURRICULUM_AUDIT_VERSION = 3;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
+  // Bind the reviewed inventory to the exact bytes declared by sourceManifest.
+  // Optional for backward parsing; absent/mismatched fingerprints cannot pass coverage.
+  sources: z.array(z.object({
+    fileName: nonempty,
+    sha256: z.string().regex(/^[a-f0-9]{64}$/i),
+  })).optional(),
   pages: z.array(z.object({
     fileName: nonempty, pageNumber: z.number().int().positive(),
     status: z.enum(["reviewed", "unavailable"]), reason: nonempty.optional(),
@@ -57,8 +63,42 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
   if (!bundle.sourceInventory) return { ...empty, status: "unverified", basis: "No independent source inventory", issues: ["Chưa có kiểm kê nguồn được đối chiếu độc lập."] };
   const inventory = sourceInventorySchema.parse(bundle.sourceInventory);
   const issues: string[] = [];
+  const manifest = bundle.sourceManifest ?? [];
+  const manifestByName = new Map<string, (typeof manifest)[number]>();
+  for (const source of manifest) {
+    if (manifestByName.has(source.name)) {
+      issues.push("Trùng nguồn trong sourceManifest: " + source.name);
+    } else {
+      manifestByName.set(source.name, source);
+    }
+  }
+  const seenInventorySources = new Set<string>();
+  const fingerprintedSources = new Set<string>();
+  for (const source of inventory.sources ?? []) {
+    if (seenInventorySources.has(source.fileName)) {
+      issues.push("Trùng fingerprint kiểm kê cho nguồn: " + source.fileName);
+      fingerprintedSources.delete(source.fileName);
+      continue;
+    }
+    seenInventorySources.add(source.fileName);
+    const expected = manifestByName.get(source.fileName);
+    if (!expected) {
+      issues.push("Fingerprint kiểm kê tham chiếu nguồn ngoài sourceManifest: " + source.fileName);
+      continue;
+    }
+    if (expected.sha256.toLowerCase() !== source.sha256.toLowerCase()) {
+      issues.push("Fingerprint nguồn không khớp sourceManifest: " + source.fileName);
+      continue;
+    }
+    fingerprintedSources.add(source.fileName);
+  }
+  for (const source of manifest) {
+    if (!seenInventorySources.has(source.name)) {
+      issues.push("Thiếu fingerprint kiểm kê cho nguồn: " + source.name);
+    }
+  }
   const expectedPages = new Set<string>();
-  for (const source of bundle.sourceManifest ?? []) {
+  for (const source of manifest) {
     for (let page = 1; page <= source.pageCount; page++) expectedPages.add(sourceKey(source.name, page));
   }
   if (!expectedPages.size) issues.push("Thiếu sourceManifest để xác minh phạm vi tài liệu.");
@@ -69,8 +109,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (seenPages.has(key)) issues.push("Trùng trang kiểm kê: " + key);
     seenPages.add(key);
     if (!expectedPages.has(key)) issues.push("Trang ngoài nguồn: " + key);
-    if (page.status === "reviewed") reviewedPages.add(key);
-    else issues.push("Trang bất khả dụng: " + key + ": " + (page.reason ?? "chưa ghi lý do"));
+    if (page.status === "reviewed" && fingerprintedSources.has(page.fileName)) reviewedPages.add(key);
+    else if (page.status !== "reviewed") issues.push("Trang bất khả dụng: " + key + ": " + (page.reason ?? "chưa ghi lý do"));
   }
   for (const key of expectedPages) if (!reviewedPages.has(key)) issues.push("Trang chưa được đối chiếu: " + key);
   for (const page of inventory.pages) {
@@ -105,7 +145,8 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (repeatedDestination) issues.push("Nhiều source item dùng chung đích nội dung: " + key);
     const sectionIndex = /^\/extraSections\/(\d+)(\/|$)/.exec(item.contentPointer)?.[1];
     const isRawTranscript = sectionIndex !== undefined && lesson?.extraSections?.[Number(sectionIndex)]?.kind === "source-transcript";
-    const hasContent = isContentPath && !isRawTranscript && !repeatedDestination && content !== undefined && content !== null &&
+    const hasContent = isContentPath && fingerprintedSources.has(item.fileName) && !isRawTranscript && !repeatedDestination &&
+      content !== undefined && content !== null &&
       (typeof content !== "string" || Boolean(content.trim())) &&
       (!Array.isArray(content) || content.length > 0);
     if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {

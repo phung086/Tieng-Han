@@ -251,6 +251,14 @@ describe("parseCourseBundle", () => {
     expect(contract.principles.join(" ")).toContain("page batches");
   });
 
+  it("tells the compiler to bind every inventory source to exact sourceManifest bytes", () => {
+    const sourceInventory = getCompilationContract(sampleLanguage).output.sourceInventory;
+    expect(sourceInventory).toContain("sources?:[{fileName,sha256:64-hex}]");
+    expect(sourceInventory).toContain("every sourceManifest fileName");
+    expect(sourceInventory).toContain("exact SHA-256");
+    expect(sourceInventory).toContain("mismatched fingerprints keep coverage blocked");
+  });
+
   /* ---- 3. Contract matches submit_course_bundle validation ---- */
   it("matches the contract: a minimal valid bundle passes validation", () => {
     const bundle = parseCourseBundle(validBundleJson());

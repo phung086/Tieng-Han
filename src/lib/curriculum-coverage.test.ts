@@ -13,7 +13,7 @@ function fixture(): CompiledCourseBundle {
     }], questions: [{ id: "q1", lessonId: 1, skill: "vocabulary", type: "input", title: "Fixture", prompt: "học sinh", answer: "학생", explanation: "Fixture", sourceRef: "synthetic.pdf · p.1 · v1", origin: "derived" }] } }));
 }
 function inventory(): SourceInventory {
-  return { version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
+  return { version: 1, sources: [{ fileName: "synthetic.pdf", sha256: "a".repeat(64) }], pages: [1, 2].map(pageNumber => ({ fileName: "synthetic.pdf", pageNumber, status: "reviewed", classification: "learning-content" })), items: [
     { id: "v1", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
       sourceRef: "synthetic.pdf · p.1 · v1", contentPointer: "/vocabulary/0", practiceMethod: "questions", practiceQuestionIds: ["q1"], verified: true },
     { id: "exercise", lessonId: 1, kind: "exercise", fileName: "synthetic.pdf", pageNumber: 2,
@@ -40,6 +40,40 @@ describe("source, practice and validation coverage are independent release evide
     bundle.sourceInventory = inventory();
     expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
     expect(auditCurriculumCoverage(bundle).status).toBe("partial");
+  });
+  it("blocks coverage when the same filename and page count now point to different source bytes", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceManifest![0].sha256 = "b".repeat(64);
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage).toEqual({ covered: 0, total: 2, percent: null });
+    expect(report.practiceCoverage.covered).toBe(0);
+    expect(report.issues.join(" ")).toContain("Fingerprint nguồn không khớp sourceManifest");
+  });
+  it("keeps legacy inventories readable but never marks them complete without source fingerprints", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    delete bundle.sourceInventory.sources;
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage.percent).toBeNull();
+    expect(report.issues.join(" ")).toContain("Thiếu fingerprint kiểm kê cho nguồn");
+  });
+  it("blocks duplicate fingerprints instead of trusting the first or last entry", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.sources!.push({ fileName: "synthetic.pdf", sha256: "a".repeat(64) });
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.issues.join(" ")).toContain("Trùng fingerprint kiểm kê cho nguồn");
+  });
+  it("blocks fingerprints for files outside the imported source manifest", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.sources = [{ fileName: "other.pdf", sha256: "a".repeat(64) }];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("blocked");
+    expect(report.sourceCoverage.covered).toBe(0);
+    expect(report.issues.join(" ")).toContain("Fingerprint kiểm kê tham chiếu nguồn ngoài sourceManifest");
+    expect(report.issues.join(" ")).toContain("Thiếu fingerprint kiểm kê cho nguồn");
   });
   it("never substitutes quiz quantity or self-reported quality for missing inventory", () => {
     const bundle = fixture();
