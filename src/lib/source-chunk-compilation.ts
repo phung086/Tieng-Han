@@ -218,7 +218,9 @@ export function mergeGeneratedLessonChunks(
       };
       const chunkPrefix = "chunk" + (index + 1) + ":reading";
       const readingTitle = reading.title || "Bài đọc tiếp theo";
-      if (reading.titleSourceRef) {
+      // Preserve the original title even when item-level provenance is missing.
+      // Missing evidence stays missing; never use the passage/lesson ref as a substitute.
+      if (reading.title.trim()) {
         addExtraSectionItem(extraSections, {
           id: chunkPrefix + ":title",
           kind: "reading-title",
