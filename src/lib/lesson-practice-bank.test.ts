@@ -323,6 +323,28 @@ describe("full-fidelity source workbook", () => {
     expect(item?.answer).toBe("\u1100\u1161 → 나");
   });
 
+  it("compares canonically equivalent choice answers without rewriting source text", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "unicode-choice",
+      kind: "original-activities",
+      title: "Chọn đáp án",
+      content: ["Unicode-normalized choice answer"],
+      contentSourceRefs: ["Sách p.44 · choice-1"],
+      contentExerciseItems: [{
+        id: "unicode-choice-1",
+        contentIndex: 0,
+        type: "choice",
+        choices: ["가", "나"],
+        answer: "\\u1100\\u1161",
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized choice answer");
+    expect(item?.answer).toBe("\\u1100\\u1161");
+    expect(item?.choices).toEqual(["가", "나"]);
+  });
+
   it("reveals a source reorder answer only when available token chunks can construct it", () => {
     const input = lesson(1);
     input.extraSections = [{
