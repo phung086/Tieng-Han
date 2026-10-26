@@ -123,6 +123,11 @@ export function normalizeLessonContent(value: unknown): LessonContent {
     speaking: Array.isArray(row.speaking)
       ? row.speaking.map(String)
       : [],
+    speakingSourceRefs: Array.isArray(row.speakingSourceRefs)
+      ? row.speakingSourceRefs.map((value) =>
+          typeof value === "string" ? value : null,
+        )
+      : undefined,
     reading:
       row.reading && typeof row.reading === "object"
         ? (row.reading as LessonContent["reading"])
@@ -266,6 +271,38 @@ function validateLesson(
         reason: "required field must be an array",
         expected: "array",
       });
+    }
+  }
+
+  // Speaking provenance is additive for legacy bundles, but when supplied it
+  // must stay aligned with the original sentence list. null means unverified.
+  if (row.speakingSourceRefs !== undefined) {
+    if (!Array.isArray(row.speakingSourceRefs)) {
+      errors.push({
+        path: `${prefix}.speakingSourceRefs`,
+        reason: "must be an array aligned with speaking",
+        expected: "(string|null)[]",
+      });
+    } else {
+      if (Array.isArray(row.speaking) && row.speakingSourceRefs.length !== row.speaking.length) {
+        errors.push({
+          path: `${prefix}.speakingSourceRefs`,
+          reason: "must have exactly one entry per speaking item",
+          expected: `length ${row.speaking.length}`,
+          actual: row.speakingSourceRefs.length,
+        });
+      }
+      for (let si = 0; si < row.speakingSourceRefs.length; si++) {
+        const sourceRef = row.speakingSourceRefs[si];
+        if (sourceRef !== null && (typeof sourceRef !== "string" || !sourceRef.trim())) {
+          errors.push({
+            path: `${prefix}.speakingSourceRefs[${si}]`,
+            reason: "must be a non-empty source reference or null when unverified",
+            expected: "non-empty string|null",
+            actual: sourceRef,
+          });
+        }
+      }
     }
   }
 
@@ -705,6 +742,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "The uploaded textbook is the curriculum source of truth.",
       "Preserve lesson order and source page references.",
       "Inventory and preserve every source item in lesson order: vocabulary entries and examples, grammar patterns and examples, dialogue lines, listening and reading items, pronunciation, culture, notes, and original exercises. Never silently sample source content.",
+      "Speaking remains a string[] for Course Bundle v1 compatibility. When item-level anchors are available, include speakingSourceRefs aligned one-to-one with speaking; use null for an unverified sentence and never inherit lesson.sourceRef as an item ref.",
       "Create source-grounded practice for all six skills without introducing unsupported curriculum. Preserve each original exercise instruction and its motif; do not replace every task with multiple choice.",
       "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>, preferring item-level anchors. Never count repeated drills for one item as coverage of another item.",
       "Do not invent unreadable source content; record uncertainty instead.",
@@ -802,6 +840,8 @@ export function getCompilationContract(language: LanguageProfile) {
           },
         ],
         speaking: "string[]",
+        speakingSourceRefs:
+          "(string|null)[] optional; if present, align exactly 1:1 with speaking. null means no verified item-level sourceRef. Never inherit the lesson-level sourceRef; omit on legacy bundles.",
         reading: {
           title: "string",
           text: "string",

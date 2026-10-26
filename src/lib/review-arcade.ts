@@ -33,7 +33,7 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
         prompt: mode === "meaning" ? term : meaning,
         answer: mode === "meaning" ? meaning : term,
         note: word.example || `${term} · ${meaning}`,
-        sourceRef: word.sourceRef || lesson.sourceRef,
+        sourceRef: word.sourceRef,
       });
     }
     for (const grammar of lesson.grammar) {
@@ -42,15 +42,29 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
         id: `arcade:${lesson.id}:${grammar.id}:grammar`, knowledgeId,
         lessonId: lesson.id, skill: "grammar", mode: "grammar",
         prompt: grammar.pattern, answer: grammar.meaning,
-        note: grammar.explanation, sourceRef: grammar.sourceRef || lesson.sourceRef,
+        note: grammar.explanation, sourceRef: grammar.sourceRef,
       });
-      for (const sentence of new Set(grammar.examples.map(item => item.trim()).filter(Boolean))) cards.push({
-        id: `arcade:${lesson.id}:${grammar.id}:sentence:${hash(sentence)}`,
-        knowledgeId: `${knowledgeId}:example:${hash(sentence)}`,
-        lessonId: lesson.id, skill: "grammar", mode: "sentence",
-        prompt: `Xếp câu ví dụ của mẫu ${grammar.pattern}`,
-        answer: sentence, note: grammar.meaning,
-        sourceRef: grammar.sourceRef || lesson.sourceRef,
+      const grammarWithExampleRefs = grammar as typeof grammar & { exampleSourceRefs?: string[] };
+      const occurrences = new Map<string, number>();
+      grammar.examples.forEach((sentence, index) => {
+        const identity = sentence.trim();
+        if (!identity) return;
+        const sourceRef = grammarWithExampleRefs.exampleSourceRefs?.[index];
+        const sourceRefKey = sourceRef?.trim();
+        // Prefer the exact source-item anchor so repeated identical examples keep their
+        // review identity when source order changes. Text + occurrence is a fallback only.
+        const identityKey = sourceRefKey ? `ref:${sourceRefKey}` : `text:${identity}`;
+        const occurrence = occurrences.get(identityKey) ?? 0;
+        occurrences.set(identityKey, occurrence + 1);
+        const identityHash = hash(identityKey);
+        cards.push({
+          id: `arcade:${lesson.id}:${grammar.id}:sentence:${identityHash}:${occurrence}`,
+          knowledgeId: `${knowledgeId}:example:${identityHash}:${occurrence}`,
+          lessonId: lesson.id, skill: "grammar", mode: "sentence",
+          prompt: `Xếp câu ví dụ của mẫu ${grammar.pattern}`,
+          answer: sentence, note: grammar.meaning,
+          sourceRef: sourceRefKey ? sourceRef : undefined,
+        });
       });
     }
     return cards;

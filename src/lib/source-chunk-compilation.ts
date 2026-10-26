@@ -14,6 +14,19 @@ const label = (page: SourcePageSlice) =>
   "[SOURCE: " + page.fileName + " · " + (page.sourceLocation ?? "p." + page.pageNumber) +
   (page.part ? " · part " + page.part : "") + "]\n";
 
+function safeSliceEnd(text: string, start: number, requestedEnd: number): number {
+  const end = Math.min(requestedEnd, text.length);
+  if (end > start && end < text.length) {
+    const previous = text.charCodeAt(end - 1);
+    const next = text.charCodeAt(end);
+    const splitsSurrogatePair =
+      previous >= 0xd800 && previous <= 0xdbff &&
+      next >= 0xdc00 && next <= 0xdfff;
+    if (splitsSurrogatePair) return end - 1;
+  }
+  return end;
+}
+
 /** Preserve every source character; never silently skip pages at a character limit. */
 export function chunkSourcePages(
   pages: SourcePageSlice[],
@@ -48,7 +61,13 @@ export function chunkSourcePages(
       const partLabel = label({ ...page, part });
       const capacity = maxCharacters - partLabel.length - 2;
       if (capacity < 1) throw new Error("Source page filename exceeds the character budget");
-      const piece = text.slice(cursor, cursor + capacity);
+      const end = text.length === 0
+        ? 0
+        : safeSliceEnd(text, cursor, cursor + capacity);
+      if (text.length > 0 && end <= cursor) {
+        throw new Error("Source character budget cannot fit a Unicode code point");
+      }
+      const piece = text.slice(cursor, end);
       const segment: SourcePageSlice = {
         ...page,
         text: piece,
@@ -98,6 +117,24 @@ function idPrefix<T extends { id: string }>(items: T[], chunk: number): T[] {
   }));
 }
 
+function addExtraSectionItem(
+  sections: NonNullable<LessonContent["extraSections"]>,
+  item: { id: string; kind: string; title: string; value: string; sourceRef?: string },
+) {
+  if (!item.value) return;
+  const sourceRef =
+    typeof item.sourceRef === "string" && item.sourceRef.trim()
+      ? item.sourceRef
+      : undefined;
+  sections.push({
+    id: item.id,
+    kind: item.kind,
+    title: item.title,
+    content: [item.value],
+    ...(sourceRef ? { sourceRef } : {}),
+  });
+}
+
 /**
  * The published bundle still uses the same LessonContent / StudyQuestion v1
  * shape. Extra passages or writing tasks that cannot fit the single-field v1
@@ -138,6 +175,8 @@ export function mergeGeneratedLessonChunks(
   const grammar: LessonContent["grammar"] = [];
   const listening: LessonContent["listening"] = [];
   const speaking: string[] = [];
+  const speakingSourceRefs: NonNullable<LessonContent["speakingSourceRefs"]> = [];
+  const hasSpeakingSourceRefs = chunks.some(chunk => chunk.lesson.speakingSourceRefs !== undefined);
   const dialogues: NonNullable<LessonContent["dialogues"]> = [];
   const pronunciation: NonNullable<LessonContent["pronunciation"]> = [];
   const culture: NonNullable<LessonContent["culture"]> = [];
@@ -150,6 +189,11 @@ export function mergeGeneratedLessonChunks(
     grammar.push(...idPrefix(lesson.grammar ?? [], index));
     listening.push(...idPrefix(lesson.listening ?? [], index));
     speaking.push(...(lesson.speaking ?? []));
+    if (hasSpeakingSourceRefs) {
+      // Chunks compiled before item-level refs remain visible but unverified.
+      // Keep a 1:1 alignment across the merged speaking list.
+      speakingSourceRefs.push(...(lesson.speakingSourceRefs ?? (lesson.speaking ?? []).map(() => null)));
+    }
     dialogues.push(...idPrefix(lesson.dialogues ?? [], index));
     pronunciation.push(...idPrefix(lesson.pronunciation ?? [], index));
     culture.push(...idPrefix(lesson.culture ?? [], index));
@@ -157,33 +201,104 @@ export function mergeGeneratedLessonChunks(
     extraSections.push(...idPrefix(lesson.extraSections ?? [], index));
 
     if (index !== primaryReadingChunk && lesson.reading) {
-      extraSections.push({
-        id: "chunk" + (index + 1) + ":reading",
+      // The v1 reading/extra-section references are additive. Read newer item
+      // refs when present, but never treat a section/lesson ref as child evidence.
+      const reading = lesson.reading as Omit<NonNullable<LessonContent["reading"]>, "questions"> & {
+        titleSourceRef?: string;
+        textSourceRef?: string;
+        questions: Array<{
+          id: string;
+          q: string;
+          choices: string[];
+          answer: string;
+          sourceRef?: string;
+          choiceSourceRefs?: string[];
+          answerSourceRef?: string;
+        }>;
+      };
+      const chunkPrefix = "chunk" + (index + 1) + ":reading";
+      const readingTitle = reading.title || "Bài đọc tiếp theo";
+      // Preserve the original title even when item-level provenance is missing.
+      // Missing evidence stays missing; never use the passage/lesson ref as a substitute.
+      if (reading.title.trim()) {
+        addExtraSectionItem(extraSections, {
+          id: chunkPrefix + ":title",
+          kind: "reading-title",
+          title: "Tiêu đề nguồn · " + readingTitle,
+          value: reading.title,
+          sourceRef: reading.titleSourceRef,
+        });
+      }
+      addExtraSectionItem(extraSections, {
+        id: chunkPrefix + ":passage",
         kind: "reading",
-        title: lesson.reading.title || "Bài đọc tiếp theo",
-        content: [
-          lesson.reading.text,
-          lesson.reading.translation,
-          ...lesson.reading.questions.flatMap(q => [
-            q.q,
-            ...(q.choices ?? []),
-            ...(q.answer ? ["Đáp án nguồn: " + q.answer] : []),
-          ]),
-        ].filter(Boolean),
-        sourceRef: lesson.reading.sourceRef || lesson.sourceRef,
+        title: readingTitle,
+        value: reading.text,
+        sourceRef: reading.textSourceRef,
+      });
+      addExtraSectionItem(extraSections, {
+        id: chunkPrefix + ":translation",
+        kind: "reading-translation",
+        title: "Bản dịch · " + readingTitle,
+        value: reading.translation,
+      });
+      reading.questions.forEach((question, questionIndex) => {
+        const questionKey = question.id || String(questionIndex + 1);
+        const questionPrefix = chunkPrefix + ":question:" + questionKey;
+        addExtraSectionItem(extraSections, {
+          id: questionPrefix,
+          kind: "reading-question",
+          title: "Câu hỏi đọc hiểu · " + (questionIndex + 1),
+          value: question.q,
+          sourceRef: question.sourceRef,
+        });
+        (question.choices ?? []).forEach((choice, choiceIndex) => {
+          addExtraSectionItem(extraSections, {
+            id: questionPrefix + ":choice:" + (choiceIndex + 1),
+            kind: "reading-choice",
+            title: "Lựa chọn " + (choiceIndex + 1) + " · câu hỏi " + (questionIndex + 1),
+            value: choice,
+            sourceRef: question.choiceSourceRefs?.[choiceIndex],
+          });
+        });
+        addExtraSectionItem(extraSections, {
+          id: questionPrefix + ":answer",
+          kind: "reading-answer",
+          title: "Đáp án gốc · câu hỏi " + (questionIndex + 1),
+          value: question.answer,
+          sourceRef: question.answerSourceRef,
+        });
       });
     }
     if (index !== primaryWritingChunk && lesson.writing) {
-      extraSections.push({
-        id: "chunk" + (index + 1) + ":writing",
+      // Keep prompt, hint and target words separately addressable. A writing
+      // section ref is not sufficient evidence for any of these child items.
+      const writing = lesson.writing as NonNullable<LessonContent["writing"]> & {
+        promptSourceRef?: string;
+        targetWordSourceRefs?: string[];
+      };
+      const chunkPrefix = "chunk" + (index + 1) + ":writing";
+      addExtraSectionItem(extraSections, {
+        id: chunkPrefix + ":prompt",
         kind: "writing",
         title: "Nhiệm vụ viết · phần " + (index + 1),
-        content: [
-          lesson.writing.prompt,
-          lesson.writing.hint,
-          ...lesson.writing.targetWords,
-        ].filter(Boolean),
-        sourceRef: lesson.writing.sourceRef || lesson.sourceRef,
+        value: writing.prompt,
+        sourceRef: writing.promptSourceRef,
+      });
+      addExtraSectionItem(extraSections, {
+        id: chunkPrefix + ":hint",
+        kind: "writing-hint",
+        title: "Gợi ý viết · phần " + (index + 1),
+        value: writing.hint,
+      });
+      writing.targetWords.forEach((word, wordIndex) => {
+        addExtraSectionItem(extraSections, {
+          id: chunkPrefix + ":target-word:" + (wordIndex + 1),
+          kind: "writing-target-word",
+          title: "Từ mục tiêu · phần " + (index + 1) + " · " + (wordIndex + 1),
+          value: word,
+          sourceRef: writing.targetWordSourceRefs?.[wordIndex],
+        });
       });
     }
     questions.push(...chunk.questions.map((q, j) => ({
@@ -201,6 +316,7 @@ export function mergeGeneratedLessonChunks(
       grammar,
       listening,
       speaking,
+      speakingSourceRefs: hasSpeakingSourceRefs ? speakingSourceRefs : undefined,
       dialogues,
       pronunciation,
       culture,

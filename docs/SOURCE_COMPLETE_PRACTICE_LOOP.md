@@ -8,7 +8,7 @@ Mỗi nguồn nhập phải có **manifest kiểm kê từ PDF/giáo trình gố
 2. **Compiled coverage**: kiểm tra từng source item đã được import đầy đủ với sourceRef duy nhất. Không lấy số mục từ compiled bundle làm mẫu số của PDF nếu không có manifest.
 3. **Practice coverage**: mỗi mục cần được ôn có hình thức bài phù hợp, có liên kết source item cụ thể, đáp án/đánh giá và số lần ôn; bài tập gốc giữ nguyên motif, thứ tự, ý nghĩa, vai hội thoại. Chỉ đánh dấu 100% khi đủ cả 3 cổng và đối chiếu tay những trang không thể parse chắc chắn.
 
-`auditLessonPracticeCoverage` là **cổng phụ mức bundle**, chưa phải chứng chỉ 100% so với PDF. Trường `sourceRef` ở cấp đoạn dùng chung cho nhiều câu không chứng minh được coverage; worker phải tạo reference tới từng item riêng biệt hoặc báo "ambiguous". `speaking` dạng chuỗi hiện chưa có item-level reference nên phải được báo thiếu xác minh, không được tự nhận đạt.
+`auditLessonPracticeCoverage` là **cổng phụ mức bundle**, chưa phải chứng chỉ 100% so với PDF. Trường `sourceRef` ở cấp đoạn dùng chung cho nhiều câu không chứng minh được coverage; worker phải tạo reference tới từng item riêng biệt hoặc báo "ambiguous". `speaking` vẫn là `string[]` để tương thích Course Bundle v1. Khi có anchor riêng, dùng `speakingSourceRefs` song song 1:1; `null` hoặc thiếu mảng nghĩa là chưa có bằng chứng cấp item và không được kế thừa `lesson.sourceRef`.
 
 ## Chống giới hạn ngầm
 - Guided và mastery: dùng **tất cả** câu có trong ngân hàng bài, không giới hạn 8/10.

@@ -18,33 +18,34 @@ export function buildReviewCatalog(course: RuntimeCourse): ReviewItem[] {
   for (const question of course.questions) catalog.set(question.id, question);
   for (const lesson of course.lessons) {
     for (const question of buildLessonPracticeBank(lesson, course.questions)) if (!catalog.has(question.id)) catalog.set(question.id, question);
-    const sourceRef = lesson.sourceRef;
     const add = (item: ReviewItem) => { if (!catalog.has(item.id)) catalog.set(item.id, item); };
     for (const word of lesson.vocabulary) add({
       id: word.id, lessonId: lesson.id, skill: "vocabulary", type: "input", reviewKind: "recall",
       title: "Nhớ lại nghĩa của từ", prompt: word.ko, answer: word.vi,
-      explanation: word.example, sourceRef: word.sourceRef ?? sourceRef,
+      explanation: word.example, sourceRef: word.sourceRef,
     });
     for (const item of lesson.listening) add({
       id: item.id, lessonId: lesson.id, skill: "listening", type: "choice", title: "Nghe và chọn nghĩa",
       prompt: "Nghe câu rồi chọn nghĩa phù hợp.", audioText: item.text, choices: item.choices,
-      answer: item.answer, explanation: item.meaning, sourceRef: item.sourceRef ?? sourceRef,
+      answer: item.answer, explanation: item.meaning, sourceRef: item.sourceRef,
     });
+    const speakingSourceRefs = lesson.speakingSourceRefs;
     lesson.speaking.forEach((sentence, index) => add({
       id: `speak-${lesson.id}-${index}`, lessonId: lesson.id, skill: "speaking", type: "input", reviewKind: "speaking",
       title: "Luyện nói lại câu đã học", prompt: sentence, answer: sentence,
-      explanation: "Đọc to câu trong giáo trình và tự đánh giá mức độ nhớ. Lượt ôn này không chấm phát âm và không hoàn thành chặng Nói.", sourceRef,
+      explanation: "Đọc to câu trong giáo trình và tự đánh giá mức độ nhớ. Lượt ôn này không chấm phát âm và không hoàn thành chặng Nói.",
+      sourceRef: speakingSourceRefs?.[index] ?? undefined,
     }));
     for (const item of lesson.reading?.questions ?? []) add({
       id: item.id, lessonId: lesson.id, skill: "reading", type: "choice", title: "Đọc và trả lời",
       prompt: item.q, context: lesson.reading?.text, choices: item.choices, answer: item.answer,
-      explanation: `Đáp án trong bài đọc: ${item.answer}. Đối chiếu đoạn văn phía trên.`, sourceRef: item.sourceRef ?? lesson.reading?.sourceRef ?? sourceRef,
+      explanation: `Đáp án trong bài đọc: ${item.answer}. Đối chiếu đoạn văn phía trên.`, sourceRef: item.sourceRef,
     });
     if (lesson.writing) add({
       id: `writing-${lesson.id}`, lessonId: lesson.id, skill: "writing", type: "input", reviewKind: "writing",
       title: "Nhớ lại cách viết", prompt: lesson.writing.prompt, answer: lesson.writing.hint,
       context: "Từ gợi ý trong bài: " + lesson.writing.targetWords.join(" · "),
-      explanation: "So sánh bài viết của bạn với gợi ý giáo trình. Đây là lượt tự đánh giá để lên lịch ôn; không phải chấm ngữ pháp tự động.", sourceRef: lesson.writing.sourceRef ?? sourceRef,
+      explanation: "So sánh bài viết của bạn với gợi ý giáo trình. Đây là lượt tự đánh giá để lên lịch ôn; không phải chấm ngữ pháp tự động.", sourceRef: lesson.writing.sourceRef,
     });
   }
   for (const card of buildArcadeCards(course.lessons)) if (!catalog.has(card.knowledgeId)) catalog.set(card.knowledgeId,{

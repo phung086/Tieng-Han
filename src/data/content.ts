@@ -117,6 +117,11 @@ export type LessonContent = {
   grammar: GrammarItem[];
   listening: ListeningItem[];
   speaking: string[];
+  /**
+   * Item-level provenance aligned one-to-one with speaking. null means the
+   * source location for that sentence has not been verified.
+   */
+  speakingSourceRefs?: Array<string | null>;
   reading: ReadingContent | null;
   writing: WritingContent | null;
   dialogues?: DialogueItem[];
