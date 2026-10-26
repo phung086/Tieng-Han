@@ -45,6 +45,29 @@ describe("source-backed review games", () => {
     const after = buildArcadeCards([{ ...lesson, grammar: [reorderedGrammar] }]);
     for (const item of before) expect(after.find(card => card.id === item.id)?.answer).toBe(item.answer);
   });
+  it("keeps duplicate-example review identity attached to its exact source ref after reordering", () => {
+    const grammar = lesson.grammar[0] as LessonContent["grammar"][number] & { exampleSourceRefs?: string[] };
+    const repeated = {
+      ...grammar,
+      examples: ["같은 예문", "같은 예문"],
+      exampleSourceRefs: ["fixture.pdf p.11 · item:A", "fixture.pdf p.12 · item:B"],
+    };
+    const before = buildArcadeCards([{ ...lesson, grammar: [repeated] }]).filter(item => item.mode === "sentence");
+    const reordered = {
+      ...repeated,
+      examples: [...repeated.examples].reverse(),
+      exampleSourceRefs: [...(repeated.exampleSourceRefs ?? [])].reverse(),
+    };
+    const after = buildArcadeCards([{ ...lesson, grammar: [reordered] }]).filter(item => item.mode === "sentence");
+
+    expect(before).toHaveLength(2);
+    expect(after).toHaveLength(2);
+    for (const item of before) {
+      const matchingSourceItem = after.find(candidate => candidate.sourceRef === item.sourceRef);
+      expect(matchingSourceItem?.id).toBe(item.id);
+      expect(matchingSourceItem?.knowledgeId).toBe(item.knowledgeId);
+    }
+  });
   it("preserves repeated source examples and never borrows a parent source reference", () => {
     const grammar = lesson.grammar[0] as LessonContent["grammar"][number] & { exampleSourceRefs?: string[] };
     const repeated = {
