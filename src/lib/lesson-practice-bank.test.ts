@@ -372,4 +372,26 @@ describe("full-fidelity source workbook", () => {
     input.extraSections![0].contentExerciseItems![0].answer = "저는 학생입니다 학생입니다.";
     expect(getItem()?.answer).toBeUndefined();
   });
+    // Canonically equivalent Korean syllables must match, while the displayed answer stays verbatim.
+  it("normalizes Unicode when validating source reorder tokens", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "reorder-unicode",
+      kind: "original-activities",
+      title: "Sắp xếp câu",
+      content: ["Ghép các cụm thành câu."],
+      contentSourceRefs: ["Sách p.45 · reorder-unicode-1"],
+      contentExerciseItems: [{
+        id: "reorder-unicode-1",
+        contentIndex: 0,
+        type: "reorder",
+        tokens: ["\\u1100\\u1161", "나"],
+        answer: "가 나.",
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.exerciseType === "reorder");
+    expect(item?.answer).toBe("가 나.");
+    expect(item?.tokens).toEqual(["\\u1100\\u1161", "나"]);
+  });
 });
