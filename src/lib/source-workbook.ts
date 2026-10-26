@@ -1,4 +1,5 @@
 import type { LessonContent, SourceExerciseMotif, StudyQuestion } from "@/data/content";
+import { normalizeReorderAnswer } from "@/lib/answer-check";
 
 export type WorkbookCategory =
   | "Từ vựng" | "Ngữ pháp" | "Nghe" | "Nói" | "Đọc" | "Viết"
@@ -30,7 +31,7 @@ const comparisonKey = (v: string | undefined | null) => value(v).normalize("NFC"
 // Match StudySession's answer normalization and ensure the answer can be formed
 // from the declared source token chunks. Unused chunks remain valid distractors.
 function canConstructReorderAnswer(tokens: string[] | undefined, answer: string | undefined): boolean {
-  const normalize = (text: string) => text.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ").normalize("NFC");
+  const normalize = normalizeReorderAnswer;
   const target = normalize(value(answer));
   const chunks = (tokens ?? []).map(token => normalize(value(token)));
   if (!target || !chunks.length || chunks.some(chunk => !chunk)) return false;
