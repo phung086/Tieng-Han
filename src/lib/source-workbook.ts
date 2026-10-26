@@ -203,14 +203,27 @@ export function buildSourceWorkbook(
         activity?.answer && normalizedChoices.includes(value(activity.answer)),
       );
       const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
+      const leftValues = (activity?.leftItems ?? []).map(value);
+      const rightValues = (activity?.rightItems ?? []).map(value);
+      const pairLeftValues = matchingPairs.map(pair => value(pair.left));
+      const pairRightValues = matchingPairs.map(pair => value(pair.right));
+      // A source key is safe to reveal only when it maps every left entry once
+      // to a distinct declared right entry. Ambiguous string-based labels stay manual.
       const matchingAnswerIsSafe = Boolean(
         matchingPairs.length > 0 &&
-        activity?.leftItems?.length &&
-        activity?.rightItems?.length &&
-        matchingPairs.every(pair =>
-          value(pair.left) && value(pair.right) &&
-          activity.leftItems?.includes(pair.left) &&
-          activity.rightItems?.includes(pair.right),
+        leftValues.length > 0 &&
+        rightValues.length > 0 &&
+        leftValues.every(Boolean) &&
+        rightValues.every(Boolean) &&
+        new Set(leftValues).size === leftValues.length &&
+        new Set(rightValues).size === rightValues.length &&
+        matchingPairs.length === leftValues.length &&
+        new Set(pairLeftValues).size === matchingPairs.length &&
+        new Set(pairRightValues).size === matchingPairs.length &&
+        matchingPairs.every((pair, index) =>
+          pairLeftValues[index] && pairRightValues[index] &&
+          leftValues.includes(pairLeftValues[index]) &&
+          rightValues.includes(pairRightValues[index]),
         ),
       );
       const answer = activity?.type === "choice"
