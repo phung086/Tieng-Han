@@ -49,10 +49,11 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
       grammar.examples.forEach((sentence, index) => {
         const identity = sentence.trim();
         if (!identity) return;
-        const sourceRef = grammarWithExampleRefs.exampleSourceRefs?.[index]?.trim();
+        const sourceRef = grammarWithExampleRefs.exampleSourceRefs?.[index];
+        const sourceRefKey = sourceRef?.trim();
         // Prefer the exact source-item anchor so repeated identical examples keep their
         // review identity when source order changes. Text + occurrence is a fallback only.
-        const identityKey = sourceRef ? `ref:${sourceRef}` : `text:${identity}`;
+        const identityKey = sourceRefKey ? `ref:${sourceRefKey}` : `text:${identity}`;
         const occurrence = occurrences.get(identityKey) ?? 0;
         occurrences.set(identityKey, occurrence + 1);
         const identityHash = hash(identityKey);
@@ -62,7 +63,7 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
           lessonId: lesson.id, skill: "grammar", mode: "sentence",
           prompt: `Xếp câu ví dụ của mẫu ${grammar.pattern}`,
           answer: sentence, note: grammar.meaning,
-          sourceRef: sourceRef || undefined,
+          sourceRef: sourceRefKey ? sourceRef : undefined,
         });
       });
     }
