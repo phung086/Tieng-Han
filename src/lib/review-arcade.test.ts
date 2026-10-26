@@ -37,14 +37,12 @@ describe("source-backed review games", () => {
   it("keeps sentence memory attached to the same content when examples are reordered", () => {
     const before = buildArcadeCards([lesson]).filter(item => item.mode === "sentence");
     const grammar = lesson.grammar[0] as LessonContent["grammar"][number] & { exampleSourceRefs?: string[] };
-    const after = buildArcadeCards([{
-      ...lesson,
-      grammar: [{
-        ...grammar,
-        examples: [...grammar.examples].reverse(),
-        exampleSourceRefs: [...(grammar.exampleSourceRefs ?? [])].reverse(),
-      }],
-    }]);
+    const reorderedGrammar = {
+      ...grammar,
+      examples: [...grammar.examples].reverse(),
+      exampleSourceRefs: [...(grammar.exampleSourceRefs ?? [])].reverse(),
+    } as typeof grammar & { exampleSourceRefs?: string[] };
+    const after = buildArcadeCards([{ ...lesson, grammar: [reorderedGrammar] }]);
     for (const item of before) expect(after.find(card => card.id === item.id)?.answer).toBe(item.answer);
   });
   it("preserves repeated source examples and never borrows a parent source reference", () => {
