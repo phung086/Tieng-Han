@@ -47,6 +47,26 @@ describe("independent source inventory parity", () => {
     expect(result.coveredCount).toBe(3);
     expect(result.complete).toBe(true);
   });
+  it("does not let one question ID cover multiple distinct source items", () => {
+    const result = compareInventoryToPractice(source, [
+      link("word-1", "shared-q"),
+      link("word-2", "shared-q"),
+      link("exercise-1a", "q3", "reorder"),
+    ]);
+    expect(result.reusedQuestionIds).toEqual(["shared-q"]);
+    expect(result.coveredCount).toBe(1);
+    expect(result.missingIds).toEqual(["1:word-1", "1:word-2"]);
+    expect(result.complete).toBe(false);
+  });
+  it("does not treat repeated evidence for the same source item as cross-item reuse", () => {
+    const result = compareInventoryToPractice(source, [
+      link("word-1", "q1"), link("word-1", "q1"),
+      link("word-2", "q2"), link("exercise-1a", "q3", "reorder"),
+    ]);
+    expect(result.reusedQuestionIds).toEqual([]);
+    expect(result.coveredCount).toBe(3);
+    expect(result.complete).toBe(true);
+  });
   it("cannot certify an empty inventory", () => {
     expect(compareInventoryToPractice([], []).complete).toBe(false);
   });
