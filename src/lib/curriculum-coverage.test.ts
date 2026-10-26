@@ -585,6 +585,33 @@ describe("source, practice and validation coverage are independent release evide
 
 
 
+  it("requires inventory for a source-referenced embedded reading question without a parent inventory row", () => {
+    const bundle = fixture();
+    bundle.sourceInventory = inventory();
+    const questionRef = "synthetic.pdf · p.1 · reading-question";
+    bundle.course.lessons[0].reading = {
+      title: "Reading title",
+      text: "Original reading passage",
+      translation: "Đoạn đọc gốc",
+      sourceRef: "synthetic.pdf · p.1 · reading-section",
+      questions: [{
+        id: "embedded-reading-question",
+        q: "Who is speaking?",
+        choices: ["A", "B"],
+        answer: "A",
+        sourceRef: questionRef,
+      }],
+    };
+
+    // There is no inventory row for /reading or /reading/questions/0.
+    // Reverse reconciliation must still find the explicitly source-backed child.
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain(
+      "Thiếu item-level inventory cho nội dung có sourceRef 1:/reading/questions/0",
+    );
+  });
+
   it("requires exact refs for reading title and passage text instead of inheriting the section ref", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     const titleRef = "synthetic.pdf · p.1 · reading-title";
