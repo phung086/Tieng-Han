@@ -41,7 +41,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   expect(progress.completedLessonIds).toEqual([1]);
   expect(progress.sourceCoverage).toBeNull();
   await tool(request, "finalize_course_bundle", { jobId: job.id, sourceInventory: {
-    version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic-source.pdf", pageNumber, status: "reviewed", classification: "learning-content" })),
+    version: 1, sources: [{ fileName: "synthetic-source.pdf", sha256: "a".repeat(64) }], pages: [1, 2].map(pageNumber => ({ fileName: "synthetic-source.pdf", pageNumber, status: "reviewed", classification: "learning-content" })),
     items: [1, 2].map(pageNumber => ({ id: "v" + pageNumber, lessonId: 1, kind: "vocabulary", fileName: "synthetic-source.pdf", pageNumber,
       sourceRef: "synthetic-source.pdf · p." + pageNumber + " · v" + pageNumber, contentPointer: "/vocabulary/" + (pageNumber - 1), practiceMethod: "workbook", practiceQuestionIds: [], verified: true })),
   } });
@@ -50,7 +50,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   const consumed = await consume.json();
   expect(consumed.job.status).toBe("consumed");
   expect(consumed.course.source.curriculumCoverage.status).toBe("complete");
-  expect(consumed.course.source.curriculumCoverage.auditVersion).toBe(2);
+  expect(consumed.course.source.curriculumCoverage.auditVersion).toBe(3);
   const library = await (await request.get("/api/courses")).json();
   expect(library.courses.some((course: { id: string }) => course.id === "course-" + job.id)).toBe(true);
   await page.goto("/learn/1");
