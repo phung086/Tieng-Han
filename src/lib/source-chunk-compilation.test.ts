@@ -124,6 +124,7 @@ describe("merging full textbook content", () => {
     expect(combined.lesson.vocabulary).toHaveLength(180);
     expect(combined.lesson.grammar).toHaveLength(3);
     expect(combined.lesson.speaking).toHaveLength(3);
+    expect(combined.lesson.speakingSourceRefs).toBeUndefined();
     expect(combined.questions).toHaveLength(241);
     expect(combined.questions.at(-1)?.prompt).toBe("Từ 3-75");
     expect(new Set(combined.questions.map(q => q.id)).size).toBe(241);
@@ -134,6 +135,31 @@ describe("merging full textbook content", () => {
     expect(rest).toHaveLength(5);
     expect(rest.some(s => s.title === "Bài đọc phần 3" && s.content.includes("저는 학생입니다 3"))).toBe(true);
     expect(rest.some(s => s.title === "Nhiệm vụ viết · phần 3" && s.content.includes("Hãy viết phần 3"))).toBe(true);
+  });
+
+  it("merges speaking refs in exact sentence order and marks legacy chunk sentences unverified", () => {
+    const first = { ...lesson(1), speaking: ["안녕하세요."] };
+    const second = {
+      ...lesson(2),
+      speaking: ["감사합니다.", "안녕히 가세요."],
+      speakingSourceRefs: [
+        "Sơ cấp 1.pdf · p.22 · speaking-1",
+        "Sơ cấp 1.pdf · p.22 · speaking-2",
+      ],
+    };
+    const combined = mergeGeneratedLessonChunks(3, [
+      { lesson: first, questions: [] },
+      { lesson: second, questions: [] },
+    ]);
+
+    expect(combined.lesson.speaking).toEqual([
+      "안녕하세요.", "감사합니다.", "안녕히 가세요.",
+    ]);
+    expect(combined.lesson.speakingSourceRefs).toEqual([
+      null,
+      "Sơ cấp 1.pdf · p.22 · speaking-1",
+      "Sơ cấp 1.pdf · p.22 · speaking-2",
+    ]);
   });
 
   it("never accepts an invalid or missing compiled segment as a silent success", () => {
