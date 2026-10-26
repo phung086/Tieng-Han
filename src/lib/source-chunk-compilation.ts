@@ -201,7 +201,7 @@ export function mergeGeneratedLessonChunks(
     if (index !== primaryReadingChunk && lesson.reading) {
       // The v1 reading/extra-section references are additive. Read newer item
       // refs when present, but never treat a section/lesson ref as child evidence.
-      const reading = lesson.reading as NonNullable<LessonContent["reading"]> & {
+      const reading = lesson.reading as Omit<NonNullable<LessonContent["reading"]>, "questions"> & {
         titleSourceRef?: string;
         textSourceRef?: string;
         questions: Array<{
