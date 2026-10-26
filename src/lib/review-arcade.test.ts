@@ -5,19 +5,21 @@ import { answerPieces, assemblePieces } from "./touch-answer";
 import { grammarBlocks } from "./grammar-reader";
 import { relatedGrammar } from "./related-grammar";
 
+const grammarFixture = ({
+  id: "g1", pattern: "-고", meaning: "và",
+  explanation: "Nối hai hành động.\nLưu ý: giữ toàn bộ điều kiện.\n학교에 가고 공부해요.\nĐến trường và học bài.",
+  examples: ["학교에 가고 공부해요.", "먹고 쉬어요."],
+  sourceRef: "fixture.pdf p.11 · pattern:g1",
+  exampleSourceRefs: ["fixture.pdf p.11 · example:g1:0", "fixture.pdf p.11 · example:g1:1"],
+} as unknown) as LessonContent["grammar"][number] & { exampleSourceRefs: string[] };
+
 const lesson: LessonContent = {
   id: 8, title: "검토", vi: "Ôn tập", objective: "Ôn nguồn", sourceRef: "fixture.pdf p.10",
   vocabulary: Array.from({ length: 53 }, (_, i) => ({
     id: `v${i}`, ko: `단어${i}`, vi: `nghĩa ${i}`, example: "",
     sourceRef: `fixture.pdf p.10 · vocabulary:${i}`,
   })),
-  grammar: [{
-    id: "g1", pattern: "-고", meaning: "và",
-    explanation: "Nối hai hành động.\nLưu ý: giữ toàn bộ điều kiện.\n학교에 가고 공부해요.\nĐến trường và học bài.",
-    examples: ["학교에 가고 공부해요.", "먹고 쉬어요."],
-    sourceRef: "fixture.pdf p.11 · pattern:g1",
-    exampleSourceRefs: ["fixture.pdf p.11 · example:g1:0", "fixture.pdf p.11 · example:g1:1"],
-  } as LessonContent["grammar"][number] & { exampleSourceRefs: string[] }],
+  grammar: [grammarFixture],
   listening: [], speaking: [], reading: null, writing: null,
 };
 
