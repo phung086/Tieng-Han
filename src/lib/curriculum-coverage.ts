@@ -278,9 +278,13 @@ function declaredNestedSourcePointers(lesson: LessonContent): string[] {
   if (lesson.reading) {
     add("/reading/title", lesson.reading.titleSourceRef);
     add("/reading/text", lesson.reading.textSourceRef);
-    lesson.reading.questions.forEach((question, questionIndex) =>
+    lesson.reading.questions.forEach((question, questionIndex) => {
+      // Embedded reading questions are source items too. Their own ref must
+      // enter the reverse inventory check even when no /reading parent row exists.
+      add("/reading/questions/" + questionIndex, question.sourceRef);
       question.choiceSourceRefs?.forEach((ref, choiceIndex) =>
-        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref)));
+        add("/reading/questions/" + questionIndex + "/choices/" + choiceIndex, ref));
+    });
   }
   if (lesson.writing) {
     add("/writing/prompt", lesson.writing.promptSourceRef);
