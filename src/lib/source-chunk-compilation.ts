@@ -138,6 +138,8 @@ export function mergeGeneratedLessonChunks(
   const grammar: LessonContent["grammar"] = [];
   const listening: LessonContent["listening"] = [];
   const speaking: string[] = [];
+  const speakingSourceRefs: NonNullable<LessonContent["speakingSourceRefs"]> = [];
+  const hasSpeakingSourceRefs = chunks.some(chunk => chunk.lesson.speakingSourceRefs !== undefined);
   const dialogues: NonNullable<LessonContent["dialogues"]> = [];
   const pronunciation: NonNullable<LessonContent["pronunciation"]> = [];
   const culture: NonNullable<LessonContent["culture"]> = [];
@@ -150,6 +152,11 @@ export function mergeGeneratedLessonChunks(
     grammar.push(...idPrefix(lesson.grammar ?? [], index));
     listening.push(...idPrefix(lesson.listening ?? [], index));
     speaking.push(...(lesson.speaking ?? []));
+    if (hasSpeakingSourceRefs) {
+      // Chunks compiled before item-level refs remain visible but unverified.
+      // Keep a 1:1 alignment across the merged speaking list.
+      speakingSourceRefs.push(...(lesson.speakingSourceRefs ?? (lesson.speaking ?? []).map(() => null)));
+    }
     dialogues.push(...idPrefix(lesson.dialogues ?? [], index));
     pronunciation.push(...idPrefix(lesson.pronunciation ?? [], index));
     culture.push(...idPrefix(lesson.culture ?? [], index));
@@ -201,6 +208,7 @@ export function mergeGeneratedLessonChunks(
       grammar,
       listening,
       speaking,
+      speakingSourceRefs: hasSpeakingSourceRefs ? speakingSourceRefs : undefined,
       dialogues,
       pronunciation,
       culture,
