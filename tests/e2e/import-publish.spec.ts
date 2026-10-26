@@ -46,7 +46,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await tool(request, "finalize_course_bundle", { jobId: job.id, sourceInventory: {
     version: 1, pages: [1, 2].map(pageNumber => ({ fileName: "synthetic-source.pdf", pageNumber, status: "reviewed", classification: "learning-content" })),
     items: [1, 2].map(pageNumber => ({ id: "v" + pageNumber, lessonId: 1, kind: "vocabulary", fileName: "synthetic-source.pdf", pageNumber,
-      sourceRef: "synthetic-source.pdf · p." + pageNumber + " · v" + pageNumber, contentPointer: "/vocabulary/" + (pageNumber - 1), practiceMethod: "questions", practiceQuestionIds: ["q" + pageNumber], verified: true })),
+      sourceRef: "synthetic-source.pdf · p." + pageNumber + " · v" + pageNumber, contentPointer: "/vocabulary/" + (pageNumber - 1), practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q" + pageNumber], verified: true })),
   } });
   const consume = await request.patch(`/api/import-jobs/${job.id}`, { data: { action: "consume" } });
   expect(consume.ok()).toBe(true);

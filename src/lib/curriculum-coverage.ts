@@ -17,7 +17,7 @@ export const sourceInventorySchema = z.object({
     // JSON pointer relative to the lesson, e.g. /vocabulary/0 or /grammar/0/examples/1.
     contentPointer: nonempty,
     practiceMethod: z.enum(["questions", "workbook"]),
-    // Canonical supported quiz motif required for at least one linked question when specified.
+    // Canonical quiz form; required for question-based practice and matched by a linked question.
     motif: z.enum(["choice", "input", "reorder"]).optional(),
     practiceQuestionIds: z.array(nonempty).default([]), verified: z.boolean(),
   })),
@@ -174,7 +174,10 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     const linkedQuestions = item.practiceQuestionIds.map(id => questions.find(question =>
       question.id === id && question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef));
     const linked = linkedQuestions.length > 0 && linkedQuestions.every(question => question !== undefined);
-    const motifMatches = !item.motif || linkedQuestions.some(question => question?.type === item.motif);
+    const motifMissing = item.practiceMethod === "questions" && !item.motif;
+    const motifMatches = item.motif
+      ? linkedQuestions.some(question => question?.type === item.motif)
+      : !motifMissing;
     // Workbook coverage requires an explicit exercise target, not merely any lesson content.
     const sectionMatch = /^\/extraSections\/(\d+)(?:\/content\/\d+)?$/.exec(item.contentPointer);
     const section = sectionMatch ? lesson?.extraSections?.[Number(sectionMatch[1])] : undefined;
@@ -192,14 +195,17 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       /(?:writing|exercise|workbook|practice|worksheet|task|translation|연습|작문)/i.test(item.kind) &&
       Boolean(writing && typeof writing.prompt === "string" && writing.prompt.trim());
     const manualWorkbookTask = item.practiceMethod === "workbook" &&
-      item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
+      !item.motif && item.practiceQuestionIds.length === 0 && (explicitExerciseSection || explicitWritingTask);
     // Every mapped question must resolve to this exact source item. When the reviewed
     // inventory specifies a supported motif, at least one linked question must preserve it.
-    if (linked && item.motif && !motifMatches) {
+    if (motifMissing) {
+      issues.push("Thiếu motif luyện tập cho item " + key + " với practiceMethod=questions");
+    }
+    if (item.motif && !motifMatches) {
       issues.push("Sai motif luyện tập cho item " + key + ": yêu cầu " + item.motif);
     }
     if ((linked && motifMatches) || manualWorkbookTask) practiced++;
-    else if (!linked || !item.motif) issues.push("Thiếu phương thức ôn luyện cho item " + key);
+    else if (!linked) issues.push("Thiếu phương thức ôn luyện cho item " + key);
     if (item.verified && reviewedPages.has(pageKey)) validated++;
     else issues.push("Item chưa kiểm chứng: " + key);
   }
