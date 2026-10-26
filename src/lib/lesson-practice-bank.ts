@@ -19,9 +19,17 @@ function optionsFor(
   maxOptions = 4,
   offset = 0,
 ): string[] {
-  const distractors = Array.from(new Set(alternatives.map(nonEmpty)))
-    .filter((item) => item && item !== correct)
-    .slice(0, maxOptions - 1);
+  const correctKey = choiceComparisonKey(correct);
+  const seen = new Set<string>(correctKey ? [correctKey] : []);
+  const distractors: string[] = [];
+  for (const raw of alternatives) {
+    const item = nonEmpty(raw);
+    const key = choiceComparisonKey(item);
+    if (!item || !key || seen.has(key)) continue;
+    seen.add(key);
+    distractors.push(item);
+    if (distractors.length >= maxOptions - 1) break;
+  }
   if (!distractors.length) return [];
   // Rotate the correct answer across positions, deterministically per source index.
   const position = offset % (distractors.length + 1);
