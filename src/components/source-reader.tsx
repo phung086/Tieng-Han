@@ -44,14 +44,15 @@ function Reader({ courseId, initialPage, initialDocument }: { courseId: string; 
   useEffect(() => {
     function syncFromHistory() {
       const location = parseSourceReaderLocation(window.location.href);
+      const changed = location.documentId !== documentId || location.page !== pageNumber;
       setDocumentId(location.documentId);
       setPageNumber(location.page);
       setPageInput(String(location.page));
-      setLoading(true);
+      if (changed) setLoading(true);
     }
     window.addEventListener("popstate", syncFromHistory);
     return () => window.removeEventListener("popstate", syncFromHistory);
-  }, []);
+  }, [documentId, pageNumber]);
 
   const currentDocument = result?.documents.find(item => item.documentId === (documentId || result.documentId));
   const page = loading || error ? null : result?.page;
