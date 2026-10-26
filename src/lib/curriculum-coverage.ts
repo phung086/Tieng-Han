@@ -175,6 +175,11 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       question.id === id && question.sourceRef?.replace(/^Derived from\s+/i, "").trim() === item.sourceRef));
     const linked = linkedQuestions.length > 0 && linkedQuestions.every(question => question !== undefined);
     const motifMatches = !item.motif || linkedQuestions.some(question => question?.type === item.motif);
+    // Question-based coverage is not complete unless the inventory declares the original
+    // exercise motif. A missing motif must not count as practiced just because a question links.
+    if (item.practiceMethod === "questions" && !item.motif) {
+      issues.push("Thiếu motif luyện tập cho item " + key);
+    }
     // Workbook coverage requires an explicit exercise target, not merely any lesson content.
     const sectionMatch = /^\/extraSections\/(\d+)(?:\/content\/\d+)?$/.exec(item.contentPointer);
     const section = sectionMatch ? lesson?.extraSections?.[Number(sectionMatch[1])] : undefined;
@@ -198,8 +203,9 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     if (linked && item.motif && !motifMatches) {
       issues.push("Sai motif luyện tập cho item " + key + ": yêu cầu " + item.motif);
     }
-    if ((linked && motifMatches) || manualWorkbookTask) practiced++;
-    else if (!linked || !item.motif) issues.push("Thiếu phương thức ôn luyện cho item " + key);
+    const questionPracticeHasMotif = item.practiceMethod !== "questions" || Boolean(item.motif);
+    if ((linked && motifMatches && questionPracticeHasMotif) || manualWorkbookTask) practiced++;
+    else if (!linked) issues.push("Thiếu phương thức ôn luyện cho item " + key);
     if (item.verified && reviewedPages.has(pageKey)) validated++;
     else issues.push("Item chưa kiểm chứng: " + key);
   }
