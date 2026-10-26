@@ -111,6 +111,42 @@ describe("exhaustive deterministic practice", () => {
       .toEqual(["학생", "학생"]);
   });
 
+  it("accepts canonically equivalent Hangul choice answers without rewriting source strings", () => {
+    const input = lesson(1);
+    const decomposed = "\\u1100\\u1161";
+    input.listening = [{
+      id: "unicode-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["가", "선생님"], answer: decomposed, sourceRef: "Sách p.24 · listening",
+    }];
+    input.reading!.questions = [{
+      id: "unicode-reading", q: "누구입니까?", choices: ["가", "의사"],
+      answer: decomposed, sourceRef: "Sách p.25 · reading",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    const listening = bank.find(q => q.id === "source-practice:4:listening:0:0");
+    const reading = bank.find(q => q.id === "source-practice:4:reading:0:0");
+    expect(listening?.type).toBe("choice");
+    expect(listening?.choices).toEqual(["가", "선생님"]);
+    expect(listening?.answer).toBe(decomposed);
+    expect(reading?.type).toBe("choice");
+    expect(reading?.choices).toEqual(["가", "의사"]);
+    expect(reading?.answer).toBe(decomposed);
+  });
+
+  it("rejects canonically duplicate source choices instead of producing an ambiguous quiz", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "unicode-duplicate", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["가", "\\u1100\\u1161"], answer: "가", sourceRef: "Sách p.24 · duplicate",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.some(q => q.id === "source-practice:4:listening:0:0")).toBe(false);
+    expect(buildSourceWorkbook(input, []).find(item => item.title === "Bài nghe 1")?.choices)
+      .toEqual(["가", "\\u1100\\u1161"]);
+  });
+
   it("keeps genuinely open-ended listening and reading tasks as input", () => {
     const input = lesson(1);
     input.listening = [{
