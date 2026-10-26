@@ -7,8 +7,17 @@ import { relatedGrammar } from "./related-grammar";
 
 const lesson: LessonContent = {
   id: 8, title: "검토", vi: "Ôn tập", objective: "Ôn nguồn", sourceRef: "fixture.pdf p.10",
-  vocabulary: Array.from({ length: 53 }, (_, i) => ({ id: `v${i}`, ko: `단어${i}`, vi: `nghĩa ${i}`, example: "" })),
-  grammar: [{ id: "g1", pattern: "-고", meaning: "và", explanation: "Nối hai hành động.\nLưu ý: giữ toàn bộ điều kiện.\n학교에 가고 공부해요.\nĐến trường và học bài.", examples: ["학교에 가고 공부해요.", "먹고 쉬어요."], sourceRef: "fixture.pdf p.11" }],
+  vocabulary: Array.from({ length: 53 }, (_, i) => ({
+    id: `v${i}`, ko: `단어${i}`, vi: `nghĩa ${i}`, example: "",
+    sourceRef: `fixture.pdf p.10 · vocabulary:${i}`,
+  })),
+  grammar: [{
+    id: "g1", pattern: "-고", meaning: "và",
+    explanation: "Nối hai hành động.\nLưu ý: giữ toàn bộ điều kiện.\n학교에 가고 공부해요.\nĐến trường và học bài.",
+    examples: ["학교에 가고 공부해요.", "먹고 쉬어요."],
+    sourceRef: "fixture.pdf p.11 · pattern:g1",
+    exampleSourceRefs: ["fixture.pdf p.11 · example:g1:0", "fixture.pdf p.11 · example:g1:1"],
+  } as LessonContent["grammar"][number] & { exampleSourceRefs: string[] }],
   listening: [], speaking: [], reading: null, writing: null,
 };
 
@@ -25,8 +34,41 @@ describe("source-backed review games", () => {
   });
   it("keeps sentence memory attached to the same content when examples are reordered", () => {
     const before = buildArcadeCards([lesson]).filter(item => item.mode === "sentence");
-    const after = buildArcadeCards([{ ...lesson, grammar: [{ ...lesson.grammar[0], examples: [...lesson.grammar[0].examples].reverse() }] }]);
+    const grammar = lesson.grammar[0] as LessonContent["grammar"][number] & { exampleSourceRefs?: string[] };
+    const after = buildArcadeCards([{
+      ...lesson,
+      grammar: [{
+        ...grammar,
+        examples: [...grammar.examples].reverse(),
+        exampleSourceRefs: [...(grammar.exampleSourceRefs ?? [])].reverse(),
+      }],
+    }]);
     for (const item of before) expect(after.find(card => card.id === item.id)?.answer).toBe(item.answer);
+  });
+  it("preserves repeated source examples and never borrows a parent source reference", () => {
+    const grammar = lesson.grammar[0] as LessonContent["grammar"][number] & { exampleSourceRefs?: string[] };
+    const repeated = {
+      ...grammar,
+      examples: ["같은 예문", "같은 예문", "다른 예문"],
+      exampleSourceRefs: ["fixture.pdf p.11 · repeated:0", "fixture.pdf p.11 · repeated:1"],
+    };
+    const cards = buildArcadeCards([{
+      ...lesson,
+      sourceRef: "parent-only.pdf p.1",
+      vocabulary: [{ ...lesson.vocabulary[0], sourceRef: undefined }],
+      grammar: [repeated],
+    }]);
+    const sentenceCards = cards.filter(item => item.mode === "sentence");
+    expect(sentenceCards).toHaveLength(3);
+    expect(sentenceCards.map(item => item.answer)).toEqual(["같은 예문", "같은 예문", "다른 예문"]);
+    expect(new Set(sentenceCards.map(item => item.id)).size).toBe(3);
+    expect(sentenceCards.map(item => item.sourceRef)).toEqual([
+      "fixture.pdf p.11 · repeated:0",
+      "fixture.pdf p.11 · repeated:1",
+      undefined,
+    ]);
+    expect(cards.find(item => item.mode === "meaning")?.sourceRef).toBeUndefined();
+    expect(cards.find(item => item.mode === "grammar")?.sourceRef).toBe("fixture.pdf p.11 · pattern:g1");
   });
   it("does not use another accepted meaning of the same prompt as a wrong choice", () => {
     const cards = buildArcadeCards([{ ...lesson, vocabulary: [
