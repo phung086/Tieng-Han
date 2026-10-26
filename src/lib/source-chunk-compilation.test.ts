@@ -92,6 +92,21 @@ describe("source page batching", () => {
     expect(parts.every(part => formatSourcePages(part).length <= 1_200)).toBe(true);
   });
 
+  it("does not split supplementary Unicode code points across source chunks", () => {
+    const maxCharacters = 500;
+    const page = examplePage(13, "");
+    const firstLabel = "[SOURCE: " + page.fileName + " · p." + page.pageNumber + " · part 1]\n";
+    const capacity = maxCharacters - firstLabel.length - 2;
+    const source = "a".repeat(capacity - 1) + "𠀀" + "z".repeat(40);
+    const parts = chunkSourcePages([examplePage(13, source)], maxCharacters, 8);
+    const pieces = parts.flat().map(part => part.text);
+
+    expect(pieces.join("")).toBe(source);
+    expect(pieces.some(piece => /[\\uD800-\\uDBFF]$/.test(piece))).toBe(false);
+    expect(pieces.some(piece => /^[\\uDC00-\\uDFFF]/.test(piece))).toBe(false);
+    expect(parts.every(part => formatSourcePages(part).length <= maxCharacters)).toBe(true);
+  });
+
   it("keeps image-only pages with empty extractable text", () => {
     const parts = chunkSourcePages(
       Array.from({ length: 32 }, (_, i) => examplePage(i + 1, "", true)),
