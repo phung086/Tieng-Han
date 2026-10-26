@@ -50,6 +50,20 @@ describe("targeted review planning", () => {
       expect(catalog.find(item => item.id === id)?.sourceRef).toBeUndefined();
     }
   });
+  it("uses speaking item refs only when the bundle carries an aligned verified ref", () => {
+    const sourceLesson = {
+      ...book.lessons[0],
+      id: 89,
+      sourceRef: "parent-only.pdf · p.1",
+      speaking: ["안녕하세요.", "감사합니다."],
+      speakingSourceRefs: ["book.pdf · p.12 · speaking-1", null],
+    } satisfies RuntimeCourse["lessons"][number];
+    const catalog = buildReviewCatalog({ ...book, lessons: [sourceLesson], questions: [] });
+    expect(catalog.find(item => item.id === "speak-89-0")?.sourceRef)
+      .toBe("book.pdf · p.12 · speaking-1");
+    expect(catalog.find(item => item.id === "speak-89-1")?.sourceRef).toBeUndefined();
+  });
+
   it("provides source reading context and explicit self-assessment modes", () => {
     const catalog = buildReviewCatalog(book);
     expect(catalog.find(item => item.id === "read-1")?.context).toContain("민수");
