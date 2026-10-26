@@ -39,6 +39,10 @@ export function compareInventoryToPractice(
     seen.add(key);
     if (item.id.trim() && Number.isInteger(item.page) && item.page > 0) valid.set(key, item);
   }
+  // A duplicate source identity is ambiguous as a unit of coverage. Exclude
+  // every occurrence of that key from the numerator rather than counting the
+  // same practice evidence once per duplicate inventory row.
+  const duplicateKeys = new Set(duplicateIds);
   const mappings = new Map<string, PracticeEvidence[]>();
   const questionOwners = new Map<string, Set<string>>();
   const unknownReferences: string[] = [];
@@ -66,6 +70,7 @@ export function compareInventoryToPractice(
   let coveredCount = 0;
   for (const item of inventory) {
     const key = item.lessonId + ":" + item.id;
+    if (duplicateKeys.has(key)) continue;
     if (!item.verified || !valid.has(key)) {
       uncertainIds.push(key);
       continue;
