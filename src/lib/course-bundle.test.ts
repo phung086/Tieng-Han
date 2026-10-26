@@ -179,6 +179,41 @@ describe("parseCourseBundle", () => {
     const bundle = parseCourseBundle(validBundleJson({ course: { title: "Test", level: "L1", lessons: [lesson], questions: [] } }));
     expect(bundle.course.lessons[0].dialogues?.[0].lines[0].sourceRef).toBe(ref);
   });
+  it("preserves item-level speaking source refs and explicit unverified entries", () => {
+    const lesson = minimalLesson({
+      speaking: ["안녕하세요.", "감사합니다."],
+      speakingSourceRefs: ["book.pdf · p.12 · speaking-1", null],
+    });
+    const bundle = parseCourseBundle(validBundleJson({
+      course: { title: "Test", level: "L1", lessons: [lesson], questions: [] },
+    }));
+    expect(bundle.course.lessons[0].speakingSourceRefs).toEqual([
+      "book.pdf · p.12 · speaking-1",
+      null,
+    ]);
+    expect(bundle.course.lessons[0].speaking).toEqual(["안녕하세요.", "감사합니다."]);
+  });
+
+  it("rejects speaking source refs that are misaligned or malformed", () => {
+    const mismatch = minimalLesson({
+      speaking: ["안녕하세요.", "감사합니다."],
+      speakingSourceRefs: ["book.pdf · p.12 · speaking-1"],
+    });
+    const mismatchErrors = getValidationErrors(validBundleJson({
+      course: { title: "Test", level: "L1", lessons: [mismatch], questions: [] },
+    }));
+    expect(mismatchErrors).toContainEqual(expect.objectContaining({
+      path: "lesson[0].speakingSourceRefs",
+      reason: "must have exactly one entry per speaking item",
+    }));
+
+    const malformed = minimalLesson({ speakingSourceRefs: [42] });
+    const malformedErrors = getValidationErrors(validBundleJson({
+      course: { title: "Test", level: "L1", lessons: [malformed], questions: [] },
+    }));
+    expect(malformedErrors.some(error => error.path === "lesson[0].speakingSourceRefs[0]")).toBe(true);
+  });
+
   it("retains separate dialogue/translation origins and rejects unsupported origin labels", () => {
     const lesson = minimalLesson();
     Object.assign(lesson.dialogues[0], { origin: "source", translationOrigin: "derived" });
@@ -227,6 +262,7 @@ describe("parseCourseBundle", () => {
   it("exposes detailed lesson schema in get_compilation_contract", () => {
     const contract = getCompilationContract(sampleLanguage);
     expect(contract.runtimeSchema.LessonContent).toBeDefined();
+    expect(contract.runtimeSchema.LessonContent.speakingSourceRefs).toContain("align exactly 1:1");
     expect(contract.runtimeSchema.requiredLessonFields).toEqual(
       expect.arrayContaining(["id", "objective", "vocabulary", "grammar", "listening", "speaking"]),
     );
