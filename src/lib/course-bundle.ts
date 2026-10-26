@@ -123,6 +123,11 @@ export function normalizeLessonContent(value: unknown): LessonContent {
     speaking: Array.isArray(row.speaking)
       ? row.speaking.map(String)
       : [],
+    speakingSourceRefs: Array.isArray(row.speakingSourceRefs)
+      ? row.speakingSourceRefs.map((value) =>
+          typeof value === "string" ? value : null,
+        )
+      : undefined,
     reading:
       row.reading && typeof row.reading === "object"
         ? (row.reading as LessonContent["reading"])
@@ -266,6 +271,38 @@ function validateLesson(
         reason: "required field must be an array",
         expected: "array",
       });
+    }
+  }
+
+  // Speaking provenance is additive for legacy bundles, but when supplied it
+  // must stay aligned with the original sentence list. null means unverified.
+  if (row.speakingSourceRefs !== undefined) {
+    if (!Array.isArray(row.speakingSourceRefs)) {
+      errors.push({
+        path: `${prefix}.speakingSourceRefs`,
+        reason: "must be an array aligned with speaking",
+        expected: "(string|null)[]",
+      });
+    } else {
+      if (Array.isArray(row.speaking) && row.speakingSourceRefs.length !== row.speaking.length) {
+        errors.push({
+          path: `${prefix}.speakingSourceRefs`,
+          reason: "must have exactly one entry per speaking item",
+          expected: `length ${row.speaking.length}`,
+          actual: row.speakingSourceRefs.length,
+        });
+      }
+      for (let si = 0; si < row.speakingSourceRefs.length; si++) {
+        const sourceRef = row.speakingSourceRefs[si];
+        if (sourceRef !== null && (typeof sourceRef !== "string" || !sourceRef.trim())) {
+          errors.push({
+            path: `${prefix}.speakingSourceRefs[${si}]`,
+            reason: "must be a non-empty source reference or null when unverified",
+            expected: "non-empty string|null",
+            actual: sourceRef,
+          });
+        }
+      }
     }
   }
 
@@ -802,6 +839,8 @@ export function getCompilationContract(language: LanguageProfile) {
           },
         ],
         speaking: "string[]",
+        speakingSourceRefs:
+          "(string|null)[] optional; if present, align exactly 1:1 with speaking. null means no verified item-level sourceRef. Never inherit the lesson-level sourceRef; omit on legacy bundles.",
         reading: {
           title: "string",
           text: "string",
