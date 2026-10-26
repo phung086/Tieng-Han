@@ -1,20 +1,106 @@
 import type { RuntimeCourse } from "@/lib/content-store";
 
+const UNVERIFIED_SOURCE = "Chưa xác minh nguồn";
+
 export type CoachEvidence = {
-  id: string; title: string; text: string; examples: string[]; source: string; href: string; kind: string;
+  id: string;
+  title: string;
+  text: string;
+  examples: string[];
+  /** Exact per-example provenance; never inherit the parent item's ref. */
+  exampleSources: string[];
+  source: string;
+  href: string;
+  kind: string;
 };
+
+function exactSource(sourceRef?: string | null): string {
+  return typeof sourceRef === "string" && sourceRef.trim()
+    ? sourceRef
+    : UNVERIFIED_SOURCE;
+}
 
 export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvidence[] {
   const lesson = course.lessons.find(item => item.id === lessonId);
   if (!lesson) return [];
-  const source = lesson.sourceRef ?? `${course.title} · Bài ${lessonId}`;
   const entries: CoachEvidence[] = [];
-  for (const item of lesson.grammar) entries.push({ id: item.id, title: item.pattern, text: item.meaning + "\n" + item.explanation, examples: item.examples, source: item.sourceRef ?? source, kind: "Ngữ pháp", href: `/grammar?lesson=${lessonId}` });
-  for (const item of lesson.vocabulary) entries.push({ id: item.id, title: item.ko, text: item.vi, examples: item.example ? [item.example] : [], source: item.sourceRef ?? source, kind: "Từ vựng", href: `/vocabulary?lesson=${lessonId}` });
-  for (const item of course.questions.filter(item => item.lessonId === lessonId)) entries.push({ id: item.id, title: item.title + " · " + item.prompt, text: item.explanation, examples: ["Đáp án của câu luyện: " + item.answer], source: item.sourceRef ?? source, kind: "Lời giải", href: `/practice/quiz?lesson=${lessonId}&skill=${item.skill}` });
-  if (lesson.reading) entries.push({ id: `reading:${lessonId}`, title: lesson.reading.title, text: lesson.reading.text, examples: [lesson.reading.translation], source: lesson.reading.sourceRef ?? source, kind: "Bài đọc", href: `/reading?lesson=${lessonId}` });
-  for (const item of lesson.pronunciation ?? []) entries.push({ id: item.id, title: item.title, text: item.explanation, examples: item.examples, source: item.sourceRef ?? source, kind: "Phát âm", href: `/pronunciation?lesson=${lessonId}` });
-  for (const item of lesson.culture ?? []) entries.push({ id: item.id, title: item.title, text: item.text, examples: [], source: item.sourceRef ?? source, kind: "Văn hóa", href: `/learn/${lessonId}` });
+  for (const item of lesson.grammar) {
+    const exampleRefs = (item as typeof item & { exampleSourceRefs?: Array<string | null> }).exampleSourceRefs;
+    entries.push({
+      id: item.id,
+      title: item.pattern,
+      text: item.meaning + "\n" + item.explanation,
+      examples: item.examples,
+      exampleSources: item.examples.map((_, index) => exactSource(exampleRefs?.[index])),
+      source: exactSource(item.sourceRef),
+      kind: "Ngữ pháp",
+      href: "/grammar?lesson=" + lessonId,
+    });
+  }
+  for (const item of lesson.vocabulary) {
+    const exampleRef = (item as typeof item & { exampleSourceRef?: string | null }).exampleSourceRef;
+    entries.push({
+      id: item.id,
+      title: item.ko,
+      text: item.vi,
+      examples: item.example ? [item.example] : [],
+      exampleSources: item.example ? [exactSource(exampleRef)] : [],
+      source: exactSource(item.sourceRef),
+      kind: "Từ vựng",
+      href: "/vocabulary?lesson=" + lessonId,
+    });
+  }
+  for (const item of course.questions.filter(item => item.lessonId === lessonId)) {
+    const answerRef = (item as typeof item & { answerSourceRef?: string | null }).answerSourceRef;
+    entries.push({
+      id: item.id,
+      title: item.title + " · " + item.prompt,
+      text: item.explanation,
+      examples: ["Đáp án của câu luyện: " + item.answer],
+      exampleSources: [exactSource(answerRef)],
+      source: exactSource(item.sourceRef),
+      kind: "Lời giải",
+      href: "/practice/quiz?lesson=" + lessonId + "&skill=" + item.skill,
+    });
+  }
+  if (lesson.reading) {
+    const reading = lesson.reading as typeof lesson.reading & { translationSourceRef?: string | null };
+    entries.push({
+      id: "reading:" + lessonId,
+      title: lesson.reading.title,
+      text: lesson.reading.text,
+      examples: [lesson.reading.translation],
+      exampleSources: [exactSource(reading.translationSourceRef)],
+      source: exactSource(lesson.reading.sourceRef),
+      kind: "Bài đọc",
+      href: "/reading?lesson=" + lessonId,
+    });
+  }
+  for (const item of lesson.pronunciation ?? []) {
+    const exampleRefs = (item as typeof item & { exampleSourceRefs?: Array<string | null> }).exampleSourceRefs;
+    entries.push({
+      id: item.id,
+      title: item.title,
+      text: item.explanation,
+      examples: item.examples,
+      exampleSources: item.examples.map((_, index) => exactSource(exampleRefs?.[index])),
+      source: exactSource(item.sourceRef),
+      kind: "Phát âm",
+      href: "/pronunciation?lesson=" + lessonId,
+    });
+  }
+  for (const item of lesson.culture ?? []) {
+    entries.push({
+      id: item.id,
+      title: item.title,
+      text: item.text,
+      examples: [],
+      exampleSources: [],
+      source: exactSource(item.sourceRef),
+      kind: "Văn hóa",
+      href: "/learn/" + lessonId,
+    });
+  }
   return entries;
 }
 

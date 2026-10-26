@@ -33,8 +33,8 @@ export function LessonCoach({ lessonId, questionId, compact = false }: { lessonI
       <div className="coach-results" aria-live="polite" aria-atomic="true">
         {results?.length ? <><p>Tìm thấy {results.length} nội dung liên quan đến “{searched}”.</p>{results.map(item => <article key={item.id}>
           <div className="coach-result-title"><span>{item.kind}</span><h3 className="korean-text">{item.title}</h3></div>
-          <p>{item.text}</p>{item.examples.length ? <ul>{item.examples.map((example, index) => <li key={index} className="korean-text">{example}</li>)}</ul> : null}
-          <div className="coach-source"><small>Nguồn: {item.source}</small><Link href={item.href}>Luyện nội dung này <ArrowRight size={15} /></Link></div>
+          <p>{item.text}</p>{item.examples.length ? <ul>{item.examples.map((example, index) => <li key={index} className="korean-text">{example}<small className="coach-example-source">Nguồn ví dụ: {item.exampleSources[index] ?? "Chưa xác minh nguồn"}</small></li>)}</ul> : null}
+          <div className="coach-source"><small>Nguồn mục: {item.source}</small><Link href={item.href}>Luyện nội dung này <ArrowRight size={15} /></Link></div>
         </article>)}</> : results ? <div className="coach-no-result"><strong>Chưa tìm thấy thông tin này trong bài {lessonId}.</strong><p>Thử dùng từ tiếng Hàn hoặc chọn một mẫu câu gợi ý phía trên. Haneul không tự tạo lời giải khi thiếu nội dung nguồn.</p></div> : null}
       </div>
     </div>
