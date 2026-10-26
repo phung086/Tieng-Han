@@ -147,8 +147,10 @@ describe("merging full textbook content", () => {
     expect(combined.lesson.reading?.title).toBe("Bài đọc phần 2");
     expect(combined.lesson.writing?.prompt).toBe("Hãy viết phần 2");
     const rest = combined.lesson.extraSections ?? [];
-    expect(rest).toHaveLength(13);
+    expect(rest).toHaveLength(14);
     expect(rest.some(s => s.title === "Bài đọc phần 3" && s.content.includes("저는 학생입니다 3"))).toBe(true);
+    expect(rest.find(s => s.id === "chunk3:reading:title")?.content).toEqual(["Bài đọc phần 3"]);
+    expect(rest.find(s => s.id === "chunk3:reading:title")?.sourceRef).toBeUndefined();
     expect(rest.some(s => s.title === "Nhiệm vụ viết · phần 3" && s.content.includes("Hãy viết phần 3"))).toBe(true);
     expect(rest.find(s => s.id === "chunk3:reading:passage")?.sourceRef).toBeUndefined();
     expect(rest.find(s => s.id === "chunk3:reading:question:read-1")?.sourceRef).toBeUndefined();
