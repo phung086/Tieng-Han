@@ -87,12 +87,111 @@ describe("exhaustive deterministic practice", () => {
     expect(bank.filter(q => q.id.includes("vocab-meaning")).some(q => q.answer === "nghĩa 72")).toBe(true);
   });
 
+  it("does not downgrade malformed source choice exercises to input practice", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "bad-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["학생", "선생님"], answer: "의사", sourceRef: "Sách p.24",
+    }];
+    input.reading!.questions = [{
+      id: "bad-reading", q: "누구입니까?", choices: ["학생", "학생"],
+      answer: "학생", sourceRef: "Sách p.25",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.some(q => q.id === "source-practice:4:listening:0:0")).toBe(false);
+    expect(bank.some(q => q.id === "source-practice:4:reading:0:0")).toBe(false);
+
+    // The source workbook retains the original tasks and option arrays for
+    // manual review instead of silently repairing the source material.
+    const workbook = buildSourceWorkbook(input, []);
+    expect(workbook.find(item => item.title === "Bài nghe 1")?.choices)
+      .toEqual(["학생", "선생님"]);
+    expect(workbook.find(item => item.title === "Đọc hiểu 1")?.choices)
+      .toEqual(["학생", "학생"]);
+  });
+
+  it("accepts canonically equivalent Hangul choice answers without rewriting source strings", () => {
+    const input = lesson(1);
+    const decomposed = "가";
+    input.listening = [{
+      id: "unicode-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["가", "선생님"], answer: decomposed, sourceRef: "Sách p.24 · listening",
+    }];
+    input.reading!.questions = [{
+      id: "unicode-reading", q: "누구입니까?", choices: ["가", "의사"],
+      answer: decomposed, sourceRef: "Sách p.25 · reading",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    const listening = bank.find(q => q.id === "source-practice:4:listening:0:0");
+    const reading = bank.find(q => q.id === "source-practice:4:reading:0:0");
+    expect(listening?.type).toBe("choice");
+    expect(listening?.choices).toEqual(["가", "선생님"]);
+    expect(listening?.answer).toBe(decomposed);
+    expect(reading?.type).toBe("choice");
+    expect(reading?.choices).toEqual(["가", "의사"]);
+    expect(reading?.answer).toBe(decomposed);
+  });
+
+  it("rejects canonically duplicate source choices instead of producing an ambiguous quiz", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "unicode-duplicate", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: ["가", "가"], answer: "가", sourceRef: "Sách p.24 · duplicate",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.some(q => q.id === "source-practice:4:listening:0:0")).toBe(false);
+    expect(buildSourceWorkbook(input, []).find(item => item.title === "Bài nghe 1")?.choices)
+      .toEqual(["가", "가"]);
+  });
+
+  it("keeps genuinely open-ended listening and reading tasks as input", () => {
+    const input = lesson(1);
+    input.listening = [{
+      id: "open-listening", text: "누구입니까?", meaning: "Ai vậy?",
+      choices: [], answer: "학생", sourceRef: "Sách p.24",
+    }];
+    input.reading!.questions = [{
+      id: "open-reading", q: "누구입니까?", choices: [],
+      answer: "학생", sourceRef: "Sách p.25",
+    }];
+
+    const bank = buildLessonPracticeBank(input, []);
+    expect(bank.find(q => q.id === "source-practice:4:listening:0:0")?.type).toBe("input");
+    expect(bank.find(q => q.id === "source-practice:4:reading:0:0")?.type).toBe("input");
+  });
+
   it("does not manufacture graded answers for untranslated dialogue or open writing", () => {
     const input = lesson(1);
     input.dialogues![0].lines[1].vi = "";
     const bank = buildLessonPracticeBank(input, []);
     expect(bank.filter(q => q.id.includes(":dialogue-"))).toHaveLength(1);
     expect(bank.some(q => q.prompt === input.writing!.prompt && q.answer)).toBe(false);
+  });
+
+  it("keeps generated vocabulary choices unambiguous for canonically equivalent Hangul", () => {
+    const input = lesson(3);
+    input.vocabulary![0] = { ...input.vocabulary![0], ko: "가", vi: "가" };
+    input.vocabulary![1] = { ...input.vocabulary![1], ko: "가", vi: "가" };
+    input.vocabulary![2] = { ...input.vocabulary![2], ko: "나", vi: "나" };
+
+    const bank = buildLessonPracticeBank(input, []);
+    for (const kind of ["vocab-meaning", "vocab-recall"]) {
+      for (const index of [0, 1]) {
+        const question = bank.find(item => item.id === `source-practice:4:${kind}:${index}:0`);
+        expect(question).toBeDefined();
+        expect(question?.type).toBe("choice");
+        const choices = question?.choices ?? [];
+        expect(new Set(choices.map(choice => choice.normalize("NFC"))).size).toBe(choices.length);
+        expect(choices).toContain(question?.answer);
+      }
+    }
+
+    // Comparison is normalized; source answer strings remain unchanged.
+    expect(bank.find(item => item.id === "source-practice:4:vocab-meaning:1:0")?.answer).toBe("가");
+    expect(bank.find(item => item.id === "source-practice:4:vocab-recall:1:0")?.answer).toBe("가");
   });
 
   it("rotates answers among distractors rather than keeping every correct option first", () => {

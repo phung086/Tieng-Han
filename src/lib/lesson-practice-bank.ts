@@ -6,6 +6,8 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
  * Text-only exercises without a sourced answer remain in the lesson workbook.
  */
 const nonEmpty = (value: string | undefined | null) => (value ?? "").trim();
+// Comparison-only normalization: retain the exact source strings for display.
+const choiceComparisonKey = (value: string | undefined | null) => nonEmpty(value).normalize("NFC");
 
 function stableId(lessonId: number, kind: string, index: number, variant = 0) {
   return "source-practice:" + lessonId + ":" + kind + ":" + index + ":" + variant;
@@ -17,14 +19,43 @@ function optionsFor(
   maxOptions = 4,
   offset = 0,
 ): string[] {
-  const distractors = Array.from(new Set(alternatives.map(nonEmpty)))
-    .filter((item) => item && item !== correct)
-    .slice(0, maxOptions - 1);
+  const correctKey = choiceComparisonKey(correct);
+  const seen = new Set<string>(correctKey ? [correctKey] : []);
+  const distractors: string[] = [];
+  for (const raw of alternatives) {
+    const item = nonEmpty(raw);
+    const key = choiceComparisonKey(item);
+    if (!item || !key || seen.has(key)) continue;
+    seen.add(key);
+    distractors.push(item);
+    if (distractors.length >= maxOptions - 1) break;
+  }
   if (!distractors.length) return [];
   // Rotate the correct answer across positions, deterministically per source index.
   const position = offset % (distractors.length + 1);
   const choices = [...distractors];
   choices.splice(position, 0, correct);
+  return choices;
+}
+
+/**
+ * Preserve the source exercise's declared motif. undefined means the source
+ * has no choice motif (open-ended input is allowed); null means it declared
+ * choices but they cannot be graded without changing or guessing the source.
+ */
+function sourceChoiceOptions(
+  rawChoices: string[] | undefined,
+  answer: string,
+): string[] | null | undefined {
+  if (!rawChoices?.length) return undefined;
+  const choices = rawChoices.map(nonEmpty);
+  if (
+    !answer ||
+    choices.length < 2 ||
+    choices.some((choice) => !choice) ||
+    new Set(choices.map(choiceComparisonKey)).size !== choices.length ||
+    !choices.map(choiceComparisonKey).includes(choiceComparisonKey(answer))
+  ) return null;
   return choices;
 }
 
@@ -38,7 +69,15 @@ export function buildLessonPracticeBank(
 
   function add(item: StudyQuestion) {
     if (!nonEmpty(item.answer) || !nonEmpty(item.prompt) || ids.has(item.id)) return;
-    if (item.type === "choice" && (!item.choices?.includes(item.answer) || (item.choices?.length ?? 0) < 2)) return;
+    if (item.type === "choice") {
+      const choiceKeys = (item.choices ?? []).map(choiceComparisonKey);
+      if (
+        choiceKeys.length < 2 ||
+        choiceKeys.some((key) => !key) ||
+        new Set(choiceKeys).size !== choiceKeys.length ||
+        !choiceKeys.includes(choiceComparisonKey(item.answer))
+      ) return;
+    }
     ids.add(item.id);
     generated.push({ ...item, origin: "derived" });
   }
@@ -122,17 +161,19 @@ export function buildLessonPracticeBank(
 
   (lesson.listening ?? []).forEach((item, index) => {
     const answer = nonEmpty(item.answer);
-    const choices = Array.from(new Set((item.choices ?? []).map(nonEmpty))).filter(Boolean);
-    const usableChoice = choices.length > 1 && choices.includes(answer);
+    const choices = sourceChoiceOptions(item.choices, answer);
+    // A malformed source multiple-choice task must remain in the workbook;
+    // never silently change its motif to input or remove/repair source options.
+    if (choices === null) return;
     add({
       id: stableId(lesson.id, "listening", index),
       lessonId: lesson.id,
       skill: "listening",
-      type: usableChoice ? "choice" : "input",
+      type: choices ? "choice" : "input",
       title: "Luyện nghe " + (index + 1),
       prompt: nonEmpty(item.text),
       translation: nonEmpty(item.meaning) || undefined,
-      choices: usableChoice ? choices : undefined,
+      choices,
       answer,
       explanation: nonEmpty(item.meaning) || answer,
       sourceRef: item.sourceRef ?? lesson.sourceRef,
@@ -141,17 +182,19 @@ export function buildLessonPracticeBank(
 
   lesson.reading?.questions?.forEach((item, index) => {
     const answer = nonEmpty(item.answer);
-    const choices = Array.from(new Set((item.choices ?? []).map(nonEmpty))).filter(Boolean);
-    const usableChoice = choices.length > 1 && choices.includes(answer);
+    const choices = sourceChoiceOptions(item.choices, answer);
+    // Keep malformed source choices visible for manual review, not as a
+    // different auto-graded exercise.
+    if (choices === null) return;
     add({
       id: stableId(lesson.id, "reading", index),
       lessonId: lesson.id,
       skill: "reading",
-      type: usableChoice ? "choice" : "input",
+      type: choices ? "choice" : "input",
       title: "Đọc hiểu " + (index + 1),
       prompt: nonEmpty(item.q),
       translation: nonEmpty(lesson.reading?.text) || undefined,
-      choices: usableChoice ? choices : undefined,
+      choices,
       answer,
       explanation: "Đáp án trong bài đọc: " + answer,
       sourceRef: item.sourceRef ?? lesson.reading?.sourceRef ?? lesson.sourceRef,
