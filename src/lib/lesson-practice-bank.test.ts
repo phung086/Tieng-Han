@@ -259,6 +259,92 @@ describe("full-fidelity source workbook", () => {
     expect(badMatching.find(item => item.id === "source:4:extra-0:3:0")?.answer).toBeUndefined();
   });
 
+  it("withholds matching answers when pairs are incomplete or ambiguous", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "ambiguous-matching",
+      kind: "original-activities",
+      title: "Nối cột",
+      content: ["Duplicate left", "Missing left", "Duplicate right"],
+      contentSourceRefs: ["Sách p.42 · match-1", "Sách p.42 · match-2", "Sách p.42 · match-3"],
+      contentExerciseItems: [
+        {
+          id: "duplicate-left",
+          contentIndex: 0,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }, { left: "A", right: "나" }],
+        },
+        {
+          id: "missing-left",
+          contentIndex: 1,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }],
+        },
+        {
+          id: "duplicate-right",
+          contentIndex: 2,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }, { left: "B", right: "가" }],
+        },
+      ],
+    }];
+
+    const items = buildSourceWorkbook(input, []);
+    expect(items.find(item => item.prompt === "Duplicate left")?.answer).toBeUndefined();
+    expect(items.find(item => item.prompt === "Missing left")?.answer).toBeUndefined();
+    expect(items.find(item => item.prompt === "Duplicate right")?.answer).toBeUndefined();
+  });
+
+  it("compares canonically equivalent matching labels without rewriting source text", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "unicode-matching",
+      kind: "original-activities",
+      title: "Nối cột",
+      content: ["Unicode-normalized labels"],
+      contentSourceRefs: ["Sách p.43 · matching-1"],
+      contentExerciseItems: [{
+        id: "unicode-matching-1",
+        contentIndex: 0,
+        type: "matching",
+        leftItems: ["가"],
+        rightItems: ["나"],
+        answerPairs: [{ left: "\u1100\u1161", right: "나" }],
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized labels");
+    expect(item?.answer).toBe("\u1100\u1161 → 나");
+  });
+
+  it("compares canonically equivalent choice answers without rewriting source text", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "unicode-choice",
+      kind: "original-activities",
+      title: "Chọn đáp án",
+      content: ["Unicode-normalized choice answer"],
+      contentSourceRefs: ["Sách p.44 · choice-1"],
+      contentExerciseItems: [{
+        id: "unicode-choice-1",
+        contentIndex: 0,
+        type: "choice",
+        choices: ["가", "나"],
+        answer: "\u1100\u1161",
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized choice answer");
+    expect(item?.answer).toBe("\u1100\u1161");
+    expect(item?.choices).toEqual(["가", "나"]);
+  });
+
   it("reveals a source reorder answer only when available token chunks can construct it", () => {
     const input = lesson(1);
     input.extraSections = [{
@@ -285,5 +371,28 @@ describe("full-fidelity source workbook", () => {
     // A token chunk may be used only as many times as it appears in the source bank.
     input.extraSections![0].contentExerciseItems![0].answer = "저는 학생입니다 학생입니다.";
     expect(getItem()?.answer).toBeUndefined();
+  });
+
+  // Canonically equivalent Korean syllables must match, while the displayed answer stays verbatim.
+  it("normalizes Unicode when validating source reorder tokens", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "reorder-unicode",
+      kind: "original-activities",
+      title: "Sắp xếp câu",
+      content: ["Ghép các cụm thành câu."],
+      contentSourceRefs: ["Sách p.45 · reorder-unicode-1"],
+      contentExerciseItems: [{
+        id: "reorder-unicode-1",
+        contentIndex: 0,
+        type: "reorder",
+        tokens: ["\u1100\u1161", "나"],
+        answer: "가 나.",
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.exerciseType === "reorder");
+    expect(item?.answer).toBe("가 나.");
+    expect(item?.tokens).toEqual(["\u1100\u1161", "나"]);
   });
 });

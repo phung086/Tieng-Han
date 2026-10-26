@@ -1,4 +1,5 @@
 import type { LessonContent, SourceExerciseMotif, StudyQuestion } from "@/data/content";
+import { normalizeReorderAnswer } from "@/lib/answer-check";
 
 export type WorkbookCategory =
   | "Từ vựng" | "Ngữ pháp" | "Nghe" | "Nói" | "Đọc" | "Viết"
@@ -24,11 +25,13 @@ export type WorkbookItem = {
 };
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
+// Compare canonically equivalent Unicode labels without rewriting source text.
+const comparisonKey = (v: string | undefined | null) => value(v).normalize("NFC");
 
 // Match StudySession's answer normalization and ensure the answer can be formed
 // from the declared source token chunks. Unused chunks remain valid distractors.
 function canConstructReorderAnswer(tokens: string[] | undefined, answer: string | undefined): boolean {
-  const normalize = (text: string) => text.trim().replace(/[.!?。！？]/g, "").replace(/\s+/g, " ");
+  const normalize = normalizeReorderAnswer;
   const target = normalize(value(answer));
   const chunks = (tokens ?? []).map(token => normalize(value(token)));
   if (!target || !chunks.length || chunks.some(chunk => !chunk)) return false;
@@ -195,22 +198,35 @@ export function buildSourceWorkbook(
     section.content.forEach((text, sub) => {
       const activity = section.contentExerciseItems?.find(item => item.contentIndex === sub);
       const choices = activity?.type === "choice" ? activity.choices : undefined;
-      const normalizedChoices = (choices ?? []).map(value);
+      const normalizedChoices = (choices ?? []).map(comparisonKey);
       const choiceAnswerIsSafe = Boolean(
         choices && choices.length >= 2 &&
         normalizedChoices.every(Boolean) &&
         new Set(normalizedChoices).size === normalizedChoices.length &&
-        activity?.answer && normalizedChoices.includes(value(activity.answer)),
+        activity?.answer && normalizedChoices.includes(comparisonKey(activity.answer)),
       );
       const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
+      const leftValues = (activity?.leftItems ?? []).map(comparisonKey);
+      const rightValues = (activity?.rightItems ?? []).map(comparisonKey);
+      const pairLeftValues = matchingPairs.map(pair => comparisonKey(pair.left));
+      const pairRightValues = matchingPairs.map(pair => comparisonKey(pair.right));
+      // A source key is safe to reveal only when it maps every left entry once
+      // to a distinct declared right entry. Ambiguous string-based labels stay manual.
       const matchingAnswerIsSafe = Boolean(
         matchingPairs.length > 0 &&
-        activity?.leftItems?.length &&
-        activity?.rightItems?.length &&
-        matchingPairs.every(pair =>
-          value(pair.left) && value(pair.right) &&
-          activity.leftItems?.includes(pair.left) &&
-          activity.rightItems?.includes(pair.right),
+        leftValues.length > 0 &&
+        rightValues.length > 0 &&
+        leftValues.every(Boolean) &&
+        rightValues.every(Boolean) &&
+        new Set(leftValues).size === leftValues.length &&
+        new Set(rightValues).size === rightValues.length &&
+        matchingPairs.length === leftValues.length &&
+        new Set(pairLeftValues).size === matchingPairs.length &&
+        new Set(pairRightValues).size === matchingPairs.length &&
+        matchingPairs.every((pair, index) =>
+          pairLeftValues[index] && pairRightValues[index] &&
+          leftValues.includes(pairLeftValues[index]) &&
+          rightValues.includes(pairRightValues[index]),
         ),
       );
       const answer = activity?.type === "choice"
