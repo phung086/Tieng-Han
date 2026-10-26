@@ -33,7 +33,7 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
         prompt: mode === "meaning" ? term : meaning,
         answer: mode === "meaning" ? meaning : term,
         note: word.example || `${term} · ${meaning}`,
-        sourceRef: word.sourceRef || lesson.sourceRef,
+        sourceRef: word.sourceRef,
       });
     }
     for (const grammar of lesson.grammar) {
@@ -42,15 +42,24 @@ export function buildArcadeCards(lessons: LessonContent[]): ArcadeCard[] {
         id: `arcade:${lesson.id}:${grammar.id}:grammar`, knowledgeId,
         lessonId: lesson.id, skill: "grammar", mode: "grammar",
         prompt: grammar.pattern, answer: grammar.meaning,
-        note: grammar.explanation, sourceRef: grammar.sourceRef || lesson.sourceRef,
+        note: grammar.explanation, sourceRef: grammar.sourceRef,
       });
-      for (const sentence of new Set(grammar.examples.map(item => item.trim()).filter(Boolean))) cards.push({
-        id: `arcade:${lesson.id}:${grammar.id}:sentence:${hash(sentence)}`,
-        knowledgeId: `${knowledgeId}:example:${hash(sentence)}`,
-        lessonId: lesson.id, skill: "grammar", mode: "sentence",
-        prompt: `Xếp câu ví dụ của mẫu ${grammar.pattern}`,
-        answer: sentence, note: grammar.meaning,
-        sourceRef: grammar.sourceRef || lesson.sourceRef,
+      const grammarWithExampleRefs = grammar as typeof grammar & { exampleSourceRefs?: string[] };
+      const occurrences = new Map<string, number>();
+      grammar.examples.forEach((sentence, index) => {
+        const identity = sentence.trim();
+        if (!identity) return;
+        const occurrence = occurrences.get(identity) ?? 0;
+        occurrences.set(identity, occurrence + 1);
+        const sentenceHash = hash(identity);
+        cards.push({
+          id: `arcade:${lesson.id}:${grammar.id}:sentence:${sentenceHash}:${occurrence}`,
+          knowledgeId: `${knowledgeId}:example:${sentenceHash}:${occurrence}`,
+          lessonId: lesson.id, skill: "grammar", mode: "sentence",
+          prompt: `Xếp câu ví dụ của mẫu ${grammar.pattern}`,
+          answer: sentence, note: grammar.meaning,
+          sourceRef: grammarWithExampleRefs.exampleSourceRefs?.[index],
+        });
       });
     }
     return cards;
