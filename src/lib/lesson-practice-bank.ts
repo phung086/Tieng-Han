@@ -6,6 +6,8 @@ import type { LessonContent, StudyQuestion } from "@/data/content";
  * Text-only exercises without a sourced answer remain in the lesson workbook.
  */
 const nonEmpty = (value: string | undefined | null) => (value ?? "").trim();
+// Comparison-only normalization: retain the exact source strings for display.
+const choiceComparisonKey = (value: string | undefined | null) => nonEmpty(value).normalize("NFC");
 
 function stableId(lessonId: number, kind: string, index: number, variant = 0) {
   return "source-practice:" + lessonId + ":" + kind + ":" + index + ":" + variant;
@@ -43,8 +45,8 @@ function sourceChoiceOptions(
     !answer ||
     choices.length < 2 ||
     choices.some((choice) => !choice) ||
-    new Set(choices).size !== choices.length ||
-    !choices.includes(answer)
+    new Set(choices.map(choiceComparisonKey)).size !== choices.length ||
+    !choices.map(choiceComparisonKey).includes(choiceComparisonKey(answer))
   ) return null;
   return choices;
 }
@@ -59,7 +61,15 @@ export function buildLessonPracticeBank(
 
   function add(item: StudyQuestion) {
     if (!nonEmpty(item.answer) || !nonEmpty(item.prompt) || ids.has(item.id)) return;
-    if (item.type === "choice" && (!item.choices?.includes(item.answer) || (item.choices?.length ?? 0) < 2)) return;
+    if (item.type === "choice") {
+      const choiceKeys = (item.choices ?? []).map(choiceComparisonKey);
+      if (
+        choiceKeys.length < 2 ||
+        choiceKeys.some((key) => !key) ||
+        new Set(choiceKeys).size !== choiceKeys.length ||
+        !choiceKeys.includes(choiceComparisonKey(item.answer))
+      ) return;
+    }
     ids.add(item.id);
     generated.push({ ...item, origin: "derived" });
   }
