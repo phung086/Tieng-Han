@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useContent } from "@/lib/content-store";
 import type { ImportJobDocument, ImportJobPage } from "@/lib/import-jobs";
 import styles from "./source-reader.module.css";
+import { buildSourceReaderHref, parseSourceReaderLocation } from "@/lib/source-reader-navigation";
 
 type SourceResponse = {
   documents: ImportJobDocument[]; courseTitle: string;
@@ -39,11 +40,31 @@ function Reader({ courseId, initialPage, initialDocument }: { courseId: string; 
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [courseId, documentId, pageNumber, retry]);
+
+  useEffect(() => {
+    function syncFromHistory() {
+      const location = parseSourceReaderLocation(window.location.href);
+      setDocumentId(location.documentId);
+      setPageNumber(location.page);
+      setPageInput(String(location.page));
+      setLoading(true);
+    }
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
+
   const currentDocument = result?.documents.find(item => item.documentId === (documentId || result.documentId));
   const page = loading || error ? null : result?.page;
-  function navigate(number: number) {
-    if (number === pageNumber) setRetry(value => value + 1);
-    setLoading(true); setPageNumber(number); setPageInput(String(number));
+  function navigate(number: number, nextDocumentId = documentId) {
+    const sameLocation = number === pageNumber && nextDocumentId === documentId;
+    if (sameLocation) setRetry(value => value + 1);
+    setLoading(true);
+    setDocumentId(nextDocumentId);
+    setPageNumber(number);
+    setPageInput(String(number));
+    const href = buildSourceReaderHref(window.location.href, number, nextDocumentId);
+    if (sameLocation) window.history.replaceState(null, "", href);
+    else window.history.pushState(null, "", href);
   }
   return <section className={styles.reader}>
     <header>
@@ -53,7 +74,7 @@ function Reader({ courseId, initialPage, initialDocument }: { courseId: string; 
       <p>Đọc toàn bộ trang đã lưu, gồm bài tập, hình, bảng và phụ lục. Bản nguồn được giữ riêng; xem hết trang không đồng nghĩa bài biên soạn đã đủ nội dung.</p>
     </header>
     {result ? <form className={styles.controls} onSubmit={event => { event.preventDefault(); const number = Number(pageInput); if (Number.isSafeInteger(number) && number >= 1 && number <= (currentDocument?.pageCount ?? 0)) navigate(number); }}>
-      <label>Tài liệu<select value={documentId || result.documentId} onChange={event => { setDocumentId(event.target.value); navigate(1); }}>
+      <label>Tài liệu<select value={documentId || result.documentId} onChange={event => navigate(1, event.target.value)}>
         {result.documents.map(item => <option key={item.documentId} value={item.documentId}>{item.fileName}</option>)}
       </select></label>
       <label>{currentDocument?.pagination === "logical-blocks" ? "Khối tài liệu" : "Trang PDF"}<input type="number" min={1} max={currentDocument?.pageCount} value={pageInput} onChange={event => setPageInput(event.target.value)} required /></label>
