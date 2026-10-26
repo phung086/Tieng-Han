@@ -132,9 +132,14 @@ describe("merging full textbook content", () => {
     expect(combined.lesson.reading?.title).toBe("Bài đọc phần 2");
     expect(combined.lesson.writing?.prompt).toBe("Hãy viết phần 2");
     const rest = combined.lesson.extraSections ?? [];
-    expect(rest).toHaveLength(5);
+    expect(rest).toHaveLength(13);
     expect(rest.some(s => s.title === "Bài đọc phần 3" && s.content.includes("저는 학생입니다 3"))).toBe(true);
     expect(rest.some(s => s.title === "Nhiệm vụ viết · phần 3" && s.content.includes("Hãy viết phần 3"))).toBe(true);
+    expect(rest.find(s => s.id === "chunk3:reading:passage")?.sourceRef).toBeUndefined();
+    expect(rest.find(s => s.id === "chunk3:reading:question:read-1")?.sourceRef).toBeUndefined();
+    expect(rest.find(s => s.id === "chunk3:reading:question:read-1:choice:1")?.sourceRef).toBeUndefined();
+    expect(rest.find(s => s.id === "chunk3:writing:prompt")?.sourceRef).toBeUndefined();
+    expect(rest.find(s => s.id === "chunk3:writing:target-word:1")?.sourceRef).toBeUndefined();
   });
 
   it("merges speaking refs in exact sentence order and marks legacy chunk sentences unverified", () => {
@@ -160,6 +165,50 @@ describe("merging full textbook content", () => {
       "Sơ cấp 1.pdf · p.22 · speaking-1",
       "Sơ cấp 1.pdf · p.22 · speaking-2",
     ]);
+  });
+
+  it("preserves exact nested reading and writing refs when secondary chunks are flattened", () => {
+    const third = lesson(3, true, true);
+    const reading = {
+      ...third.reading!,
+      titleSourceRef: "Sơ cấp 1.pdf · p.23 · reading-title",
+      textSourceRef: "Sơ cấp 1.pdf · p.23 · reading-passage",
+      questions: third.reading!.questions.map(question => ({
+        ...question,
+        sourceRef: "Sơ cấp 1.pdf · p.23 · question-1",
+        choiceSourceRefs: [
+          "Sơ cấp 1.pdf · p.23 · choice-1",
+          "Sơ cấp 1.pdf · p.23 · choice-2",
+        ],
+        answerSourceRef: "Sơ cấp 1.pdf · p.99 · answer-1",
+      })),
+    };
+    const writing = {
+      ...third.writing!,
+      promptSourceRef: "Sơ cấp 1.pdf · p.24 · writing-prompt",
+      targetWordSourceRefs: [
+        "Sơ cấp 1.pdf · p.24 · target-word-1",
+        "Sơ cấp 1.pdf · p.24 · target-word-2",
+      ],
+    };
+    const combined = mergeGeneratedLessonChunks(3, [
+      { lesson: lesson(1, false, false), questions: [] },
+      { lesson: lesson(2, true, true), questions: [] },
+      { lesson: { ...third, reading, writing }, questions: [] },
+    ]);
+    const items = combined.lesson.extraSections ?? [];
+    const ref = (id: string) => items.find(item => item.id === id)?.sourceRef;
+
+    expect(ref("chunk3:reading:title")).toBe("Sơ cấp 1.pdf · p.23 · reading-title");
+    expect(ref("chunk3:reading:passage")).toBe("Sơ cấp 1.pdf · p.23 · reading-passage");
+    expect(ref("chunk3:reading:question:read-1")).toBe("Sơ cấp 1.pdf · p.23 · question-1");
+    expect(ref("chunk3:reading:question:read-1:choice:1")).toBe("Sơ cấp 1.pdf · p.23 · choice-1");
+    expect(ref("chunk3:reading:question:read-1:choice:2")).toBe("Sơ cấp 1.pdf · p.23 · choice-2");
+    expect(ref("chunk3:reading:question:read-1:answer")).toBe("Sơ cấp 1.pdf · p.23 · answer-1");
+    expect(ref("chunk3:writing:prompt")).toBe("Sơ cấp 1.pdf · p.24 · writing-prompt");
+    expect(ref("chunk3:writing:target-word:1")).toBe("Sơ cấp 1.pdf · p.24 · target-word-1");
+    expect(ref("chunk3:writing:target-word:2")).toBe("Sơ cấp 1.pdf · p.24 · target-word-2");
+    expect(items.find(item => item.id === "chunk3:reading:question:read-1:answer")?.content).toEqual(["학생"]);
   });
 
   it("never accepts an invalid or missing compiled segment as a silent success", () => {
