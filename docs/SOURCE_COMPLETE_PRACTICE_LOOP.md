@@ -4,7 +4,7 @@
 Mỗi nguồn nhập phải có **manifest kiểm kê từ PDF/giáo trình gốc** theo book/lesson/page/section/item: từ mới; câu ví dụ ngữ pháp; câu thoại; câu đọc mẫu; câu nghe; bài tập gốc; đáp án; kiểu bài; nội dung minh họa. Không dùng số câu quiz làm đại diện cho số lượng tri thức.
 
 ## Phân biệt 3 cổng nghiệm thu
-1. **Source inventory**: đếm từng item *trong tài liệu gốc*, lưu ID ổn định, trang và anchor cụ thể; OCR không rõ phải gắn cờ cần kiểm chứng, không được đoán.
+1. **Source inventory**: đếm từng item *trong tài liệu gốc*, lưu ID ổn định, trang và anchor cụ thể; OCR không rõ phải gắn cờ cần kiểm chứng, không được đoán. Inventory phải ràng buộc từng file với đúng `sourceManifest.name` và SHA-256 của chính bytes đã nhập; cùng tên file/số trang không chứng minh cùng phiên bản. Thiếu hoặc lệch fingerprint thì không được tính coverage, kể cả khi mọi page/item pointer vẫn khớp.
 2. **Compiled coverage**: kiểm tra từng source item đã được import đầy đủ với sourceRef duy nhất. Không lấy số mục từ compiled bundle làm mẫu số của PDF nếu không có manifest.
 3. **Practice coverage**: mỗi mục cần được ôn có hình thức bài phù hợp, có liên kết source item cụ thể, đáp án/đánh giá và số lần ôn; bài tập gốc giữ nguyên motif, thứ tự, ý nghĩa, vai hội thoại. Chỉ đánh dấu 100% khi đủ cả 3 cổng và đối chiếu tay những trang không thể parse chắc chắn.
 
