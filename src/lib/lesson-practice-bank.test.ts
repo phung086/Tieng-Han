@@ -259,6 +259,48 @@ describe("full-fidelity source workbook", () => {
     expect(badMatching.find(item => item.id === "source:4:extra-0:3:0")?.answer).toBeUndefined();
   });
 
+  it("withholds matching answers when pairs are incomplete or ambiguous", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "ambiguous-matching",
+      kind: "original-activities",
+      title: "Nối cột",
+      content: ["Duplicate left", "Missing left", "Duplicate right"],
+      contentSourceRefs: ["Sách p.42 · match-1", "Sách p.42 · match-2", "Sách p.42 · match-3"],
+      contentExerciseItems: [
+        {
+          id: "duplicate-left",
+          contentIndex: 0,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }, { left: "A", right: "나" }],
+        },
+        {
+          id: "missing-left",
+          contentIndex: 1,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }],
+        },
+        {
+          id: "duplicate-right",
+          contentIndex: 2,
+          type: "matching",
+          leftItems: ["A", "B"],
+          rightItems: ["가", "나"],
+          answerPairs: [{ left: "A", right: "가" }, { left: "B", right: "가" }],
+        },
+      ],
+    }];
+
+    const items = buildSourceWorkbook(input, []);
+    expect(items.find(item => item.prompt === "Duplicate left")?.answer).toBeUndefined();
+    expect(items.find(item => item.prompt === "Missing left")?.answer).toBeUndefined();
+    expect(items.find(item => item.prompt === "Duplicate right")?.answer).toBeUndefined();
+  });
+
   it("reveals a source reorder answer only when available token chunks can construct it", () => {
     const input = lesson(1);
     input.extraSections = [{
