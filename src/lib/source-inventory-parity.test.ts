@@ -35,6 +35,8 @@ describe("independent source inventory parity", () => {
       link("word-1", "q1"), link("word-2", "q2"),
       link("exercise-1a", "q3", "reorder"), link("not-in-book", "q4"),
     ]);
+    expect(result.sourceCount).toBe(5);
+    expect(result.coveredCount).toBe(2);
     expect(result.duplicateIds).toEqual(["1:word-2"]);
     expect(result.uncertainIds).toEqual(["1:unclear"]);
     expect(result.unknownReferences).toEqual(["1:not-in-book"]);
