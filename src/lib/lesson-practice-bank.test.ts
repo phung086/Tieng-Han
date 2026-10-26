@@ -171,6 +171,29 @@ describe("exhaustive deterministic practice", () => {
     expect(bank.some(q => q.prompt === input.writing!.prompt && q.answer)).toBe(false);
   });
 
+  it("keeps generated vocabulary choices unambiguous for canonically equivalent Hangul", () => {
+    const input = lesson(3);
+    input.vocabulary![0] = { ...input.vocabulary![0], ko: "가", vi: "가" };
+    input.vocabulary![1] = { ...input.vocabulary![1], ko: "가", vi: "가" };
+    input.vocabulary![2] = { ...input.vocabulary![2], ko: "나", vi: "나" };
+
+    const bank = buildLessonPracticeBank(input, []);
+    for (const kind of ["vocab-meaning", "vocab-recall"]) {
+      for (const index of [0, 1]) {
+        const question = bank.find(item => item.id === `source-practice:4:${kind}:${index}:0`);
+        expect(question).toBeDefined();
+        expect(question?.type).toBe("choice");
+        const choices = question?.choices ?? [];
+        expect(new Set(choices.map(choice => choice.normalize("NFC"))).size).toBe(choices.length);
+        expect(choices).toContain(question?.answer);
+      }
+    }
+
+    // Comparison is normalized; source answer strings remain unchanged.
+    expect(bank.find(item => item.id === "source-practice:4:vocab-meaning:1:0")?.answer).toBe("가");
+    expect(bank.find(item => item.id === "source-practice:4:vocab-recall:1:0")?.answer).toBe("가");
+  });
+
   it("rotates answers among distractors rather than keeping every correct option first", () => {
     const bank = buildLessonPracticeBank(lesson(5), []);
     const choicePositions = bank.filter(q => q.id.includes("vocab-meaning"))
