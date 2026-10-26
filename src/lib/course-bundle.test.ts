@@ -263,6 +263,7 @@ describe("parseCourseBundle", () => {
     const contract = getCompilationContract(sampleLanguage);
     expect(contract.runtimeSchema.LessonContent).toBeDefined();
     expect(contract.runtimeSchema.LessonContent.speakingSourceRefs).toContain("align exactly 1:1");
+    expect(contract.principles.join(" ")).toContain("speakingSourceRefs aligned one-to-one");
     expect(contract.runtimeSchema.requiredLessonFields).toEqual(
       expect.arrayContaining(["id", "objective", "vocabulary", "grammar", "listening", "speaking"]),
     );
