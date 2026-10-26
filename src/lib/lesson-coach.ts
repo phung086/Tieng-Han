@@ -34,7 +34,7 @@ export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvi
       exampleSources: item.examples.map((_, index) => exactSource(exampleRefs?.[index])),
       source: exactSource(item.sourceRef),
       kind: "Ngữ pháp",
-      href: `/grammar?lesson=${lessonId}`,
+      href: "/grammar?lesson=" + lessonId,
     });
   }
   for (const item of lesson.vocabulary) {
@@ -47,7 +47,7 @@ export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvi
       exampleSources: item.example ? [exactSource(exampleRef)] : [],
       source: exactSource(item.sourceRef),
       kind: "Từ vựng",
-      href: `/vocabulary?lesson=${lessonId}`,
+      href: "/vocabulary?lesson=" + lessonId,
     });
   }
   for (const item of course.questions.filter(item => item.lessonId === lessonId)) {
@@ -60,20 +60,20 @@ export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvi
       exampleSources: [exactSource(answerRef)],
       source: exactSource(item.sourceRef),
       kind: "Lời giải",
-      href: `/practice/quiz?lesson=${lessonId}&skill=${item.skill}`,
+      href: "/practice/quiz?lesson=" + lessonId + "&skill=" + item.skill,
     });
   }
   if (lesson.reading) {
     const reading = lesson.reading as typeof lesson.reading & { translationSourceRef?: string | null };
     entries.push({
-      id: `reading:${lessonId}`,
+      id: "reading:" + lessonId,
       title: lesson.reading.title,
       text: lesson.reading.text,
       examples: [lesson.reading.translation],
       exampleSources: [exactSource(reading.translationSourceRef)],
       source: exactSource(lesson.reading.sourceRef),
       kind: "Bài đọc",
-      href: `/reading?lesson=${lessonId}`,
+      href: "/reading?lesson=" + lessonId,
     });
   }
   for (const item of lesson.pronunciation ?? []) {
@@ -86,7 +86,7 @@ export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvi
       exampleSources: item.examples.map((_, index) => exactSource(exampleRefs?.[index])),
       source: exactSource(item.sourceRef),
       kind: "Phát âm",
-      href: `/pronunciation?lesson=${lessonId}`,
+      href: "/pronunciation?lesson=" + lessonId,
     });
   }
   for (const item of lesson.culture ?? []) {
@@ -98,14 +98,14 @@ export function coachEvidence(course: RuntimeCourse, lessonId: number): CoachEvi
       exampleSources: [],
       source: exactSource(item.sourceRef),
       kind: "Văn hóa",
-      href: `/learn/${lessonId}`,
+      href: "/learn/" + lessonId,
     });
   }
   return entries;
 }
 
 function normalize(value: string) {
-  return value.toLowerCase().normalize("NFD").replace(/\\p{M}/gu, "").normalize("NFC").replace(/đ/g, "d");
+  return value.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC").replace(/đ/g, "d");
 }
 const stopWords = new Set("toi ban minh hay giup cho la cua va ve mot nhung duoc trong voi nhu nao tai sao giai thich nghia tu cau nay bai hoc tieng han muon hoi vi du dung the nao".split(" "));
 
@@ -114,7 +114,7 @@ export function findCoachEvidence(course: RuntimeCourse, lessonId: number, query
   const normalized = normalize(query.trim());
   if (!normalized) return [];
   if (questionId && /cau vua|dap an|giai thich cau|vi sao sai/.test(normalized)) return entries.filter(item => item.id === questionId);
-  const tokens = [...new Set(normalized.split(/\\s+/).map(token => token.replace(/[?!.,;:"“”]/g, "")).filter(token => (token.length > 1 || /[\\p{Script=Hangul}\\p{Script=Han}]/u.test(token)) && !stopWords.has(token)))];
+  const tokens = [...new Set(normalized.split(/\s+/).map(token => token.replace(/[?!.,;:"“”]/g, "")).filter(token => (token.length > 1 || /[\p{Script=Hangul}\p{Script=Han}]/u.test(token)) && !stopWords.has(token)))];
   if (!tokens.length) return [];
   return entries.map(item => {
     const title = normalize(item.title);
