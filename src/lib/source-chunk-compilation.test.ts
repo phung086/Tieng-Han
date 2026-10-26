@@ -226,6 +226,25 @@ describe("merging full textbook content", () => {
     expect(items.find(item => item.id === "chunk3:reading:question:read-1:answer")?.content).toEqual(["학생"]);
   });
 
+  it("preserves a secondary reading title without inventing an item-level source ref", () => {
+    const second = lesson(2, true, false);
+    const reading = {
+      ...second.reading!,
+      title: "주말에 무엇을 합니까?",
+      textSourceRef: "Sơ cấp 1.pdf · p.22 · reading-passage",
+    };
+    const combined = mergeGeneratedLessonChunks(3, [
+      { lesson: lesson(1, true, false), questions: [] },
+      { lesson: { ...second, reading }, questions: [] },
+    ]);
+    const title = combined.lesson.extraSections?.find(
+      item => item.id === "chunk2:reading:title",
+    );
+
+    expect(title?.content).toEqual(["주말에 무엇을 합니까?"]);
+    expect(title?.sourceRef).toBeUndefined();
+  });
+
   it("never accepts an invalid or missing compiled segment as a silent success", () => {
     expect(() => mergeGeneratedLessonChunks(3, [])).toThrow("No source chunks");
     expect(() => mergeGeneratedLessonChunks(3, [
