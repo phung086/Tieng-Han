@@ -24,6 +24,8 @@ export type WorkbookItem = {
 };
 
 const value = (v: string | undefined | null) => (v ?? "").trim();
+// Compare canonically equivalent Unicode labels without rewriting source text.
+const comparisonKey = (v: string | undefined | null) => value(v).normalize("NFC");
 
 // Match StudySession's answer normalization and ensure the answer can be formed
 // from the declared source token chunks. Unused chunks remain valid distractors.
@@ -203,10 +205,10 @@ export function buildSourceWorkbook(
         activity?.answer && normalizedChoices.includes(value(activity.answer)),
       );
       const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
-      const leftValues = (activity?.leftItems ?? []).map(value);
-      const rightValues = (activity?.rightItems ?? []).map(value);
-      const pairLeftValues = matchingPairs.map(pair => value(pair.left));
-      const pairRightValues = matchingPairs.map(pair => value(pair.right));
+      const leftValues = (activity?.leftItems ?? []).map(comparisonKey);
+      const rightValues = (activity?.rightItems ?? []).map(comparisonKey);
+      const pairLeftValues = matchingPairs.map(pair => comparisonKey(pair.left));
+      const pairRightValues = matchingPairs.map(pair => comparisonKey(pair.right));
       // A source key is safe to reveal only when it maps every left entry once
       // to a distinct declared right entry. Ambiguous string-based labels stay manual.
       const matchingAnswerIsSafe = Boolean(
