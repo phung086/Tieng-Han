@@ -3,7 +3,7 @@ import type { LessonContent } from "@/data/content";
 import type { CompiledCourseBundle } from "@/lib/course-bundle";
 
 const nonempty = z.string().trim().min(1);
-export const CURRICULUM_AUDIT_VERSION = 6;
+export const CURRICULUM_AUDIT_VERSION = 7;
 export const sourceInventorySchema = z.object({
   version: z.literal(1),
   pages: z.array(z.object({
@@ -50,6 +50,22 @@ function resolvePointer(root: unknown, pointer: string): unknown {
   return value;
 }
 const sourceKey = (fileName: string, pageNumber: number) => JSON.stringify([fileName, pageNumber]);
+
+const sourceRefFileNameSeparators = new Set([" ", "\t", "\n", "\r", "·", "|", ",", ";", ":", "#", "/", "(", ")", "[", "]", "{", "}", "="]);
+
+function sourceRefContainsExactFileName(sourceRef: string, fileName: string): boolean {
+  if (!fileName) return false;
+  const isBoundary = (character: string | undefined) =>
+    character === undefined || sourceRefFileNameSeparators.has(character);
+  let index = sourceRef.indexOf(fileName);
+  while (index !== -1) {
+    const before = index > 0 ? sourceRef[index - 1] : undefined;
+    const after = sourceRef[index + fileName.length];
+    if (isBoundary(before) && isBoundary(after)) return true;
+    index = sourceRef.indexOf(fileName, index + 1);
+  }
+  return false;
+}
 
 function decodedPointerParts(pointer: string): string[] {
   if (!pointer.startsWith("/")) return [];
@@ -455,7 +471,11 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     }
     const hasContent = isContentPath && !isRawTranscript && !repeatedDestination &&
       hasPrimarySourceContent(item.contentPointer, content);
-    if (!hasContent || !expectedPages.has(pageKey) || !item.sourceRef.includes(item.fileName)) {
+    if (!sourceRefContainsExactFileName(item.sourceRef, item.fileName)) {
+      issues.push("Tên tệp trong sourceRef không khớp chính xác với fileName của item " + key + " → " + item.contentPointer);
+      continue;
+    }
+    if (!hasContent || !expectedPages.has(pageKey)) {
       issues.push("Thiếu nội dung hoặc nguồn cho item " + key + " → " + item.contentPointer);
       continue;
     }
