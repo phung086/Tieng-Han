@@ -101,6 +101,18 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.status).toBe("partial");
     expect(report.issues.join(" ")).toContain("sourceRef inventory không khớp");
   });
+
+  it("rejects a filename that appears only as another filename's suffix", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const wrongRef = "other-synthetic.pdf · p.1 · v1";
+    bundle.course.lessons[0].vocabulary[0].sourceRef = wrongRef;
+    bundle.sourceInventory.items[0].sourceRef = wrongRef;
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Tên tệp trong sourceRef không khớp chính xác");
+  });
   it("requires an item-level reference for nested grammar examples", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
     bundle.course.lessons[0].grammar = [{
