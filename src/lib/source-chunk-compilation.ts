@@ -187,7 +187,6 @@ export function mergeGeneratedLessonChunks(
       const reading = lesson.reading as NonNullable<LessonContent["reading"]> & {
         titleSourceRef?: string;
         textSourceRef?: string;
-        translationSourceRef?: string;
         questions: Array<{
           id: string;
           q: string;
@@ -195,7 +194,6 @@ export function mergeGeneratedLessonChunks(
           answer: string;
           sourceRef?: string;
           choiceSourceRefs?: string[];
-          answerSourceRef?: string;
         }>;
       };
       const chunkPrefix = "chunk" + (index + 1) + ":reading";
@@ -221,7 +219,6 @@ export function mergeGeneratedLessonChunks(
         kind: "reading-translation",
         title: "Bản dịch · " + readingTitle,
         value: reading.translation,
-        sourceRef: reading.translationSourceRef,
       });
       reading.questions.forEach((question, questionIndex) => {
         const questionKey = question.id || String(questionIndex + 1);
@@ -247,7 +244,6 @@ export function mergeGeneratedLessonChunks(
           kind: "reading-answer",
           title: "Đáp án gốc · câu hỏi " + (questionIndex + 1),
           value: question.answer,
-          sourceRef: question.answerSourceRef,
         });
       });
     }
@@ -256,7 +252,6 @@ export function mergeGeneratedLessonChunks(
       // section ref is not sufficient evidence for any of these child items.
       const writing = lesson.writing as NonNullable<LessonContent["writing"]> & {
         promptSourceRef?: string;
-        hintSourceRef?: string;
         targetWordSourceRefs?: string[];
       };
       const chunkPrefix = "chunk" + (index + 1) + ":writing";
@@ -272,7 +267,6 @@ export function mergeGeneratedLessonChunks(
         kind: "writing-hint",
         title: "Gợi ý viết · phần " + (index + 1),
         value: writing.hint,
-        sourceRef: writing.hintSourceRef,
       });
       writing.targetWords.forEach((word, wordIndex) => {
         addExtraSectionItem(extraSections, {
