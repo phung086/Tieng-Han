@@ -31,17 +31,14 @@ import { todayKey } from "@/lib/learning-state";
 import {readPracticeSession,writePracticeSession} from "@/lib/practice-session-storage";
 import {LearningLoading} from "./learning-loading";
 import {useAutoAdvance} from "@/lib/use-auto-advance";
+import { normalizeReorderAnswer } from "@/lib/answer-check";
 import {SessionFlowControl} from "./session-flow-control";
 
 export type StudySessionMode = "guided" | "quick" | "mastery" | "review";
 
 
 
-const normalize = (value: string) =>
-  value
-    .trim()
-    .replace(/[.!?。！？]/g, "")
-    .replace(/\s+/g, " ");
+const normalize = normalizeReorderAnswer;
 
 type StudySessionProps = {
   lessonId?: number;
