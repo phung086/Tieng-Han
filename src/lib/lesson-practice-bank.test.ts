@@ -336,12 +336,12 @@ describe("full-fidelity source workbook", () => {
         contentIndex: 0,
         type: "choice",
         choices: ["가", "나"],
-        answer: "\\u1100\\u1161",
+        answer: "\u1100\u1161",
       }],
     }];
 
     const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized choice answer");
-    expect(item?.answer).toBe("\\u1100\\u1161");
+    expect(item?.answer).toBe("\u1100\u1161");
     expect(item?.choices).toEqual(["가", "나"]);
   });
 
