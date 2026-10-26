@@ -197,12 +197,12 @@ export function buildSourceWorkbook(
     section.content.forEach((text, sub) => {
       const activity = section.contentExerciseItems?.find(item => item.contentIndex === sub);
       const choices = activity?.type === "choice" ? activity.choices : undefined;
-      const normalizedChoices = (choices ?? []).map(value);
+      const normalizedChoices = (choices ?? []).map(comparisonKey);
       const choiceAnswerIsSafe = Boolean(
         choices && choices.length >= 2 &&
         normalizedChoices.every(Boolean) &&
         new Set(normalizedChoices).size === normalizedChoices.length &&
-        activity?.answer && normalizedChoices.includes(value(activity.answer)),
+        activity?.answer && normalizedChoices.includes(comparisonKey(activity.answer)),
       );
       const matchingPairs = activity?.type === "matching" ? activity.answerPairs ?? [] : [];
       const leftValues = (activity?.leftItems ?? []).map(comparisonKey);
