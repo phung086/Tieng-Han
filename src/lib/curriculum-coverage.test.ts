@@ -278,7 +278,7 @@ describe("source, practice and validation coverage are independent release evide
     parent.sourceInventory.items[1].kind = "exerciseSection";
     const validParent = auditCurriculumCoverage(parent);
     expect(validParent.status).toBe("complete");
-    expect(validParent.auditVersion).toBe(6);
+    expect(validParent.auditVersion).toBe(7);
 
     const child = fixture(); child.sourceInventory = inventory();
     const childRef = child.sourceInventory.items[1].sourceRef;
