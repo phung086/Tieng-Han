@@ -21,6 +21,8 @@ export type InventoryParity = {
   motifMismatchIds: string[];
   unknownReferences: string[];
   duplicateIds: string[];
+  /** Question IDs mapped to more than one distinct source item. */
+  reusedQuestionIds: string[];
   complete: boolean;
 };
 
@@ -38,6 +40,7 @@ export function compareInventoryToPractice(
     if (item.id.trim() && Number.isInteger(item.page) && item.page > 0) valid.set(key, item);
   }
   const mappings = new Map<string, PracticeEvidence[]>();
+  const questionOwners = new Map<string, Set<string>>();
   const unknownReferences: string[] = [];
   for (const entry of evidence) {
     const key = entry.lessonId + ":" + entry.sourceItemId;
@@ -45,9 +48,18 @@ export function compareInventoryToPractice(
       unknownReferences.push(key);
       continue;
     }
-    if (!entry.questionId.trim()) continue;
+    const questionId = entry.questionId.trim();
+    if (!questionId) continue;
     mappings.set(key, [...(mappings.get(key) ?? []), entry]);
+    const owners = questionOwners.get(questionId) ?? new Set<string>();
+    owners.add(key);
+    questionOwners.set(questionId, owners);
   }
+  const reusedQuestionIds = [...questionOwners.entries()]
+    .filter(([, owners]) => owners.size > 1)
+    .map(([questionId]) => questionId)
+    .sort();
+  const reused = new Set(reusedQuestionIds);
   const missingIds: string[] = [];
   const uncertainIds: string[] = [];
   const motifMismatchIds: string[] = [];
@@ -58,7 +70,8 @@ export function compareInventoryToPractice(
       uncertainIds.push(key);
       continue;
     }
-    const linked = mappings.get(key) ?? [];
+    // A single question cannot be evidence for multiple distinct source items.
+    const linked = (mappings.get(key) ?? []).filter((entry) => !reused.has(entry.questionId.trim()));
     if (linked.length === 0) {
       missingIds.push(key);
       continue;
@@ -77,7 +90,8 @@ export function compareInventoryToPractice(
     motifMismatchIds,
     unknownReferences,
     duplicateIds,
+    reusedQuestionIds,
     complete: inventory.length > 0 && coveredCount === inventory.length &&
-      duplicateIds.length === 0 && unknownReferences.length === 0,
+      duplicateIds.length === 0 && unknownReferences.length === 0 && reusedQuestionIds.length === 0,
   };
 }
