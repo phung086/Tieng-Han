@@ -113,7 +113,7 @@ describe("exhaustive deterministic practice", () => {
 
   it("accepts canonically equivalent Hangul choice answers without rewriting source strings", () => {
     const input = lesson(1);
-    const decomposed = "\\u1100\\u1161";
+    const decomposed = "가";
     input.listening = [{
       id: "unicode-listening", text: "누구입니까?", meaning: "Ai vậy?",
       choices: ["가", "선생님"], answer: decomposed, sourceRef: "Sách p.24 · listening",
@@ -138,13 +138,13 @@ describe("exhaustive deterministic practice", () => {
     const input = lesson(1);
     input.listening = [{
       id: "unicode-duplicate", text: "누구입니까?", meaning: "Ai vậy?",
-      choices: ["가", "\\u1100\\u1161"], answer: "가", sourceRef: "Sách p.24 · duplicate",
+      choices: ["가", "가"], answer: "가", sourceRef: "Sách p.24 · duplicate",
     }];
 
     const bank = buildLessonPracticeBank(input, []);
     expect(bank.some(q => q.id === "source-practice:4:listening:0:0")).toBe(false);
     expect(buildSourceWorkbook(input, []).find(item => item.title === "Bài nghe 1")?.choices)
-      .toEqual(["가", "\\u1100\\u1161"]);
+      .toEqual(["가", "가"]);
   });
 
   it("keeps genuinely open-ended listening and reading tasks as input", () => {
