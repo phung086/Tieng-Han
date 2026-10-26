@@ -14,6 +14,19 @@ const label = (page: SourcePageSlice) =>
   "[SOURCE: " + page.fileName + " · " + (page.sourceLocation ?? "p." + page.pageNumber) +
   (page.part ? " · part " + page.part : "") + "]\n";
 
+function safeSliceEnd(text: string, start: number, requestedEnd: number): number {
+  const end = Math.min(requestedEnd, text.length);
+  if (end > start && end < text.length) {
+    const previous = text.charCodeAt(end - 1);
+    const next = text.charCodeAt(end);
+    const splitsSurrogatePair =
+      previous >= 0xd800 && previous <= 0xdbff &&
+      next >= 0xdc00 && next <= 0xdfff;
+    if (splitsSurrogatePair) return end - 1;
+  }
+  return end;
+}
+
 /** Preserve every source character; never silently skip pages at a character limit. */
 export function chunkSourcePages(
   pages: SourcePageSlice[],
@@ -48,7 +61,11 @@ export function chunkSourcePages(
       const partLabel = label({ ...page, part });
       const capacity = maxCharacters - partLabel.length - 2;
       if (capacity < 1) throw new Error("Source page filename exceeds the character budget");
-      const piece = text.slice(cursor, cursor + capacity);
+      const end = safeSliceEnd(text, cursor, cursor + capacity);
+      if (end <= cursor) {
+        throw new Error("Source character budget cannot fit a Unicode code point");
+      }
+      const piece = text.slice(cursor, end);
       const segment: SourcePageSlice = {
         ...page,
         text: piece,
