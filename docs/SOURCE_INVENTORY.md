@@ -26,6 +26,9 @@ items, destinations, or question mappings produce diagnostics.
 ```json
 {
   "version": 1,
+  "sources": [
+    { "fileName": "synthetic.pdf", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  ],
   "pages": [
     { "fileName": "synthetic.pdf", "pageNumber": 1, "status": "reviewed", "classification": "learning-content" }
   ],
@@ -46,8 +49,12 @@ items, destinations, or question mappings produce diagnostics.
 }
 ```
 
-This is a synthetic shape example, not a textbook fixture. Every source page
-must appear exactly once. An unavailable page uses `status: "unavailable"`
+This is a synthetic shape example, not a textbook fixture. The `sources` list
+must bind every imported file to its exact `sourceManifest` SHA-256 and filename.
+A missing or mismatched fingerprint blocks coverage even when the filename and
+page count are unchanged; legacy inventories remain parseable but cannot be
+certified complete until reviewed against the current source bytes. Every source
+page must appear exactly once. An unavailable page uses `status: "unavailable"`
 and a reason; it keeps the report incomplete instead of being dropped.
 Every reviewed learning page must use `classification: "learning-content"` and
 have its individual source units inventoried. A page genuinely containing no
@@ -55,7 +62,7 @@ learning content uses `classification: "non-learning"` and an explicit review
 reason. Merely marking hundreds of pages `reviewed` with no unit inventory can
 no longer yield complete coverage. Legacy inventories without classification
 remain readable but require review before publication.
-Coverage reports carry `auditVersion: 2`. The publication API and database guard
+Coverage reports carry `auditVersion: 3`. The publication API and database guard
 require the current audit version as well as `complete`; a cached success report
 from older rules cannot authorize a new publication. Existing published course
 statuses are not changed by this guard.
