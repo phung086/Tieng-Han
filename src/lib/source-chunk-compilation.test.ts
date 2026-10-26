@@ -219,7 +219,7 @@ describe("merging full textbook content", () => {
     expect(ref("chunk3:reading:question:read-1")).toBe("Sơ cấp 1.pdf · p.23 · question-1");
     expect(ref("chunk3:reading:question:read-1:choice:1")).toBe("Sơ cấp 1.pdf · p.23 · choice-1");
     expect(ref("chunk3:reading:question:read-1:choice:2")).toBe("Sơ cấp 1.pdf · p.23 · choice-2");
-    expect(ref("chunk3:reading:question:read-1:answer")).toBeUndefined();
+    expect(ref("chunk3:reading:question:read-1:answer")).toBe("Sơ cấp 1.pdf · p.99 · answer-1");
     expect(ref("chunk3:writing:prompt")).toBe("Sơ cấp 1.pdf · p.24 · writing-prompt");
     expect(ref("chunk3:writing:target-word:1")).toBe("Sơ cấp 1.pdf · p.24 · target-word-1");
     expect(ref("chunk3:writing:target-word:2")).toBe("Sơ cấp 1.pdf · p.24 · target-word-2");
