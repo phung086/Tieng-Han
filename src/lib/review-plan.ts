@@ -29,12 +29,12 @@ export function buildReviewCatalog(course: RuntimeCourse): ReviewItem[] {
       prompt: "Nghe câu rồi chọn nghĩa phù hợp.", audioText: item.text, choices: item.choices,
       answer: item.answer, explanation: item.meaning, sourceRef: item.sourceRef,
     });
-    const speakingSourceRefs = (lesson as typeof lesson & { speakingSourceRefs?: string[] }).speakingSourceRefs;
+    const speakingSourceRefs = lesson.speakingSourceRefs;
     lesson.speaking.forEach((sentence, index) => add({
       id: `speak-${lesson.id}-${index}`, lessonId: lesson.id, skill: "speaking", type: "input", reviewKind: "speaking",
       title: "Luyện nói lại câu đã học", prompt: sentence, answer: sentence,
       explanation: "Đọc to câu trong giáo trình và tự đánh giá mức độ nhớ. Lượt ôn này không chấm phát âm và không hoàn thành chặng Nói.",
-      sourceRef: speakingSourceRefs?.[index],
+      sourceRef: speakingSourceRefs?.[index] ?? undefined,
     }));
     for (const item of lesson.reading?.questions ?? []) add({
       id: item.id, lessonId: lesson.id, skill: "reading", type: "choice", title: "Đọc và trả lời",
