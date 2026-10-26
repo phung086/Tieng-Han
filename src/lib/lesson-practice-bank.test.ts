@@ -315,12 +315,12 @@ describe("full-fidelity source workbook", () => {
         type: "matching",
         leftItems: ["가"],
         rightItems: ["나"],
-        answerPairs: [{ left: "\\u1100\\u1161", right: "나" }],
+        answerPairs: [{ left: "\u1100\u1161", right: "나" }],
       }],
     }];
 
     const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized labels");
-    expect(item?.answer).toBe("\\u1100\\u1161 → 나");
+    expect(item?.answer).toBe("\u1100\u1161 → 나");
   });
 
   it("reveals a source reorder answer only when available token chunks can construct it", () => {
