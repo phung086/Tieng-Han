@@ -61,8 +61,10 @@ export function chunkSourcePages(
       const partLabel = label({ ...page, part });
       const capacity = maxCharacters - partLabel.length - 2;
       if (capacity < 1) throw new Error("Source page filename exceeds the character budget");
-      const end = safeSliceEnd(text, cursor, cursor + capacity);
-      if (end <= cursor) {
+      const end = text.length === 0
+        ? 0
+        : safeSliceEnd(text, cursor, cursor + capacity);
+      if (text.length > 0 && end <= cursor) {
         throw new Error("Source character budget cannot fit a Unicode code point");
       }
       const piece = text.slice(cursor, end);
