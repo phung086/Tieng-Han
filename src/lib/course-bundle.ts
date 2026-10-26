@@ -742,6 +742,7 @@ export function getCompilationContract(language: LanguageProfile) {
       "The uploaded textbook is the curriculum source of truth.",
       "Preserve lesson order and source page references.",
       "Inventory and preserve every source item in lesson order: vocabulary entries and examples, grammar patterns and examples, dialogue lines, listening and reading items, pronunciation, culture, notes, and original exercises. Never silently sample source content.",
+      "Speaking remains a string[] for Course Bundle v1 compatibility. When item-level anchors are available, include speakingSourceRefs aligned one-to-one with speaking; use null for an unverified sentence and never inherit lesson.sourceRef as an item ref.",
       "Create source-grounded practice for all six skills without introducing unsupported curriculum. Preserve each original exercise instruction and its motif; do not replace every task with multiple choice.",
       "Derived exercises must be grounded only in knowledge from the same lesson and mark sourceRef as Derived from <source pages>, preferring item-level anchors. Never count repeated drills for one item as coverage of another item.",
       "Do not invent unreadable source content; record uncertainty instead.",
