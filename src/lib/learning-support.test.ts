@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { course, studyQuestions } from "@/lib/testing/study-fixture";
-import { answersMatch, availableTokenIndexes } from "@/lib/answer-check";
+import { answersMatch, availableTokenIndexes, choiceAnswersMatch } from "@/lib/answer-check";
 import { findCoachEvidence } from "@/lib/lesson-coach";
 import { speechMatchScore } from "@/lib/speech-match";
 import { writingChecks } from "@/lib/writing-rubric";
@@ -25,6 +25,12 @@ describe("source-grounded study support", () => {
   it("handles Korean composed and decomposed text equivalently", () => {
     expect(answersMatch("학교".normalize("NFD"), "학교")).toBe(true);
     expect(answersMatch(" Tôi đi học. ", "tôi đi học")).toBe(true);
+  });
+  it("grades canonically equivalent source choices without loosening case or punctuation", () => {
+    expect(choiceAnswersMatch("가", "가")).toBe(true);
+    expect(choiceAnswersMatch(" 가 ", "가")).toBe(true);
+    expect(choiceAnswersMatch("A", "a")).toBe(false);
+    expect(choiceAnswersMatch("가.", "가")).toBe(false);
   });
   it("keeps identical reorder tokens individually selectable", () => {
     expect(availableTokenIndexes(["학교", "에", "학교", "에"], [0, 1])).toEqual([2, 3]);
