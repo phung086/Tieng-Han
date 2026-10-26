@@ -301,6 +301,28 @@ describe("full-fidelity source workbook", () => {
     expect(items.find(item => item.prompt === "Duplicate right")?.answer).toBeUndefined();
   });
 
+  it("compares canonically equivalent matching labels without rewriting source text", () => {
+    const input = lesson(1);
+    input.extraSections = [{
+      id: "unicode-matching",
+      kind: "original-activities",
+      title: "Nối cột",
+      content: ["Unicode-normalized labels"],
+      contentSourceRefs: ["Sách p.43 · matching-1"],
+      contentExerciseItems: [{
+        id: "unicode-matching-1",
+        contentIndex: 0,
+        type: "matching",
+        leftItems: ["가"],
+        rightItems: ["나"],
+        answerPairs: [{ left: "\\u1100\\u1161", right: "나" }],
+      }],
+    }];
+
+    const item = buildSourceWorkbook(input, []).find(item => item.prompt === "Unicode-normalized labels");
+    expect(item?.answer).toBe("\\u1100\\u1161 → 나");
+  });
+
   it("reveals a source reorder answer only when available token chunks can construct it", () => {
     const input = lesson(1);
     input.extraSections = [{
