@@ -213,6 +213,7 @@ export function mergeGeneratedLessonChunks(
           answer: string;
           sourceRef?: string;
           choiceSourceRefs?: string[];
+          answerSourceRef?: string;
         }>;
       };
       const chunkPrefix = "chunk" + (index + 1) + ":reading";
@@ -263,6 +264,7 @@ export function mergeGeneratedLessonChunks(
           kind: "reading-answer",
           title: "Đáp án gốc · câu hỏi " + (questionIndex + 1),
           value: question.answer,
+          sourceRef: question.answerSourceRef,
         });
       });
     }
