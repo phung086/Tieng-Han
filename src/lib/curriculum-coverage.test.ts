@@ -555,35 +555,65 @@ describe("source, practice and validation coverage are independent release evide
     const bundle = fixture(); bundle.sourceInventory = inventory();
     const refA = "synthetic.pdf · p.1 · reading-choice-a";
     const refB = "synthetic.pdf · p.1 · reading-choice-b";
+    const questionRef = "synthetic.pdf · p.1 · reading-question";
     bundle.course.lessons[0].reading = {
       title: "Reading", text: "Fixture passage", translation: "Đoạn đọc mẫu",
       sourceRef: "synthetic.pdf · p.1 · reading-passage",
       questions: [{
         id: "read-1", q: "Question", choices: ["A", "B"], answer: "A",
-        sourceRef: "synthetic.pdf · p.1 · reading-question",
+        sourceRef: questionRef,
       }],
     };
     bundle.course.questions.push(
+      { id: "q-reading-question", lessonId: 1, skill: "reading", type: "input", title: "Question", prompt: "Question", answer: "A", explanation: "Fixture", sourceRef: questionRef, origin: "source" },
       { id: "q-reading-a", lessonId: 1, skill: "reading", type: "input", title: "A", prompt: "A", answer: "A", explanation: "Fixture", sourceRef: refA, origin: "source" },
       { id: "q-reading-b", lessonId: 1, skill: "reading", type: "input", title: "B", prompt: "B", answer: "B", explanation: "Fixture", sourceRef: refB, origin: "source" },
     );
     bundle.sourceInventory.items.push(
+      { id: "reading-question", lessonId: 1, kind: "readingquestion", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: questionRef, contentPointer: "/reading/questions/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-question"], verified: true },
       { id: "reading-choice-a", lessonId: 1, kind: "reading-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refA, contentPointer: "/reading/questions/0/choices/0", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-a"], verified: true },
       { id: "reading-choice-b", lessonId: 1, kind: "reading-choice", fileName: "synthetic.pdf", pageNumber: 1, sourceRef: refB, contentPointer: "/reading/questions/0/choices/1", practiceMethod: "questions", motif: "input", practiceQuestionIds: ["q-reading-b"], verified: true },
     );
 
     const missing = auditCurriculumCoverage(bundle);
-    expect(missing.sourceCoverage).toEqual({ covered: 2, total: 4, percent: 50 });
+    expect(missing.sourceCoverage).toEqual({ covered: 3, total: 5, percent: 60 });
     expect(missing.status).toBe("partial");
 
     bundle.course.lessons[0].reading!.questions[0].choiceSourceRefs = [refA, refB];
     const reconciled = auditCurriculumCoverage(bundle);
     expect(reconciled.status).toBe("complete");
-    expect(reconciled.sourceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
-    expect(reconciled.practiceCoverage).toEqual({ covered: 4, total: 4, percent: 100 });
+    expect(reconciled.sourceCoverage).toEqual({ covered: 5, total: 5, percent: 100 });
+    expect(reconciled.practiceCoverage).toEqual({ covered: 5, total: 5, percent: 100 });
   });
 
 
+
+  it("requires inventory for a source-referenced embedded reading question without a parent inventory row", () => {
+    const bundle = fixture();
+    bundle.sourceInventory = inventory();
+    const questionRef = "synthetic.pdf · p.1 · reading-question";
+    bundle.course.lessons[0].reading = {
+      title: "Reading title",
+      text: "Original reading passage",
+      translation: "Đoạn đọc gốc",
+      sourceRef: "synthetic.pdf · p.1 · reading-section",
+      questions: [{
+        id: "embedded-reading-question",
+        q: "Who is speaking?",
+        choices: ["A", "B"],
+        answer: "A",
+        sourceRef: questionRef,
+      }],
+    };
+
+    // There is no inventory row for /reading or /reading/questions/0.
+    // Reverse reconciliation must still find the explicitly source-backed child.
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain(
+      "Thiếu item-level inventory cho nội dung có sourceRef 1:/reading/questions/0",
+    );
+  });
 
   it("requires exact refs for reading title and passage text instead of inheriting the section ref", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
