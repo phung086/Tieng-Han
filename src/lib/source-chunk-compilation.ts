@@ -143,6 +143,11 @@ export function mergeGeneratedLessonChunks(
   const culture: NonNullable<LessonContent["culture"]> = [];
   const media: NonNullable<LessonContent["media"]> = [];
   const questions: StudyQuestion[] = [];
+  // speakingSourceRefs is a parallel array: preserve index alignment across every
+  // chunk, and retain empty slots so missing provenance cannot shift later refs.
+  const hasSpeakingSourceRefs = chunks.some(chunk => chunk.lesson.speakingSourceRefs !== undefined);
+  const speakingSourceRefs: string[] = [];
+  const excessSpeakingSourceRefs: string[] = [];
 
   chunks.forEach((chunk, index) => {
     const lesson = chunk.lesson;
@@ -150,6 +155,17 @@ export function mergeGeneratedLessonChunks(
     grammar.push(...idPrefix(lesson.grammar ?? [], index));
     listening.push(...idPrefix(lesson.listening ?? [], index));
     speaking.push(...(lesson.speaking ?? []));
+    if (hasSpeakingSourceRefs) {
+      const speakingCount = (lesson.speaking ?? []).length;
+      const refs = lesson.speakingSourceRefs ?? [];
+      speakingSourceRefs.push(...refs.slice(0, speakingCount));
+      if (refs.length < speakingCount) {
+        speakingSourceRefs.push(...Array.from({ length: speakingCount - refs.length }, () => ""));
+      }
+      // Preserve malformed extra refs for the validator to reject by length,
+      // but append them after aligned entries so later chunks do not shift.
+      if (refs.length > speakingCount) excessSpeakingSourceRefs.push(...refs.slice(speakingCount));
+    }
     dialogues.push(...idPrefix(lesson.dialogues ?? [], index));
     pronunciation.push(...idPrefix(lesson.pronunciation ?? [], index));
     culture.push(...idPrefix(lesson.culture ?? [], index));
@@ -192,6 +208,7 @@ export function mergeGeneratedLessonChunks(
       id: "chunk" + (index + 1) + ":" + (q.id || j + 1),
     })));
   });
+  speakingSourceRefs.push(...excessSpeakingSourceRefs);
 
   return {
     lesson: {
@@ -201,6 +218,7 @@ export function mergeGeneratedLessonChunks(
       grammar,
       listening,
       speaking,
+      ...(hasSpeakingSourceRefs ? { speakingSourceRefs } : {}),
       dialogues,
       pronunciation,
       culture,
