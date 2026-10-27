@@ -66,13 +66,75 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.validationCoverage.percent).toBe(50);
     expect(report.issues.join(" ")).toContain("scan unreadable");
   });
-  it("does not count dangling, cross-lesson or ambiguous question claims", () => {
+  it("does not count dangling or cross-lesson question links", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [bundle.sourceInventory.items[0]];
     bundle.sourceInventory.items[0].practiceQuestionIds = ["not-a-question"];
-    expect(auditCurriculumCoverage(bundle).practiceCoverage.covered).toBe(1);
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
     bundle.course.questions[0].lessonId = 2;
     bundle.sourceInventory.items[0].practiceQuestionIds = ["q1"];
-    expect(auditCurriculumCoverage(bundle).practiceCoverage.covered).toBe(1);
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+  });
+  it("does not treat vocabulary content as a workbook exercise", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [{
+      ...bundle.sourceInventory.items[0], practiceMethod: "workbook", practiceQuestionIds: [],
+    }];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+    expect(report.issues.join(" ")).toContain("Thiếu phương thức ôn luyện");
+  });
+  it("requires a valid explicit exercise target when workbook questions are not linked", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.sourceInventory.items = [{
+      ...bundle.sourceInventory.items[1], practiceQuestionIds: ["not-a-question"],
+    }];
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 0, total: 1, percent: 0 });
+    bundle.sourceInventory.items[0].practiceQuestionIds = [];
+    expect(auditCurriculumCoverage(bundle).practiceCoverage).toEqual({ covered: 1, total: 1, percent: 100 });
+  });
+  it("rejects an inventory ref that matches the filename but not the referenced item", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].vocabulary[0].sourceRef = "synthetic.pdf · p.1 · different-item";
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage).toEqual({ covered: 1, total: 2, percent: 50 });
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("sourceRef inventory không khớp");
+  });
+  it("requires an item-level reference for nested grammar examples", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].grammar = [{
+      id: "g1", pattern: "N입니다", meaning: "là N", explanation: "Fixture",
+      examples: ["저는 학생입니다."], sourceRef: "synthetic.pdf · p.1 · grammar",
+    }];
+    bundle.course.questions[0].sourceRef = "synthetic.pdf · p.1 · grammar-example";
+    bundle.sourceInventory.items[0] = {
+      ...bundle.sourceInventory.items[0], id: "grammar-example", kind: "grammar-example",
+      sourceRef: "synthetic.pdf · p.1 · grammar-example", contentPointer: "/grammar/0/examples/0",
+    };
+    expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
+    bundle.course.lessons[0].grammar[0].exampleSourceRefs = ["synthetic.pdf · p.1 · grammar-example"];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(2);
+    expect(report.practiceCoverage.covered).toBe(2);
+    expect(report.status).toBe("complete");
+  });
+  it("requires per-prompt refs for speaking and rejects misaligned ref arrays", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    bundle.course.lessons[0].speaking = ["안녕하세요."];
+    bundle.course.questions[0].sourceRef = "synthetic.pdf · p.1 · speaking-1";
+    bundle.sourceInventory.items[0] = {
+      ...bundle.sourceInventory.items[0], id: "speaking-1", kind: "speaking",
+      sourceRef: "synthetic.pdf · p.1 · speaking-1", contentPointer: "/speaking/0",
+    };
+    expect(auditCurriculumCoverage(bundle).sourceCoverage.covered).toBe(1);
+    bundle.course.lessons[0].speakingSourceRefs = ["synthetic.pdf · p.1 · speaking-1", "synthetic.pdf · p.1 · extra"];
+    expect(auditCurriculumCoverage(bundle).issues.join(" ")).toContain("Mảng tham chiếu item không khớp");
+    bundle.course.lessons[0].speakingSourceRefs = ["synthetic.pdf · p.1 · speaking-1"];
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(2);
+    expect(report.practiceCoverage.covered).toBe(2);
+    expect(report.status).toBe("complete");
   });
   it("rejects duplicate IDs, unknown sources and unsafe or missing content destinations", () => {
     const bundle = fixture(); bundle.sourceInventory = inventory();

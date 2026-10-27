@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   parseCourseBundle,
   normalizeLessonContent,
@@ -249,6 +250,16 @@ describe("parseCourseBundle", () => {
     expect(contract.pedagogy.practiceBalance.join(" ")).toContain("ALL source words");
     expect(contract.principles.join(" ")).toContain("every source exercise");
     expect(contract.principles.join(" ")).toContain("page batches");
+  });
+
+  it("keeps the source-complete docs free of fixed per-lesson quiz quotas", () => {
+    const guide = readFileSync(new URL("../../docs/AUTO_IMPORT_GUIDE.md", import.meta.url), "utf8");
+    const loop = readFileSync(new URL("../../docs/SOURCE_COMPLETE_PRACTICE_LOOP.md", import.meta.url), "utf8");
+
+    expect(guide).toContain("không đặt quota cố định");
+    expect(guide).not.toMatch(/12\s*[–-]\s*20\s+câu/i);
+    expect(loop).toContain("Không dùng số câu quiz làm đại diện");
+    expect(loop).toContain("Số bài tập sinh ra phải theo nhu cầu từng source item");
   });
 
   /* ---- 3. Contract matches submit_course_bundle validation ---- */

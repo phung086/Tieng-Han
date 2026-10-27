@@ -139,11 +139,12 @@ Nhận diện kiến thức
 Policy trong compilation contract yêu cầu:
 
 - giữ thứ tự bài của sách;
-- giữ `sourceRef`;
+- giữ `sourceRef` và đối chiếu chính xác với tham chiếu của item đích;
+- mỗi ví dụ từ vựng/ngữ pháp/phát âm, prompt Nói, từ khóa bài viết và tiểu mục bài tập phải có item-level ref theo đúng chỉ số; không kế thừa ref cấp đoạn để tự nhận coverage;
 - không thêm curriculum ngoài sách;
 - bao phủ từ vựng, ngữ pháp, hội thoại, phát âm, văn hóa và phần đặc biệt khi nguồn có;
 - tạo bài luyện 6 kỹ năng;
-- khoảng 12–20 câu luyện cho một bài bình thường, tự điều chỉnh theo độ dày nội dung;
+- không đặt quota cố định hoặc lấy số câu quiz làm thước đo coverage; lượng bài theo inventory từng item và từng tiểu mục nguồn;
 - không cố đủ số lượng nếu nguồn không hỗ trợ;
 - distractor không được đưa kiến thức ngoài bài;
 - lưu checkpoint khi sách dài;

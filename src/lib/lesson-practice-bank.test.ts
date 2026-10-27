@@ -12,37 +12,40 @@ function lesson(wordCount = 3): LessonContent {
     sourceRef: "Sách p.21",
     vocabulary: Array.from({ length: wordCount }, (_, i) => ({
       id: "word-" + i, ko: "단어" + i, vi: "nghĩa " + i,
-      example: "예문 " + i, sourceRef: "Sách p.22",
+      example: "예문 " + i, sourceRef: "Sách p.22 · v" + i, exampleSourceRef: "Sách p.22 · v" + i + " · example",
     })),
     grammar: [{
       id: "g1", pattern: "-입니다", meaning: "là", explanation: "Lối nói trang trọng",
-      examples: ["저는 학생입니다.", "여기는 학교입니다."], sourceRef: "Sách p.23",
+      examples: ["저는 학생입니다.", "여기는 학교입니다."], sourceRef: "Sách p.23 · g1",
+      exampleSourceRefs: ["Sách p.23 · g1 · example-0", "Sách p.23 · g1 · example-1"],
     }],
     listening: [{
       id: "l1", text: "누구입니까?", meaning: "Ai vậy?",
-      choices: ["학생", "선생님"], answer: "학생", sourceRef: "Sách p.24",
+      choices: ["학생", "선생님"], answer: "학생", sourceRef: "Sách p.24 · listening-1",
     }],
     speaking: ["안녕하세요.", "감사합니다."],
+    speakingSourceRefs: ["Sách p.24 · speaking-0", "Sách p.24 · speaking-1"],
     reading: {
       title: "읽기", text: "저는 학생입니다.", translation: "Tôi là học sinh.",
-      questions: [{ id: "r1", q: "누구입니까?", choices: ["학생", "의사"], answer: "학생", sourceRef: "Sách p.25" }],
-      sourceRef: "Sách p.25",
+      questions: [{ id: "r1", q: "누구입니까?", choices: ["학생", "의사"], answer: "학생", sourceRef: "Sách p.25 · reading-question-1" }],
+      sourceRef: "Sách p.25 · reading-passage",
     },
-    writing: { prompt: "Viết giới thiệu", hint: "Dùng -입니다", targetWords: ["저", "학생"], sourceRef: "Sách p.26" },
+    writing: { prompt: "Viết giới thiệu", hint: "Dùng -입니다", targetWords: ["저", "학생"], sourceRef: "Sách p.26 · writing", targetWordSourceRefs: ["Sách p.26 · target-0", "Sách p.26 · target-1"] },
     dialogues: [{
       id: "d1", title: "대화", sourceRef: "Sách p.27",
       lines: [
-        { speaker: "A", ko: "안녕하세요.", vi: "Xin chào." },
-        { speaker: "B", ko: "반갑습니다.", vi: "Rất vui được gặp." },
+        { speaker: "A", ko: "안녕하세요.", vi: "Xin chào.", sourceRef: "Sách p.27 · dialogue-line-0" },
+        { speaker: "B", ko: "반갑습니다.", vi: "Rất vui được gặp.", sourceRef: "Sách p.27 · dialogue-line-1" },
       ],
     }],
     pronunciation: [{
       id: "p1", title: "받침", explanation: "Luyện patchim",
-      examples: ["한국", "책"], sourceRef: "Sách p.28",
+      examples: ["한국", "책"], sourceRef: "Sách p.28 · pronunciation",
+      exampleSourceRefs: ["Sách p.28 · pronunciation-example-0", "Sách p.28 · pronunciation-example-1"],
     }],
-    culture: [{ id: "c1", title: "Văn hoá", text: "Chào hỏi", sourceRef: "Sách p.29" }],
+    culture: [{ id: "c1", title: "Văn hoá", text: "Chào hỏi", sourceRef: "Sách p.29 · culture" }],
     extraSections: [{
-      id: "ex1", kind: "Bài tập", title: "Dịch", content: ["1. Xin chào", "2. Tôi là học sinh"], sourceRef: "Sách p.30",
+      id: "ex1", kind: "Bài tập", title: "Dịch", content: ["1. Xin chào", "2. Tôi là học sinh"], sourceRef: "Sách p.30", contentSourceRefs: ["Sách p.30 · exercise-0", "Sách p.30 · exercise-1"],
     }],
   };
 }
@@ -93,6 +96,49 @@ describe("exhaustive deterministic practice", () => {
     const bank = buildLessonPracticeBank(input, []);
     expect(bank.filter(q => q.id.includes(":dialogue-"))).toHaveLength(1);
     expect(bank.some(q => q.prompt === input.writing!.prompt && q.answer)).toBe(false);
+    const targetWordDrill = bank.find(q => q.id.includes(":writing-word:0:"));
+    expect(targetWordDrill).toMatchObject({ prompt: "Gõ lại từ khóa bài viết: 저", answer: "저" });
+    expect(targetWordDrill?.prompt).not.toContain("tự đặt câu");
+  });
+
+  it("uses exact item-level refs for nested practice and never inherits section refs", () => {
+    const input = lesson(1);
+    const bank = buildLessonPracticeBank(input, []);
+    const find = (fragment: string) => bank.find(q => q.id.includes(fragment));
+    expect(find(":vocab-example:")?.sourceRef).toBe("Sách p.22 · v0 · example");
+    expect(find(":grammar-example-0:")?.sourceRef).toBe("Sách p.23 · g1 · example-0");
+    expect(find(":speaking:0:")?.sourceRef).toBe("Sách p.24 · speaking-0");
+    expect(find(":pronunciation-0:")?.sourceRef).toBe("Sách p.28 · pronunciation-example-0");
+    expect(find(":writing-word:0:")?.sourceRef).toBe("Sách p.26 · target-0");
+    expect(find(":vocab-meaning:")?.sourceRef).toBe("Sách p.22 · v0");
+    expect(find(":grammar-pattern:")?.sourceRef).toBe("Sách p.23 · g1");
+    expect(find(":listening:")?.sourceRef).toBe("Sách p.24 · listening-1");
+    expect(find(":reading:")?.sourceRef).toBe("Sách p.25 · reading-question-1");
+    expect(find(":dialogue-0:0:")?.sourceRef).toBe("Sách p.27 · dialogue-line-0");
+
+    const legacy = lesson(1);
+    delete legacy.vocabulary[0].sourceRef;
+    delete legacy.vocabulary[0].exampleSourceRef;
+    delete legacy.grammar[0].sourceRef;
+    delete legacy.grammar[0].exampleSourceRefs;
+    delete legacy.listening[0].sourceRef;
+    delete legacy.reading!.questions[0].sourceRef;
+    delete legacy.dialogues![0].lines[0].sourceRef;
+    delete legacy.dialogues![0].lines[1].sourceRef;
+    delete legacy.speakingSourceRefs;
+    delete legacy.pronunciation![0].exampleSourceRefs;
+    delete legacy.writing!.targetWordSourceRefs;
+    const legacyBank = buildLessonPracticeBank(legacy, []);
+    expect(legacyBank.find(q => q.id.includes(":vocab-example:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":grammar-example-0:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":speaking:0:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":pronunciation-0:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":writing-word:0:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":vocab-meaning:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":grammar-pattern:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":listening:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":reading:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":dialogue-0:0:"))?.sourceRef).toBeUndefined();
   });
 
   it("rotates answers among distractors rather than keeping every correct option first", () => {
