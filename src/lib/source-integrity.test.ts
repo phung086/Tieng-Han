@@ -90,4 +90,36 @@ describe("source manifest fingerprint integrity", () => {
       ],
     })).toThrow();
   });
+  it("rejects path-like, invalid, and reserved Windows device filenames", () => {
+    const invalidNames = [
+      "../Book.pdf",
+      "..\\\\Book.pdf",
+      "folder/Book.pdf",
+      "folder\\\\Book.pdf",
+      "C:Book.pdf",
+      "Book:stream",
+      "bad\\u0000.pdf",
+      "CON.pdf",
+      "nul",
+      "LPT1.docx",
+    ];
+
+    for (const name of invalidNames) {
+      expect(sourceManifestSchema.safeParse([fingerprint({ name })]).success).toBe(false);
+    }
+
+    // Existing Vietnamese names with spaces, accents and parentheses remain valid.
+    expect(sourceManifestSchema.safeParse([
+      fingerprint({ name: "SBT-NÂNG-CAO- ( đáp án cuối sách ).pdf" }),
+    ]).success).toBe(true);
+  });
+
+  it("rejects path-like names before an import job can be accepted", () => {
+    const name = "../Book.pdf";
+    expect(() => validateImportDocuments({
+      documents: [{ documentId: "doc-1", fileName: name, pageCount: 12 }],
+      sourceManifest: [fingerprint({ name, pageCount: 12 })],
+    })).toThrow();
+  });
+
 });
