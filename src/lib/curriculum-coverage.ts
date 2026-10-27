@@ -390,6 +390,24 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("Tham chiếu prompt bài viết rỗng tại lesson " + lesson.id + ".writing.prompt");
     }
   }
+  // A sourceRef is an identity for one source item, not a page-level label.
+  // Reusing it across distinct inventory items would let one citation/question
+  // ambiguously stand for several original items, even when each pointer matches.
+  const sourceRefOwners = new Map<string, Set<string>>();
+  for (const item of inventory.items) {
+    const ref = item.sourceRef.trim();
+    if (!ref) continue;
+    const owners = sourceRefOwners.get(ref) ?? new Set<string>();
+    owners.add(item.lessonId + ":" + item.id);
+    sourceRefOwners.set(ref, owners);
+  }
+  const ambiguousSourceRefs = new Set<string>();
+  for (const [ref, owners] of sourceRefOwners) {
+    if (owners.size > 1) {
+      ambiguousSourceRefs.add(ref);
+      issues.push("sourceRef không duy nhất giữa các source item: " + ref);
+    }
+  }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
   let represented = 0;
   let practiced = 0;
@@ -469,6 +487,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("sourceRef inventory không khớp tham chiếu item đích " + key + " → " + item.contentPointer);
       continue;
     }
+    if (ambiguousSourceRefs.has(item.sourceRef.trim())) continue;
     represented++;
     representedLessons.add(item.lessonId);
     const linkedQuestions = item.practiceQuestionIds.map(id => questions.find(question =>
