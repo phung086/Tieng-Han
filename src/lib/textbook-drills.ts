@@ -18,6 +18,10 @@ export type TextbookDrill = {
 const clean = (value: string | undefined | null) => (value ?? "").trim();
 const directRef = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim() ? value.trim() : undefined;
+const fieldRef = (owner: unknown, field: string): string | undefined => {
+  if (!owner || typeof owner !== "object") return undefined;
+  return directRef((owner as Record<string, unknown>)[field]);
+};
 const indexedRef = (owner: unknown, field: string, index: number): string | undefined => {
   if (!owner || typeof owner !== "object") return undefined;
   const refs = (owner as Record<string, unknown>)[field];
@@ -52,7 +56,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
       context: hasContext ? "Nghĩa của từ cần điền: " + meaning : undefined,
       hint: "Từ tiếng Hàn có nghĩa: " + meaning,
       // This cloze uses the example sentence as its source, not the headword row.
-      sourceRef: hasContext ? indexedRef(word, "exampleSourceRef", 0) : directRef(word.sourceRef),
+      sourceRef: hasContext ? fieldRef(word, "exampleSourceRef") : directRef(word.sourceRef),
     });
     if (example) {
       add({
@@ -64,7 +68,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
         answer: example,
         audioText: example,
         hint: "Ví dụ của từ: " + term,
-        sourceRef: indexedRef(word, "exampleSourceRef", 0),
+        sourceRef: fieldRef(word, "exampleSourceRef"),
       });
     }
   });
