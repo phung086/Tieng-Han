@@ -85,6 +85,9 @@ class CitationAuditTests(unittest.TestCase):
         self.assertIsNone(rows[('speaking-prompt', '1')][1])
         self.assertIsNone(rows[('writing-target-word', 'writing:1')][1])
         self.assertIsNone(rows[('pronunciation-example', 'p1:1')][1])
+        self.assertEqual(rows[('pronunciation-rule-title', 'p1:title')][1], 'book.pdf p.8 · pronunciation-rule')
+        self.assertEqual(rows[('pronunciation-rule-explanation', 'p1:explanation')][0], '받침 발음 규칙')
+        self.assertEqual(rows[('culture-title', 'c1:title')][1], 'book.pdf p.9 · culture-c1')
         self.assertIsNone(rows[('extra-section-content', 'x1:1')][1])
         self.assertEqual(rows[('culture-text', 'c1')][1], 'book.pdf p.9 · culture-c1')
 
