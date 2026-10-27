@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   sameSourceManifest,
   sourceManifestSchema,
+  validateImportDocuments,
 } from "@/lib/source-integrity";
 import type { ImportSourceFingerprint } from "@/lib/import-jobs";
 
@@ -48,5 +49,34 @@ describe("source manifest fingerprint integrity", () => {
     expect(sourceManifestSchema.safeParse([fingerprint({ name: "   " })]).success).toBe(false);
     expect(sourceManifestSchema.safeParse([fingerprint({ size: 0 })]).success).toBe(false);
     expect(sameSourceManifest([expected], [fingerprint({ size: 0 })])).toBe(false);
+  });
+
+  it("rejects case-only filename collisions without rewriting the exact source names", () => {
+    const upper = fingerprint({ name: "Book.pdf" });
+    const lower = fingerprint({ name: "book.pdf", sha256: "b".repeat(64) });
+
+    expect(sourceManifestSchema.safeParse([upper, lower]).success).toBe(false);
+    expect(sourceManifestSchema.parse([upper])[0]?.name).toBe("Book.pdf");
+  });
+
+  it("rejects canonically equivalent Unicode filenames as ambiguous", () => {
+    const composed = fingerprint({ name: "\u00e9cole.pdf" });
+    const decomposed = fingerprint({ name: "e\u0301cole.pdf", sha256: "b".repeat(64) });
+
+    expect(composed.name).not.toBe(decomposed.name);
+    expect(sourceManifestSchema.safeParse([composed, decomposed]).success).toBe(false);
+  });
+
+  it("rejects a document list whose manifest contains colliding filename variants", () => {
+    expect(() => validateImportDocuments({
+      documents: [
+        { documentId: "book-a", fileName: "Book.pdf", pageCount: 12 },
+        { documentId: "book-b", fileName: "book.pdf", pageCount: 8 },
+      ],
+      sourceManifest: [
+        fingerprint({ name: "Book.pdf", pageCount: 12 }),
+        fingerprint({ name: "book.pdf", pageCount: 8, sha256: "b".repeat(64) }),
+      ],
+    })).toThrow();
   });
 });
