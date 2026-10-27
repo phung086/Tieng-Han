@@ -75,11 +75,18 @@ export function buildSourceWorkbook(
 
   if (lesson.reading) {
     add({
+      id: id("reading-title", 0), category: "Đọc",
+      title: "Tiêu đề bài đọc",
+      prompt: lesson.reading.title,
+      hint: "Tiêu đề nguyên gốc của bài đọc; giữ riêng khỏi phần thân bài.",
+      sourceRef: lesson.reading.titleSourceRef,
+    });
+    add({
       id: id("reading-passage", 0), category: "Đọc",
       title: lesson.reading.title || "Bài đọc",
       prompt: lesson.reading.text, answer: lesson.reading.translation,
       hint: "Đọc hiểu toàn văn trước khi mở bản dịch.",
-      sourceRef: lesson.reading.sourceRef ?? lesson.sourceRef,
+      sourceRef: lesson.reading.textSourceRef,
     });
     lesson.reading.questions.forEach((question, index) => add({
       id: id("reading-question", index), category: "Đọc",
