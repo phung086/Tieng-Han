@@ -31,6 +31,32 @@ describe("study session planning", () => {
     ]);
   });
 
+  it("keeps the full guided bank by default, including unknown skill buckets", () => {
+    const items = [
+      ...Array.from({ length: 25 }, (_, index) => ({
+        id: "v" + index,
+        skill: "vocabulary",
+      })),
+      { id: "g1", skill: "grammar" },
+      { id: "g2", skill: "grammar" },
+      { id: "p1", skill: "pronunciation" },
+      { id: "c1", skill: "culture" },
+    ];
+
+    const selected = pickBalancedQuestions(items);
+
+    expect(selected).toHaveLength(items.length);
+    expect(new Set(selected.map((item) => item.id))).toEqual(
+      new Set(items.map((item) => item.id)),
+    );
+    expect(selected.slice(0, 4).map((item) => item.skill)).toEqual([
+      "vocabulary",
+      "grammar",
+      "pronunciation",
+      "culture",
+    ]);
+  });
+
   it("uses a 75 percent mastery threshold", () => {
     expect(masteryPassed(3, 4)).toBe(true);
     expect(masteryPassed(2, 4)).toBe(false);
