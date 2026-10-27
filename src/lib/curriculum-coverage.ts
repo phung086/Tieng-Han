@@ -315,7 +315,8 @@ function hasPrimarySourceContent(pointer: string, content: unknown): boolean {
     case "culture": return parts.length === 2 && field("title") && field("text");
     case "extraSections": return parts.length === 2 && textArray("content");
     case "questions": return parts.length === 2 && field("prompt");
-    case "media": return parts.length === 2 && field("url", "src", "fileName", "resourcePath", "dataUrl", "alt", "caption", "text");
+    // The lesson media gallery renders media through `src`; alt/caption metadata alone is not the source asset.
+    case "media": return parts.length === 2 && ["image", "video", "audio", "document"].includes(String(row.type)) && field("src");
     case "illustrations": return parts.length === 2 && field("alt", "caption", "fileName", "url", "src");
     default: return Object.values(row).some(hasText);
   }
