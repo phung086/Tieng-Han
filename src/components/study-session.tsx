@@ -21,6 +21,7 @@ import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
 import {
   masteryPassed,
+  pickBalancedQuestions,
 } from "@/lib/study-session-plan";
 import { getNextLessonFlowStep } from "@/lib/lesson-flow";
 import { buildLessonPracticeBank } from "@/lib/lesson-practice-bank";
@@ -84,7 +85,7 @@ function StudySessionBody({
       : course.questions.filter((item) => item.lessonId === activeLessonId);
     const all = bank.filter((item) => !skill || item.skill === skill);
 
-    if (mode === "quick") return all.slice(0, 5);
+    if (mode === "quick") return pickBalancedQuestions(all, 5);
     if (mode === "mastery") return all;
     return all; // Full guided practice: never silently cap textbook questions.
   }, [course.lessons, course.questions, activeLessonId, mode, skill, reviewQuestions]);

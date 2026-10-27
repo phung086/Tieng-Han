@@ -336,7 +336,7 @@ test("input questions can be answered by touch and skipped without a Korean keyb
 test("correct quiz answers auto-advance while wrong answers keep feedback visible", async ({
   page,
 }) => {
-  await page.goto("/practice/quiz?lesson=1&mode=quick");
+  await page.goto("/practice/quiz?lesson=1&mode=quick&skill=vocabulary");
 
   await expect(page.locator(".question-prompt")).toContainText("안녕하세요");
   await page.getByRole("button", { name: /Xin chào/ }).click();

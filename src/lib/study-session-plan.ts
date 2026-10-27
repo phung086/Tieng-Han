@@ -1,8 +1,14 @@
 export function pickBalancedQuestions<T extends { skill: string }>(
   items: T[],
-  limit = 8,
+  limit?: number,
 ) {
-  if (items.length <= limit) return items;
+  // Guided/mastery defaults to the full bank. A limit is only for an
+  // explicitly bounded mode such as Quick 5; it must never be implicit.
+  const target =
+    limit === undefined || !Number.isFinite(limit)
+      ? items.length
+      : Math.min(items.length, Math.max(0, Math.floor(limit)));
+  if (target === 0) return [];
 
   const buckets = new Map<string, T[]>();
   for (const item of items) {
@@ -11,8 +17,7 @@ export function pickBalancedQuestions<T extends { skill: string }>(
     buckets.set(item.skill, bucket);
   }
 
-  const selected: T[] = [];
-  const orderedSkills = [
+  const preferredSkills = [
     "vocabulary",
     "grammar",
     "listening",
@@ -20,8 +25,14 @@ export function pickBalancedQuestions<T extends { skill: string }>(
     "reading",
     "writing",
   ];
+  const preferredSet = new Set(preferredSkills);
+  const orderedSkills = [
+    ...preferredSkills,
+    ...Array.from(buckets.keys()).filter((skill) => !preferredSet.has(skill)),
+  ];
 
-  while (selected.length < limit) {
+  const selected: T[] = [];
+  while (selected.length < target) {
     let added = false;
 
     for (const skill of orderedSkills) {
@@ -31,7 +42,7 @@ export function pickBalancedQuestions<T extends { skill: string }>(
 
       selected.push(next);
       added = true;
-      if (selected.length >= limit) break;
+      if (selected.length >= target) break;
     }
 
     if (!added) break;
