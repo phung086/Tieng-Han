@@ -1,9 +1,21 @@
 import { z } from "zod";
 import type { ImportJob, ImportJobPage, ImportSourceFingerprint } from "@/lib/import-jobs";
 
+function isPortableSourceFilename(value: string) {
+  if (value === "." || value === "..") return false;
+  // File.name should be a leaf name, not a path or a Windows alternate data stream.
+  if (/[<>:"/\\|?*\u0000-\u001f]/u.test(value)) return false;
+  // Windows reserves these device names even when an extension is present.
+  const deviceName = (value.split(".", 1)[0] ?? value).replace(/[ .]+$/u, "");
+  return !/^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])$/iu.test(deviceName);
+}
+
 export const sourceFingerprintSchema = z.object({
-  // Validate non-blank names without trimming: the filename is part of the source fingerprint.
-  name: z.string().refine((value) => value.trim().length > 0, { message: "source filename must not be blank" }),
+  // Preserve the exact filename for identity; reject blank names and Windows-ambiguous trailing dots/spaces.
+  name: z.string().refine(
+    (value) => value.trim().length > 0 && !/[ .]$/.test(value) && isPortableSourceFilename(value),
+    { message: "source filename must be a non-blank portable filename without path separators, reserved characters/device names, or trailing dots/spaces" },
+  ),
   // An imported PDF/DOCX must contain bytes; zero-byte files cannot represent a usable textbook source.
   size: z.number().int().positive(),
   lastModified: z.number().int().nonnegative(),
@@ -11,11 +23,24 @@ export const sourceFingerprintSchema = z.object({
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
 });
 
+// Preserve exact source names, but reject aliases used by common case-insensitive,
+// Unicode-normalizing filesystems and Windows paths (which ignore trailing dots/spaces).
+function sourceFilenameCollisionKey(name: string) {
+  return name.normalize("NFC").replace(/[ .]+$/u, "").toLowerCase().normalize("NFC");
+}
+
 export const sourceManifestSchema = z.array(sourceFingerprintSchema).superRefine((items, ctx) => {
   const names = new Set<string>();
   items.forEach((item, index) => {
-    if (names.has(item.name)) ctx.addIssue({ code: "custom", path: [index, "name"], message: "duplicate source filename" });
-    names.add(item.name);
+    const key = sourceFilenameCollisionKey(item.name);
+    if (names.has(key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: [index, "name"],
+        message: "duplicate or colliding source filename after case/Unicode/path normalization",
+      });
+    }
+    names.add(key);
   });
 });
 
@@ -42,9 +67,12 @@ export function validateImportDocuments(job: Pick<ImportJob, "documents" | "sour
   const ids = new Set<string>();
   const names = new Set<string>();
   for (const document of job.documents) {
-    if (ids.has(document.documentId) || names.has(document.fileName)) throw new Error("Document id hoặc fileName bị trùng.");
+    const nameKey = sourceFilenameCollisionKey(document.fileName);
+    if (ids.has(document.documentId) || names.has(nameKey)) {
+      throw new Error("Document id hoặc fileName bị trùng sau chuẩn hóa tên.");
+    }
     ids.add(document.documentId);
-    names.add(document.fileName);
+    names.add(nameKey);
     const source = job.sourceManifest.find(item => item.name === document.fileName);
     if (!source || source.pageCount !== document.pageCount) throw new Error("Document không khớp nguồn: " + document.fileName);
   }

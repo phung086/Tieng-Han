@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   sameSourceManifest,
   sourceManifestSchema,
+  validateImportDocuments,
 } from "@/lib/source-integrity";
 import type { ImportSourceFingerprint } from "@/lib/import-jobs";
 
@@ -49,4 +50,79 @@ describe("source manifest fingerprint integrity", () => {
     expect(sourceManifestSchema.safeParse([fingerprint({ size: 0 })]).success).toBe(false);
     expect(sameSourceManifest([expected], [fingerprint({ size: 0 })])).toBe(false);
   });
+
+  it("rejects case-only filename collisions without rewriting the exact source names", () => {
+    const upper = fingerprint({ name: "Book.pdf" });
+    const lower = fingerprint({ name: "book.pdf", sha256: "b".repeat(64) });
+
+    expect(sourceManifestSchema.safeParse([upper, lower]).success).toBe(false);
+    expect(sourceManifestSchema.parse([upper])[0]?.name).toBe("Book.pdf");
+  });
+
+  it("rejects canonically equivalent Unicode filenames as ambiguous", () => {
+    const composed = fingerprint({ name: "école.pdf" });
+    const decomposed = fingerprint({ name: "école.pdf", sha256: "b".repeat(64) });
+
+    expect(composed.name).not.toBe(decomposed.name);
+    expect(sourceManifestSchema.safeParse([composed, decomposed]).success).toBe(false);
+  });
+
+  it("rejects trailing-dot and trailing-space filenames that alias on Windows", () => {
+    expect(sourceManifestSchema.safeParse([fingerprint({ name: "Book.pdf." })]).success).toBe(false);
+    expect(sourceManifestSchema.safeParse([fingerprint({ name: "Book.pdf " })]).success).toBe(false);
+
+    const normal = fingerprint({ name: "Book.pdf" });
+    const dotted = fingerprint({ name: "Book.pdf.", sha256: "b".repeat(64) });
+    const spaced = fingerprint({ name: "Book.pdf ", sha256: "c".repeat(64) });
+    expect(sourceManifestSchema.safeParse([normal, dotted]).success).toBe(false);
+    expect(sourceManifestSchema.safeParse([normal, spaced]).success).toBe(false);
+  });
+
+  it("rejects a document list whose manifest contains colliding filename variants", () => {
+    expect(() => validateImportDocuments({
+      documents: [
+        { documentId: "book-a", fileName: "Book.pdf", pageCount: 12 },
+        { documentId: "book-b", fileName: "book.pdf", pageCount: 8 },
+      ],
+      sourceManifest: [
+        fingerprint({ name: "Book.pdf", pageCount: 12 }),
+        fingerprint({ name: "book.pdf", pageCount: 8, sha256: "b".repeat(64) }),
+      ],
+    })).toThrow();
+  });
+  it("rejects path-like, invalid, and reserved Windows device filenames", () => {
+    const invalidNames = [
+      "../Book.pdf",
+      "..\\Book.pdf",
+      "folder/Book.pdf",
+      "folder\\Book.pdf",
+      "C:Book.pdf",
+      "Book:stream",
+      "bad\u0000.pdf",
+      "CON.pdf",
+      "nul",
+      "LPT1.docx",
+      // Windows also reserves these device aliases with superscript digits.
+      "COM¹.pdf",
+      "LPT³.docx",
+    ];
+
+    for (const name of invalidNames) {
+      expect(sourceManifestSchema.safeParse([fingerprint({ name })]).success).toBe(false);
+    }
+
+    // Existing Vietnamese names with spaces, accents and parentheses remain valid.
+    expect(sourceManifestSchema.safeParse([
+      fingerprint({ name: "SBT-NÂNG-CAO- ( đáp án cuối sách ).pdf" }),
+    ]).success).toBe(true);
+  });
+
+  it("rejects path-like names before an import job can be accepted", () => {
+    const name = "../Book.pdf";
+    expect(() => validateImportDocuments({
+      documents: [{ documentId: "doc-1", fileName: name, pageCount: 12 }],
+      sourceManifest: [fingerprint({ name, pageCount: 12 })],
+    })).toThrow();
+  });
+
 });
