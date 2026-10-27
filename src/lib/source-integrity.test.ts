@@ -60,11 +60,22 @@ describe("source manifest fingerprint integrity", () => {
   });
 
   it("rejects canonically equivalent Unicode filenames as ambiguous", () => {
-    const composed = fingerprint({ name: "\u00e9cole.pdf" });
-    const decomposed = fingerprint({ name: "e\u0301cole.pdf", sha256: "b".repeat(64) });
+    const composed = fingerprint({ name: "\\u00e9cole.pdf" });
+    const decomposed = fingerprint({ name: "e\\u0301cole.pdf", sha256: "b".repeat(64) });
 
     expect(composed.name).not.toBe(decomposed.name);
     expect(sourceManifestSchema.safeParse([composed, decomposed]).success).toBe(false);
+  });
+
+  it("rejects trailing-dot and trailing-space filenames that alias on Windows", () => {
+    expect(sourceManifestSchema.safeParse([fingerprint({ name: "Book.pdf." })]).success).toBe(false);
+    expect(sourceManifestSchema.safeParse([fingerprint({ name: "Book.pdf " })]).success).toBe(false);
+
+    const normal = fingerprint({ name: "Book.pdf" });
+    const dotted = fingerprint({ name: "Book.pdf.", sha256: "b".repeat(64) });
+    const spaced = fingerprint({ name: "Book.pdf ", sha256: "c".repeat(64) });
+    expect(sourceManifestSchema.safeParse([normal, dotted]).success).toBe(false);
+    expect(sourceManifestSchema.safeParse([normal, spaced]).success).toBe(false);
   });
 
   it("rejects a document list whose manifest contains colliding filename variants", () => {
