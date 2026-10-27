@@ -154,7 +154,7 @@ describe("full-fidelity source workbook", () => {
     expect(count("Ngữ pháp")).toBe(3);
     expect(count("Nghe")).toBe(1);
     expect(count("Nói")).toBe(2);
-    expect(count("Đọc")).toBe(2);
+    expect(count("Đọc")).toBe(3); // separate original title and passage items
     expect(count("Viết")).toBe(1);
     expect(count("Hội thoại")).toBe(2);
     expect(count("Phát âm")).toBe(3);
