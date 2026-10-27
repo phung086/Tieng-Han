@@ -11,11 +11,24 @@ export const sourceFingerprintSchema = z.object({
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
 });
 
+// Preserve the exact filename for identity, but reject names that can collide on
+// common case-insensitive or Unicode-normalizing filesystems.
+function sourceFilenameCollisionKey(name: string) {
+  return name.normalize("NFC").toLowerCase().normalize("NFC");
+}
+
 export const sourceManifestSchema = z.array(sourceFingerprintSchema).superRefine((items, ctx) => {
   const names = new Set<string>();
   items.forEach((item, index) => {
-    if (names.has(item.name)) ctx.addIssue({ code: "custom", path: [index, "name"], message: "duplicate source filename" });
-    names.add(item.name);
+    const key = sourceFilenameCollisionKey(item.name);
+    if (names.has(key)) {
+      ctx.addIssue({
+        code: "custom",
+        path: [index, "name"],
+        message: "source filename collides after case/Unicode normalization",
+      });
+    }
+    names.add(key);
   });
 });
 
@@ -42,9 +55,12 @@ export function validateImportDocuments(job: Pick<ImportJob, "documents" | "sour
   const ids = new Set<string>();
   const names = new Set<string>();
   for (const document of job.documents) {
-    if (ids.has(document.documentId) || names.has(document.fileName)) throw new Error("Document id hoặc fileName bị trùng.");
+    const nameKey = sourceFilenameCollisionKey(document.fileName);
+    if (ids.has(document.documentId) || names.has(nameKey)) {
+      throw new Error("Document id hoặc fileName bị trùng sau chuẩn hóa tên.");
+    }
     ids.add(document.documentId);
-    names.add(document.fileName);
+    names.add(nameKey);
     const source = job.sourceManifest.find(item => item.name === document.fileName);
     if (!source || source.pageCount !== document.pageCount) throw new Error("Document không khớp nguồn: " + document.fileName);
   }
