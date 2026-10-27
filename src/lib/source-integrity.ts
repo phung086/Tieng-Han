@@ -2,8 +2,11 @@ import { z } from "zod";
 import type { ImportJob, ImportJobPage, ImportSourceFingerprint } from "@/lib/import-jobs";
 
 export const sourceFingerprintSchema = z.object({
-  // Validate non-blank names without trimming: the filename is part of the source fingerprint.
-  name: z.string().refine((value) => value.trim().length > 0, { message: "source filename must not be blank" }),
+  // Preserve the exact filename for identity; reject blank names and Windows-ambiguous trailing dots/spaces.
+  name: z.string().refine(
+    (value) => value.trim().length > 0 && !/[ .]$/.test(value),
+    { message: "source filename must be non-blank and must not end with a dot or space" },
+  ),
   // An imported PDF/DOCX must contain bytes; zero-byte files cannot represent a usable textbook source.
   size: z.number().int().positive(),
   lastModified: z.number().int().nonnegative(),
@@ -11,10 +14,10 @@ export const sourceFingerprintSchema = z.object({
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
 });
 
-// Preserve the exact filename for identity, but reject names that can collide on
-// common case-insensitive or Unicode-normalizing filesystems.
+// Preserve exact source names, but reject aliases used by common case-insensitive,
+// Unicode-normalizing filesystems and Windows paths (which ignore trailing dots/spaces).
 function sourceFilenameCollisionKey(name: string) {
-  return name.normalize("NFC").toLowerCase().normalize("NFC");
+  return name.normalize("NFC").replace(/[ .]+$/u, "").toLowerCase().normalize("NFC");
 }
 
 export const sourceManifestSchema = z.array(sourceFingerprintSchema).superRefine((items, ctx) => {
@@ -25,7 +28,7 @@ export const sourceManifestSchema = z.array(sourceFingerprintSchema).superRefine
       ctx.addIssue({
         code: "custom",
         path: [index, "name"],
-        message: "duplicate or colliding source filename after case/Unicode normalization",
+        message: "duplicate or colliding source filename after case/Unicode/path normalization",
       });
     }
     names.add(key);
