@@ -45,7 +45,8 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
     const meaning = clean(word.learnerMeaning || word.vi);
     if (!term || !meaning) return;
     const example = clean(word.example);
-    const hasContext = example.includes(term);
+    // Avoid a cloze whose answer is still visible in another occurrence.
+    const hasContext = example.split(term).length - 1 === 1;
     add({
       id: key(lesson.id, "word", i),
       mode: "cloze",
