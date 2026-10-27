@@ -19,6 +19,7 @@ import { useContent } from "@/lib/content-store";
 import { useLearning, type SkillKey } from "@/lib/learning-state";
 import { EmptySkillState } from "@/components/empty-skill-state";
 import { useMessages } from "@/i18n/messages";
+import { choiceAnswersMatch } from "@/lib/answer-check";
 import {
   masteryPassed,
 } from "@/lib/study-session-plan";
@@ -42,6 +43,12 @@ const normalize = (value: string) =>
     .trim()
     .replace(/[.!?。！？]/g, "")
     .replace(/\s+/g, " ");
+
+function answersMatchForQuestion(type: ReviewItem["type"], answer: string, expected: string) {
+  return type === "choice"
+    ? choiceAnswersMatch(answer, expected)
+    : normalize(answer) === normalize(expected);
+}
 
 type StudySessionProps = {
   lessonId?: number;
@@ -138,7 +145,7 @@ function StudySessionBody({
 
   const candidate=questions[index];
   const candidateAnswer=candidate?.type==="reorder"?tokens.join(" "):answer;
-  const flow=useAutoAdvance(index,checked&&!finished&&Boolean(candidate)&&normalize(candidateAnswer)===normalize(candidate?.answer??""),advance);
+  const flow=useAutoAdvance(index,checked&&!finished&&candidate!==undefined&&answersMatchForQuestion(candidate.type,candidateAnswer,candidate.answer),advance);
   const autoAdvance=flow.enabled;
 
   if (!questions.length) {
@@ -153,8 +160,7 @@ function StudySessionBody({
   const question = questions[index];
   const submittedAnswer =
     question.type === "reorder" ? tokens.join(" ") : answer;
-  const isCorrect =
-    normalize(submittedAnswer) === normalize(question.answer);
+  const isCorrect = answersMatchForQuestion(question.type, submittedAnswer, question.answer);
 
   const progress = Math.round(
     ((index + (checked ? 1 : 0)) / questions.length) * 100,
@@ -244,7 +250,7 @@ function StudySessionBody({
     submissionLock.current=true;
 
     const correct =
-      !skipped && normalize(candidate) === normalize(question.answer);
+      !skipped && answersMatchForQuestion(question.type, candidate, question.answer);
     const nextCorrectCount = correctCount + (correct ? 1 : 0);
     const previousSkill = skillStats[question.skill] ?? {
       correct: 0,
@@ -475,9 +481,10 @@ function StudySessionBody({
         {question.type === "choice" ? (
           <div className="session-options">
             {question.choices?.map((choice, choiceIndex) => {
-              const selected = answer === choice;
+              const selected = choiceAnswersMatch(answer, choice);
+              const choiceIsCorrect = choiceAnswersMatch(choice, question.answer);
               const state = checked
-                ? choice === question.answer
+                ? choiceIsCorrect
                   ? " correct"
                   : selected
                     ? " wrong"
@@ -504,12 +511,12 @@ function StudySessionBody({
                   >
                     {choice}
                   </strong>
-                  {checked && choice === question.answer ? (
+                  {checked && choiceIsCorrect ? (
                     <Check size={19} />
                   ) : null}
                   {checked &&
                   selected &&
-                  choice !== question.answer ? (
+                  !choiceIsCorrect ? (
                     <X size={19} />
                   ) : null}
                 </button>
