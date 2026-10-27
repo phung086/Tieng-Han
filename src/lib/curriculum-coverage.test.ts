@@ -905,7 +905,9 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.sourceCoverage.covered).toBe(1);
     expect(report.sourceCoverage.total).toBe(3);
     expect(report.sourceCoverage.percent).toBeNull();
-    expect(report.practiceCoverage).toEqual({ covered: 1, total: 3, percent: 100 / 3 });
+    expect(report.practiceCoverage.covered).toBe(1);
+    expect(report.practiceCoverage.total).toBe(3);
+    expect(report.practiceCoverage.percent).toBeCloseTo(100 / 3, 10);
     expect(report.issues.join(" ")).toContain("sourceRef không duy nhất giữa các source item");
   });
 
