@@ -110,10 +110,21 @@ describe("exhaustive deterministic practice", () => {
     expect(find(":speaking:0:")?.sourceRef).toBe("Sách p.24 · speaking-0");
     expect(find(":pronunciation-0:")?.sourceRef).toBe("Sách p.28 · pronunciation-example-0");
     expect(find(":writing-word:0:")?.sourceRef).toBe("Sách p.26 · target-0");
+    expect(find(":vocab-meaning:")?.sourceRef).toBe("Sách p.22 · v0");
+    expect(find(":grammar-pattern:")?.sourceRef).toBe("Sách p.23 · g1");
+    expect(find(":listening:")?.sourceRef).toBe("Sách p.24 · listening-1");
+    expect(find(":reading:")?.sourceRef).toBe("Sách p.25 · reading-question-1");
+    expect(find(":dialogue-0:0:")?.sourceRef).toBe("Sách p.27 · dialogue-line-0");
 
     const legacy = lesson(1);
+    delete legacy.vocabulary[0].sourceRef;
     delete legacy.vocabulary[0].exampleSourceRef;
+    delete legacy.grammar[0].sourceRef;
     delete legacy.grammar[0].exampleSourceRefs;
+    delete legacy.listening[0].sourceRef;
+    delete legacy.reading!.questions[0].sourceRef;
+    delete legacy.dialogues![0].lines[0].sourceRef;
+    delete legacy.dialogues![0].lines[1].sourceRef;
     delete legacy.speakingSourceRefs;
     delete legacy.pronunciation![0].exampleSourceRefs;
     delete legacy.writing!.targetWordSourceRefs;
@@ -123,6 +134,11 @@ describe("exhaustive deterministic practice", () => {
     expect(legacyBank.find(q => q.id.includes(":speaking:0:"))?.sourceRef).toBeUndefined();
     expect(legacyBank.find(q => q.id.includes(":pronunciation-0:"))?.sourceRef).toBeUndefined();
     expect(legacyBank.find(q => q.id.includes(":writing-word:0:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":vocab-meaning:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":grammar-pattern:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":listening:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":reading:"))?.sourceRef).toBeUndefined();
+    expect(legacyBank.find(q => q.id.includes(":dialogue-0:0:"))?.sourceRef).toBeUndefined();
   });
 
   it("rotates answers among distractors rather than keeping every correct option first", () => {
