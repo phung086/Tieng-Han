@@ -60,8 +60,8 @@ describe("source manifest fingerprint integrity", () => {
   });
 
   it("rejects canonically equivalent Unicode filenames as ambiguous", () => {
-    const composed = fingerprint({ name: "\\u00e9cole.pdf" });
-    const decomposed = fingerprint({ name: "e\\u0301cole.pdf", sha256: "b".repeat(64) });
+    const composed = fingerprint({ name: "école.pdf" });
+    const decomposed = fingerprint({ name: "école.pdf", sha256: "b".repeat(64) });
 
     expect(composed.name).not.toBe(decomposed.name);
     expect(sourceManifestSchema.safeParse([composed, decomposed]).success).toBe(false);
