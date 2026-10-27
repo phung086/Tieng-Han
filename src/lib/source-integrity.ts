@@ -25,7 +25,7 @@ export const sourceManifestSchema = z.array(sourceFingerprintSchema).superRefine
       ctx.addIssue({
         code: "custom",
         path: [index, "name"],
-        message: "source filename collides after case/Unicode normalization",
+        message: "duplicate or colliding source filename after case/Unicode normalization",
       });
     }
     names.add(key);
