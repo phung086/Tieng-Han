@@ -93,12 +93,12 @@ describe("source manifest fingerprint integrity", () => {
   it("rejects path-like, invalid, and reserved Windows device filenames", () => {
     const invalidNames = [
       "../Book.pdf",
-      "..\\\\Book.pdf",
+      "..\\Book.pdf",
       "folder/Book.pdf",
-      "folder\\\\Book.pdf",
+      "folder\\Book.pdf",
       "C:Book.pdf",
       "Book:stream",
-      "bad\\u0000.pdf",
+      "bad\u0000.pdf",
       "CON.pdf",
       "nul",
       "LPT1.docx",
