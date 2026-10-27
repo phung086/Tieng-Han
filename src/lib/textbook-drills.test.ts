@@ -135,10 +135,10 @@ describe("real exercises from imported lesson content", () => {
     const find = (fragment: string) => drills.find(item => item.id.includes(fragment));
     expect(find(":word:0:")?.sourceRef).toBe(exampleRef);
     expect(find(":word-example:0:")?.sourceRef).toBe(exampleRef);
-    expect(find(":grammar-cloze:0:0:")?.sourceRef).toBe(grammarExampleRefs[0]);
-    expect(find(":grammar-dictation:0:0:")?.sourceRef).toBe(grammarExampleRefs[0]);
-    expect(find(":dialogue-translation:0:0:")?.sourceRef).toBe(dialogueLineRef);
-    expect(find(":dialogue-dictation:0:0:")?.sourceRef).toBe(dialogueLineRef);
+    expect(find(":grammar-cloze:0:0")?.sourceRef).toBe(grammarExampleRefs[0]);
+    expect(find(":grammar-dictation:0:0")?.sourceRef).toBe(grammarExampleRefs[0]);
+    expect(find(":dialogue-translation:0:0")?.sourceRef).toBe(dialogueLineRef);
+    expect(find(":dialogue-dictation:0:0")?.sourceRef).toBe(dialogueLineRef);
     expect(find(":speaking-dictation:0:")?.sourceRef).toBe(speakingRef);
   });
 
@@ -152,10 +152,10 @@ describe("real exercises from imported lesson content", () => {
     expect(lesson.dialogues![0].sourceRef).toBe("Sơ cấp 1 p.55");
     expect(find(":word:0:")?.sourceRef).toBeUndefined();
     expect(find(":word-example:0:")?.sourceRef).toBeUndefined();
-    expect(find(":grammar-cloze:0:0:")?.sourceRef).toBeUndefined();
-    expect(find(":grammar-dictation:0:0:")?.sourceRef).toBeUndefined();
-    expect(find(":dialogue-translation:0:0:")?.sourceRef).toBeUndefined();
-    expect(find(":dialogue-dictation:0:0:")?.sourceRef).toBeUndefined();
+    expect(find(":grammar-cloze:0:0")?.sourceRef).toBeUndefined();
+    expect(find(":grammar-dictation:0:0")?.sourceRef).toBeUndefined();
+    expect(find(":dialogue-translation:0:0")?.sourceRef).toBeUndefined();
+    expect(find(":dialogue-dictation:0:0")?.sourceRef).toBeUndefined();
     expect(find(":speaking-dictation:0:")?.sourceRef).toBeUndefined();
   });
 
