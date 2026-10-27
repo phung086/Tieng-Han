@@ -67,7 +67,12 @@ describe("exhaustive deterministic practice", () => {
     expect(bank.filter(q => q.id.includes(":reading:"))).toHaveLength(1);
     expect(bank.filter(q => q.id.includes(":dialogue-"))).toHaveLength(2);
     expect(bank.filter(q => q.id.includes(":speaking:"))).toHaveLength(2);
-    expect(bank.filter(q => q.id.includes(":pronunciation-"))).toHaveLength(2);
+    const pronunciationQuestions = bank.filter(q => q.id.includes(":pronunciation-"));
+    expect(pronunciationQuestions).toHaveLength(2);
+    expect(pronunciationQuestions.map(q => q.answer)).toEqual(["한국", "책"]);
+    expect(pronunciationQuestions.every(q => q.skill === "speaking")).toBe(true);
+    expect(pronunciationQuestions.every(q => q.title.includes("không chấm âm thanh"))).toBe(true);
+    expect(pronunciationQuestions.every(q => q.prompt.includes("Hệ thống chỉ chấm phần gõ lại, không chấm âm thanh"))).toBe(true);
     expect(bank.filter(q => q.id.includes(":writing-word:"))).toHaveLength(2);
     expect(new Set(bank.map(q => q.id)).size).toBe(bank.length);
     expect(bank.every(q => q.lessonId === 4 && !!q.answer && !!q.prompt)).toBe(true);
