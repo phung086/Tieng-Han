@@ -16,6 +16,13 @@ export type TextbookDrill = {
 };
 
 const clean = (value: string | undefined | null) => (value ?? "").trim();
+const directRef = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+const indexedRef = (owner: unknown, field: string, index: number): string | undefined => {
+  if (!owner || typeof owner !== "object") return undefined;
+  const refs = (owner as Record<string, unknown>)[field];
+  return Array.isArray(refs) ? directRef(refs[index]) : undefined;
+};
 const key = (lesson: number, kind: string, i: number, j = 0) =>
   ["textbook-drill-v1", lesson, kind, i, j].join(":");
 
@@ -28,7 +35,6 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
     seen.add(item.id);
     items.push(item);
   };
-  const ref = (sourceRef?: string) => sourceRef || lesson.sourceRef;
 
   (lesson.vocabulary ?? []).forEach((word, i) => {
     const term = clean(word.targetText || word.ko);
@@ -45,7 +51,8 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
       answer: term,
       context: hasContext ? "Nghĩa của từ cần điền: " + meaning : undefined,
       hint: "Từ tiếng Hàn có nghĩa: " + meaning,
-      sourceRef: ref(word.sourceRef),
+      // This cloze uses the example sentence as its source, not the headword row.
+      sourceRef: hasContext ? indexedRef(word, "exampleSourceRef", 0) : directRef(word.sourceRef),
     });
     if (example) {
       add({
@@ -57,7 +64,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
         answer: example,
         audioText: example,
         hint: "Ví dụ của từ: " + term,
-        sourceRef: ref(word.sourceRef),
+        sourceRef: indexedRef(word, "exampleSourceRef", 0),
       });
     }
   });
@@ -79,7 +86,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           answer: needle,
           context: "Mẫu: " + raw,
           hint: grammar.meaning + " · " + grammar.explanation,
-          sourceRef: ref(grammar.sourceRef),
+          sourceRef: indexedRef(grammar, "exampleSourceRefs", j),
         });
       }
       add({
@@ -91,7 +98,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
         answer: sentence,
         audioText: sentence,
         hint: "Mẫu: " + raw + " · " + grammar.meaning,
-        sourceRef: ref(grammar.sourceRef),
+        sourceRef: indexedRef(grammar, "exampleSourceRefs", j),
       });
     });
   });
@@ -111,7 +118,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           answer: korean,
           context: provenance + " Viết lại câu tiếng Hàn đã học.",
           hint: "Đối chiếu với câu mẫu đã nhập; không chấm ngữ nghĩa các cách diễn đạt khác.",
-          sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
+          sourceRef: directRef(line.sourceRef),
         });
       }
       if (korean) {
@@ -125,7 +132,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
           audioText: korean,
           context: provenance,
           hint: vietnamese || "Đọc lại đoạn hội thoại trong bài.",
-          sourceRef: ref(line.sourceRef ?? dialogue.sourceRef),
+          sourceRef: directRef(line.sourceRef),
         });
       }
     });
@@ -143,7 +150,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
       answer: text,
       audioText: text,
       hint: clean(item.meaning) || "Luyện nghe nhiều lượt trước khi kiểm tra.",
-      sourceRef: ref(item.sourceRef),
+      sourceRef: directRef(item.sourceRef),
     });
   });
   (lesson.speaking ?? []).forEach((text, i) => {
@@ -157,7 +164,7 @@ export function buildTextbookDrills(lesson: LessonContent): TextbookDrill[] {
       prompt: "Nghe câu luyện nói và chép lại.",
       answer: sentence,
       audioText: sentence,
-      sourceRef: lesson.sourceRef,
+      sourceRef: indexedRef(lesson, "speakingSourceRefs", i),
     });
   });
 
