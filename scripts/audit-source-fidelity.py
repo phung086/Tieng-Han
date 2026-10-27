@@ -68,7 +68,7 @@ def units(lesson):
         if reading.get('title') or reading.get('titleSourceRef'):
             yield 'reading-title', 'reading:title', reading.get('title') or '', reading.get('titleSourceRef'), None
         if reading.get('text') or reading.get('textSourceRef') or reading.get('sourceRef'):
-            yield 'reading', 'reading', reading.get('text') or '', reading.get('textSourceRef') or reading.get('sourceRef'), None
+            yield 'reading', 'reading', reading.get('text') or '', reading.get('textSourceRef'), None
         for index, question in enumerate(reading.get('questions') or []):
             yield 'reading-question', question.get('id') or str(index), question.get('q') or '', question.get('sourceRef'), None
 
