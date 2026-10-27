@@ -315,7 +315,8 @@ function hasPrimarySourceContent(pointer: string, content: unknown): boolean {
     case "culture": return parts.length === 2 && field("title") && field("text");
     case "extraSections": return parts.length === 2 && textArray("content");
     case "questions": return parts.length === 2 && field("prompt");
-    case "media": return parts.length === 2 && field("url", "src", "fileName", "resourcePath", "dataUrl", "alt", "caption", "text");
+    // The lesson media gallery renders media through `src`; alt/caption metadata alone is not the source asset.
+    case "media": return parts.length === 2 && ["image", "video", "audio", "document"].includes(String(row.type)) && field("src");
     case "illustrations": return parts.length === 2 && field("alt", "caption", "fileName", "url", "src");
     default: return Object.values(row).some(hasText);
   }
@@ -387,6 +388,24 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
     }
     if (lesson.writing?.promptSourceRef !== undefined && !lesson.writing.promptSourceRef.trim()) {
       issues.push("Tham chiếu prompt bài viết rỗng tại lesson " + lesson.id + ".writing.prompt");
+    }
+  }
+  // A sourceRef is an identity for one source item, not a page-level label.
+  // Reusing it across distinct inventory items would let one citation/question
+  // ambiguously stand for several original items, even when each pointer matches.
+  const sourceRefOwners = new Map<string, Set<string>>();
+  for (const item of inventory.items) {
+    const ref = item.sourceRef.trim();
+    if (!ref) continue;
+    const owners = sourceRefOwners.get(ref) ?? new Set<string>();
+    owners.add(item.lessonId + ":" + item.id);
+    sourceRefOwners.set(ref, owners);
+  }
+  const ambiguousSourceRefs = new Set<string>();
+  for (const [ref, owners] of sourceRefOwners) {
+    if (owners.size > 1) {
+      ambiguousSourceRefs.add(ref);
+      issues.push("sourceRef không duy nhất giữa các source item: " + ref);
     }
   }
   const allPagesReviewed = expectedPages.size > 0 && issues.length === 0;
@@ -468,6 +487,7 @@ export function auditCurriculumCoverage(bundle: CompiledCourseBundle): Curriculu
       issues.push("sourceRef inventory không khớp tham chiếu item đích " + key + " → " + item.contentPointer);
       continue;
     }
+    if (ambiguousSourceRefs.has(item.sourceRef.trim())) continue;
     represented++;
     representedLessons.add(item.lessonId);
     const linkedQuestions = item.practiceQuestionIds.map(id => questions.find(question =>

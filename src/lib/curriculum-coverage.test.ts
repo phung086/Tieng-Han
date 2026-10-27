@@ -840,4 +840,75 @@ describe("source, practice and validation coverage are independent release evide
     expect(complete.validationCoverage).toEqual({ covered: 2, total: 2, percent: 100 });
   });
 
+
+  it("does not count media metadata without a renderable src as source representation", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const sourceRef = "synthetic.pdf · p.1 · media-1";
+    bundle.course.lessons[0].media = [{
+      id: "media-1", type: "image", role: "illustration", src: "",
+      alt: "An illustration", caption: "A caption", sourceRef,
+      fileName: "synthetic.pdf", pageNumber: 1,
+    }];
+    bundle.sourceInventory.items.push({
+      id: "media-1", lessonId: 1, kind: "media", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef, contentPointer: "/media/0",
+      practiceMethod: "workbook", practiceQuestionIds: [], verified: true,
+    });
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage.covered).toBe(2);
+    expect(report.sourceCoverage.total).toBe(3);
+    expect(report.issues.join(" ")).toContain("Thiếu nội dung hoặc nguồn cho item 1:media-1");
+  });
+
+  it("does not treat a visible media asset as a workbook practice activity by itself", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const sourceRef = "synthetic.pdf · p.1 · media-1";
+    bundle.course.lessons[0].media = [{
+      id: "media-1", type: "image", role: "illustration", src: "/media/lesson-1.png",
+      alt: "An illustration", caption: "A caption", sourceRef,
+      fileName: "synthetic.pdf", pageNumber: 1,
+    }];
+    bundle.sourceInventory.items.push({
+      id: "media-1", lessonId: 1, kind: "media", fileName: "synthetic.pdf",
+      pageNumber: 1, sourceRef, contentPointer: "/media/0",
+      practiceMethod: "workbook", practiceQuestionIds: [], verified: true,
+    });
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.sourceCoverage.covered).toBe(3);
+    expect(report.sourceCoverage.total).toBe(3);
+    expect(report.practiceCoverage.covered).toBe(2);
+    expect(report.practiceCoverage.total).toBe(3);
+    expect(report.status).toBe("partial");
+    expect(report.issues.join(" ")).toContain("Thiếu phương thức ôn luyện cho item 1:media-1");
+  });
+
+
+  it("rejects a sourceRef reused by distinct inventory items even when each pointer matches", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const lesson = bundle.course.lessons[0];
+    const sharedRef = lesson.vocabulary[0].sourceRef!;
+    lesson.vocabulary.push({ ...lesson.vocabulary[0], id: "v2", ko: "선생님", vi: "giáo viên", sourceRef: sharedRef });
+    bundle.course.questions.push({
+      ...bundle.course.questions[0], id: "q2", prompt: "giáo viên", answer: "선생님", sourceRef: sharedRef,
+    });
+    bundle.sourceInventory.items.push({
+      id: "v2", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
+      sourceRef: sharedRef, contentPointer: "/vocabulary/1", practiceMethod: "questions",
+      motif: "input", practiceQuestionIds: ["q2"], verified: true,
+    });
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.sourceCoverage.total).toBe(3);
+    expect(report.sourceCoverage.percent).toBeNull();
+    expect(report.practiceCoverage.covered).toBe(1);
+    expect(report.practiceCoverage.total).toBe(3);
+    expect(report.practiceCoverage.percent).toBeCloseTo(100 / 3, 10);
+    expect(report.issues.join(" ")).toContain("sourceRef không duy nhất giữa các source item");
+  });
+
 });
