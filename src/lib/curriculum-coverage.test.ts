@@ -885,4 +885,28 @@ describe("source, practice and validation coverage are independent release evide
     expect(report.issues.join(" ")).toContain("Thiếu phương thức ôn luyện cho item 1:media-1");
   });
 
+
+  it("rejects a sourceRef reused by distinct inventory items even when each pointer matches", () => {
+    const bundle = fixture(); bundle.sourceInventory = inventory();
+    const lesson = bundle.course.lessons[0];
+    const sharedRef = lesson.vocabulary[0].sourceRef!;
+    lesson.vocabulary.push({ ...lesson.vocabulary[0], id: "v2", ko: "선생님", vi: "giáo viên", sourceRef: sharedRef });
+    bundle.course.questions.push({
+      ...bundle.course.questions[0], id: "q2", prompt: "giáo viên", answer: "선생님", sourceRef: sharedRef,
+    });
+    bundle.sourceInventory.items.push({
+      id: "v2", lessonId: 1, kind: "vocabulary", fileName: "synthetic.pdf", pageNumber: 1,
+      sourceRef: sharedRef, contentPointer: "/vocabulary/1", practiceMethod: "questions",
+      motif: "input", practiceQuestionIds: ["q2"], verified: true,
+    });
+
+    const report = auditCurriculumCoverage(bundle);
+    expect(report.status).toBe("partial");
+    expect(report.sourceCoverage.covered).toBe(1);
+    expect(report.sourceCoverage.total).toBe(3);
+    expect(report.sourceCoverage.percent).toBeNull();
+    expect(report.practiceCoverage).toEqual({ covered: 1, total: 3, percent: 100 / 3 });
+    expect(report.issues.join(" ")).toContain("sourceRef không duy nhất giữa các source item");
+  });
+
 });
