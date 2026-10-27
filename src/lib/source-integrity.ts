@@ -1,11 +1,20 @@
 import { z } from "zod";
 import type { ImportJob, ImportJobPage, ImportSourceFingerprint } from "@/lib/import-jobs";
 
+function isPortableSourceFilename(value: string) {
+  if (value === "." || value === "..") return false;
+  // File.name should be a leaf name, not a path or a Windows alternate data stream.
+  if (/[<>:"/\\|?*\u0000-\u001f]/u.test(value)) return false;
+  // Windows reserves these device names even when an extension is present.
+  const deviceName = (value.split(".", 1)[0] ?? value).replace(/[ .]+$/u, "");
+  return !/^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])$/iu.test(deviceName);
+}
+
 export const sourceFingerprintSchema = z.object({
   // Preserve the exact filename for identity; reject blank names and Windows-ambiguous trailing dots/spaces.
   name: z.string().refine(
-    (value) => value.trim().length > 0 && !/[ .]$/.test(value),
-    { message: "source filename must be non-blank and must not end with a dot or space" },
+    (value) => value.trim().length > 0 && !/[ .]$/.test(value) && isPortableSourceFilename(value),
+    { message: "source filename must be a non-blank portable filename without path separators, reserved characters/device names, or trailing dots/spaces" },
   ),
   // An imported PDF/DOCX must contain bytes; zero-byte files cannot represent a usable textbook source.
   size: z.number().int().positive(),
