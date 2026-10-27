@@ -75,7 +75,8 @@ describe("real exercises from imported lesson content", () => {
     expect(examples).toHaveLength(81);
     expect(words[80].answer).toBe("단어80");
     expect(words[80].prompt).toBe("저는 ＿＿＿ 좋아합니다.");
-    expect(words[80].sourceRef).toBe("Sơ cấp 1 p.51");
+    // The prompt is built from the example sentence, so a headword ref is insufficient.
+    expect(words[80].sourceRef).toBeUndefined();
     expect(examples[80].prompt).not.toContain(examples[80].answer);
     expect(examples[80].audioText).toBe(examples[80].answer);
     expect(new Set(drills.map(item => item.id)).size).toBe(drills.length);
@@ -97,7 +98,8 @@ describe("real exercises from imported lesson content", () => {
     expect(translation).toHaveLength(2);
     expect(translation.map(item => item.answer)).toEqual(["안녕하세요.", "저는 학생입니다."]);
     expect(drills.filter(item => item.id.includes("dialogue-dictation"))).toHaveLength(3);
-    expect(translation[1].sourceRef).toBe("Sơ cấp 1 p.55");
+    // A dialogue container ref must not be inherited by an individual turn.
+    expect(translation[1].sourceRef).toBeUndefined();
     const count = countDrillModes(drills);
     expect(count.cloze + count.translation + count.dictation).toBe(drills.length);
   });
@@ -112,6 +114,49 @@ describe("real exercises from imported lesson content", () => {
     lesson.dialogues![0].translationOrigin = "derived";
     expect(translation().context).toContain("Mẫu hội thoại trong giáo trình");
     expect(translation().context).toContain("Bản dịch Việt bổ trợ");
+  });
+
+
+  it("uses the exact item-level ref for each nested drill", () => {
+    const lesson = makeLesson(1);
+    const exampleRef = "Sơ cấp 1 p.51 · word-example-0";
+    const grammarExampleRefs = [
+      "Sơ cấp 1 p.52 · grammar-example-0",
+      "Sơ cấp 1 p.52 · grammar-example-1",
+    ];
+    const dialogueLineRef = "Sơ cấp 1 p.55 · dialogue-line-0";
+    const speakingRef = "Sơ cấp 1 p.56 · speaking-0";
+    Object.assign(lesson.vocabulary[0], { exampleSourceRef: exampleRef });
+    Object.assign(lesson.grammar[0], { exampleSourceRefs: grammarExampleRefs });
+    Object.assign(lesson.dialogues![0].lines[0], { sourceRef: dialogueLineRef });
+    Object.assign(lesson, { speakingSourceRefs: [speakingRef, "Sơ cấp 1 p.56 · speaking-1"] });
+
+    const drills = buildTextbookDrills(lesson);
+    const find = (fragment: string) => drills.find(item => item.id.includes(fragment));
+    expect(find(":word:0:")?.sourceRef).toBe(exampleRef);
+    expect(find(":word-example:0:")?.sourceRef).toBe(exampleRef);
+    expect(find(":grammar-cloze:0:0:")?.sourceRef).toBe(grammarExampleRefs[0]);
+    expect(find(":grammar-dictation:0:0:")?.sourceRef).toBe(grammarExampleRefs[0]);
+    expect(find(":dialogue-translation:0:0:")?.sourceRef).toBe(dialogueLineRef);
+    expect(find(":dialogue-dictation:0:0:")?.sourceRef).toBe(dialogueLineRef);
+    expect(find(":speaking-dictation:0:")?.sourceRef).toBe(speakingRef);
+  });
+
+  it("never inherits a lesson or container ref when a nested item ref is missing", () => {
+    const lesson = makeLesson(1);
+    const drills = buildTextbookDrills(lesson);
+    const find = (fragment: string) => drills.find(item => item.id.includes(fragment));
+    expect(lesson.sourceRef).toBe("Sơ cấp 1 p.50");
+    expect(lesson.vocabulary[0].sourceRef).toBe("Sơ cấp 1 p.51");
+    expect(lesson.grammar[0].sourceRef).toBe("Sơ cấp 1 p.52");
+    expect(lesson.dialogues![0].sourceRef).toBe("Sơ cấp 1 p.55");
+    expect(find(":word:0:")?.sourceRef).toBeUndefined();
+    expect(find(":word-example:0:")?.sourceRef).toBeUndefined();
+    expect(find(":grammar-cloze:0:0:")?.sourceRef).toBeUndefined();
+    expect(find(":grammar-dictation:0:0:")?.sourceRef).toBeUndefined();
+    expect(find(":dialogue-translation:0:0:")?.sourceRef).toBeUndefined();
+    expect(find(":dialogue-dictation:0:0:")?.sourceRef).toBeUndefined();
+    expect(find(":speaking-dictation:0:")?.sourceRef).toBeUndefined();
   });
 
   it("falls back to a sourced meaning prompt where an example cannot be clozed", () => {
