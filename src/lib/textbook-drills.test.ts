@@ -159,6 +159,16 @@ describe("real exercises from imported lesson content", () => {
     expect(find(":speaking-dictation:0:")?.sourceRef).toBeUndefined();
   });
 
+  it("does not leak a cloze answer when the source example repeats the target", () => {
+    const lesson = makeLesson(1);
+    lesson.vocabulary[0].example = "단어0를 좋아하고 단어0도 써요.";
+    const drills = buildTextbookDrills(lesson);
+    const word = drills.find(item => item.id.includes(":word:0:"));
+    expect(word?.prompt).toBe("＿＿＿ = nghĩa 0");
+    expect(word?.prompt).not.toContain("단어0");
+    expect(word?.sourceRef).toBe("Sơ cấp 1 p.51");
+  });
+
   it("falls back to a sourced meaning prompt where an example cannot be clozed", () => {
     const lesson = makeLesson(1);
     lesson.vocabulary[0].example = "교실에 가요.";
