@@ -136,6 +136,58 @@ describe("merging full textbook content", () => {
     expect(rest.some(s => s.title === "Nhiệm vụ viết · phần 3" && s.content.includes("Hãy viết phần 3"))).toBe(true);
   });
 
+  it("keeps speaking item refs aligned across merged chunks without shifting missing refs", () => {
+    const first = lesson(1);
+    first.speaking = ["첫 번째 문장", "두 번째 문장"];
+    first.speakingSourceRefs = ["Sơ cấp 1.pdf · p.21 · speaking-1", "Sơ cấp 1.pdf · p.21 · speaking-2"];
+    const second = lesson(2);
+    second.speaking = ["세 번째 문장"];
+    second.speakingSourceRefs = ["Sơ cấp 1.pdf · p.22 · speaking-3"];
+
+    const combined = mergeGeneratedLessonChunks(3, [
+      { lesson: first, questions: [] },
+      { lesson: second, questions: [] },
+    ]);
+    expect(combined.lesson.speaking).toEqual(["첫 번째 문장", "두 번째 문장", "세 번째 문장"]);
+    expect(combined.lesson.speakingSourceRefs).toEqual([
+      "Sơ cấp 1.pdf · p.21 · speaking-1",
+      "Sơ cấp 1.pdf · p.21 · speaking-2",
+      "Sơ cấp 1.pdf · p.22 · speaking-3",
+    ]);
+
+    const missing = lesson(1);
+    missing.speaking = ["문장에 출처 없음"];
+    const referenced = lesson(2);
+    referenced.speaking = ["출처가 있는 문장"];
+    referenced.speakingSourceRefs = ["Sơ cấp 1.pdf · p.22 · speaking-2"];
+    const mixed = mergeGeneratedLessonChunks(3, [
+      { lesson: missing, questions: [] },
+      { lesson: referenced, questions: [] },
+    ]);
+    expect(mixed.lesson.speakingSourceRefs).toEqual(["", "Sơ cấp 1.pdf · p.22 · speaking-2"]);
+  });
+
+  it("keeps malformed excess speaking refs visible to fail-closed coverage checks", () => {
+    const malformed = lesson(1);
+    malformed.speaking = ["한 문장"];
+    malformed.speakingSourceRefs = ["Sơ cấp 1.pdf · p.21 · speaking-1", "orphan ref"];
+    const next = lesson(2);
+    next.speaking = ["다음 문장"];
+    next.speakingSourceRefs = ["Sơ cấp 1.pdf · p.22 · speaking-2"];
+
+    const combined = mergeGeneratedLessonChunks(3, [
+      { lesson: malformed, questions: [] },
+      { lesson: next, questions: [] },
+    ]);
+    expect(combined.lesson.speakingSourceRefs).toEqual([
+      "Sơ cấp 1.pdf · p.21 · speaking-1",
+      "Sơ cấp 1.pdf · p.22 · speaking-2",
+      "orphan ref",
+    ]);
+    expect(combined.lesson.speakingSourceRefs).toHaveLength(3);
+    expect(combined.lesson.speaking).toHaveLength(2);
+  });
+
   it("never accepts an invalid or missing compiled segment as a silent success", () => {
     expect(() => mergeGeneratedLessonChunks(3, [])).toThrow("No source chunks");
     expect(() => mergeGeneratedLessonChunks(3, [
