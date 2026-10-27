@@ -102,6 +102,9 @@ describe("source manifest fingerprint integrity", () => {
       "CON.pdf",
       "nul",
       "LPT1.docx",
+      // Windows also reserves these device aliases with superscript digits.
+      "COM¹.pdf",
+      "LPT³.docx",
     ];
 
     for (const name of invalidNames) {
