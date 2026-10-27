@@ -80,7 +80,20 @@ class CitationAuditTests(unittest.TestCase):
         self.assertIsNone(rows[('grammar-example', 'g1:1')][1])
         self.assertEqual(rows[('dialogue-turn', 'd1:0')][1], 'book.pdf p.3 · d1-line-0')
         self.assertIsNone(rows[('dialogue-turn', 'd1:1')][1])
+        self.assertEqual(rows[('reading', 'reading')][1], 'book.pdf p.5 · reading-text')
         self.assertIsNone(rows[('reading-question', 'rq1')][1])
+
+        # A container-level reading ref is not evidence for the passage text.
+        reading_without_text_ref = dict(lesson)
+        reading_without_text_ref['reading'] = {
+            key: value for key, value in lesson['reading'].items()
+            if key != 'textSourceRef'
+        }
+        rows_without_text_ref = {
+            (kind, item_id): (text, reference, origin)
+            for kind, item_id, text, reference, origin in audit.units(reading_without_text_ref)
+        }
+        self.assertIsNone(rows_without_text_ref[('reading', 'reading')][1])
         self.assertEqual(rows[('speaking-prompt', '0')][1], 'book.pdf p.6 · speaking-0')
         self.assertIsNone(rows[('speaking-prompt', '1')][1])
         self.assertIsNone(rows[('writing-target-word', 'writing:1')][1])
