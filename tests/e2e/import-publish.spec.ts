@@ -85,7 +85,7 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   // The source-reader URL is part of the manual PDF-to-bundle evidence trail:
   // Back/Forward must restore the actual page, not just change the address bar.
   await page.goBack();
-  await expect(page).toHaveURL(/\/sources$/);
+  await expect(page).toHaveURL(/\/sources(?:\?page=1)?$/);
   await expect(page.getByRole("heading", { name: "synthetic-source.pdf · trang PDF 1" })).toBeVisible();
   await page.goForward();
   await expect(page).toHaveURL(/\/sources\?page=2$/);
