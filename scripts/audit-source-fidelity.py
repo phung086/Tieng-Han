@@ -34,20 +34,68 @@ def cited_pages(reference, file_name, page_count):
     return list(dict.fromkeys(result))
 
 
+def indexed_reference(item, field, index):
+    references = item.get(field)
+    if not isinstance(references, list) or index >= len(references):
+        return None
+    reference = references[index]
+    return reference if isinstance(reference, str) and reference.strip() else None
+
+
 def units(lesson):
-    for item in lesson['vocabulary']:
-        yield 'vocabulary', item['id'], item.get('targetText') or item['ko'], item.get('sourceRef'), None
-    for item in lesson['grammar']:
-        for index, example in enumerate(item['examples']):
-            yield 'grammar-example', item['id'] + ':' + str(index), example, item.get('sourceRef'), None
+    """Yield authored text with its own evidence ref; never borrow a child ref from its parent."""
+    for item in lesson.get('vocabulary', []):
+        yield 'vocabulary', item['id'], item.get('targetText') or item.get('ko') or '', item.get('sourceRef'), None
+        example = item.get('example')
+        if example or item.get('exampleSourceRef'):
+            yield 'vocabulary-example', item['id'] + ':example', example or '', item.get('exampleSourceRef'), None
+
+    for item in lesson.get('grammar', []):
+        if item.get('pattern') or item.get('sourceRef'):
+            yield 'grammar-pattern', item['id'], item.get('pattern') or '', item.get('sourceRef'), None
+        for index, example in enumerate(item.get('examples') or []):
+            yield 'grammar-example', item['id'] + ':' + str(index), example or '', indexed_reference(item, 'exampleSourceRefs', index), None
+
     for item in lesson.get('dialogues', []):
-        for index, line in enumerate(item['lines']):
-            yield 'dialogue-turn', item['id'] + ':' + str(index), line.get('targetText') or line['ko'], line.get('sourceRef') or item.get('sourceRef'), item.get('origin')
-    for item in lesson['listening']:
-        yield 'listening', item['id'], item['text'], item.get('sourceRef'), None
-    if lesson.get('reading'):
-        item = lesson['reading']
-        yield 'reading', 'reading', item['text'], item.get('sourceRef'), None
+        for index, line in enumerate(item.get('lines') or []):
+            yield 'dialogue-turn', item['id'] + ':' + str(index), line.get('targetText') or line.get('ko') or '', line.get('sourceRef'), item.get('origin')
+
+    for item in lesson.get('listening', []):
+        yield 'listening', item['id'], item.get('text') or '', item.get('sourceRef'), None
+
+    reading = lesson.get('reading')
+    if reading:
+        if reading.get('title') or reading.get('titleSourceRef'):
+            yield 'reading-title', 'reading:title', reading.get('title') or '', reading.get('titleSourceRef'), None
+        if reading.get('text') or reading.get('textSourceRef') or reading.get('sourceRef'):
+            yield 'reading', 'reading', reading.get('text') or '', reading.get('textSourceRef') or reading.get('sourceRef'), None
+        for index, question in enumerate(reading.get('questions') or []):
+            yield 'reading-question', question.get('id') or str(index), question.get('q') or '', question.get('sourceRef'), None
+
+    for index, prompt in enumerate(lesson.get('speaking') or []):
+        yield 'speaking-prompt', str(index), prompt or '', indexed_reference(lesson, 'speakingSourceRefs', index), None
+
+    writing = lesson.get('writing')
+    if writing:
+        if writing.get('prompt') or writing.get('sourceRef'):
+            yield 'writing-prompt', 'writing', writing.get('prompt') or '', writing.get('sourceRef'), None
+        for index, word in enumerate(writing.get('targetWords') or []):
+            yield 'writing-target-word', 'writing:' + str(index), word or '', indexed_reference(writing, 'targetWordSourceRefs', index), None
+
+    for item in lesson.get('pronunciation', []):
+        if item.get('title') or item.get('explanation'):
+            yield 'pronunciation-rule', item['id'], item.get('title') or item.get('explanation') or '', item.get('sourceRef'), None
+        for index, example in enumerate(item.get('examples') or []):
+            yield 'pronunciation-example', item['id'] + ':' + str(index), example or '', indexed_reference(item, 'exampleSourceRefs', index), None
+
+    for item in lesson.get('culture', []):
+        yield 'culture-text', item['id'], item.get('text') or '', item.get('sourceRef'), None
+
+    for section in lesson.get('extraSections', []):
+        if section.get('title') or section.get('sourceRef'):
+            yield 'extra-section-title', section['id'], section.get('title') or '', section.get('sourceRef'), None
+        for index, content in enumerate(section.get('content') or []):
+            yield 'extra-section-content', section['id'] + ':' + str(index), content or '', indexed_reference(section, 'contentSourceRefs', index), None
 
 
 def audit(root):
