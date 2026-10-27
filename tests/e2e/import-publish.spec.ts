@@ -79,7 +79,20 @@ test("real HTTP import, checkpoint, publish, reload and practice work without an
   await expect(page.getByText("학생 — học sinh", { exact: true })).toBeVisible();
   await page.getByRole("spinbutton", { name: "Trang PDF" }).fill("2");
   await page.getByRole("button", { name: "Mở trang", exact: true }).click();
+  await expect(page).toHaveURL(/\/sources\?page=2$/);
   await expect(page.getByRole("heading", { name: "synthetic-source.pdf · trang PDF 2" })).toBeVisible();
+
+  // The source-reader URL is part of the manual PDF-to-bundle evidence trail:
+  // Back/Forward must restore the actual page, not just change the address bar.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/sources(?:\?page=1)?$/);
+  await expect(page.getByRole("heading", { name: "synthetic-source.pdf · trang PDF 1" })).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/\/sources\?page=2$/);
+  await expect(page.getByRole("heading", { name: "synthetic-source.pdf · trang PDF 2" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "synthetic-source.pdf · trang PDF 2" })).toBeVisible();
+
   const original = await (await request.get(`/api/courses/course-${job.id}/source?page=2`)).json();
   expect(original.page.text).toBe("학생 — học sinh");
   await page.goto("/practice/drills?lesson=1&mode=dictation");
