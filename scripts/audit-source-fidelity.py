@@ -83,12 +83,16 @@ def units(lesson):
             yield 'writing-target-word', 'writing:' + str(index), word or '', indexed_reference(writing, 'targetWordSourceRefs', index), None
 
     for item in lesson.get('pronunciation', []):
-        if item.get('title') or item.get('explanation'):
-            yield 'pronunciation-rule', item['id'], item.get('title') or item.get('explanation') or '', item.get('sourceRef'), None
+        if item.get('title'):
+            yield 'pronunciation-rule-title', item['id'] + ':title', item['title'], item.get('sourceRef'), None
+        if item.get('explanation'):
+            yield 'pronunciation-rule-explanation', item['id'] + ':explanation', item['explanation'], item.get('sourceRef'), None
         for index, example in enumerate(item.get('examples') or []):
             yield 'pronunciation-example', item['id'] + ':' + str(index), example or '', indexed_reference(item, 'exampleSourceRefs', index), None
 
     for item in lesson.get('culture', []):
+        if item.get('title'):
+            yield 'culture-title', item['id'] + ':title', item['title'], item.get('sourceRef'), None
         yield 'culture-text', item['id'], item.get('text') or '', item.get('sourceRef'), None
 
     for section in lesson.get('extraSections', []):
